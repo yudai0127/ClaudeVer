@@ -63,515 +63,52 @@ ine r2.y, r2.y, l(0)
 and r2.x, r2.y, r2.x
 if_nz r2.x
   resinfo_indexable(texture2d)(float,float,float,float) r2.xy, l(0), t21.xyzw
-  div r3.xyzw, l(-24.000000, -24.000000, -24.000000, -20.000000), r2.xyxy
-  add r3.xyzw, r3.xyzw, v2.xyxy
+  mul r2.z, r0.w, l(24.000000)
+  div r2.xyzw, r2.zzzz, r2.xyxy
+  mad r3.xyzw, r2.zwzw, l(-0.942016, -0.399062, 0.945586, -0.768907), v2.xyxy
   sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r3.xyxx, t21.xyzw, s4
   sample_indexable(texture2d)(float,float,float,float) r3.xyzw, r3.zwzz, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-24.000000, -16.000000, -24.000000, -12.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
+  mad r4.xyzw, r2.zwzw, l(-0.094184, -0.929389, 0.344959, 0.293878), v2.xyxy
   sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r5.xyzw
   sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-24.000000, -8.000000, -24.000000, -4.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
+  mad r4.xyzw, r2.zwzw, l(-0.915886, 0.457714, -0.815442, -0.879125), v2.xyxy
   sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r5.xyzw
   sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-24.000000, 0.000000, -24.000000, 4.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
+  mad r4.xyzw, r2.zwzw, l(-0.382775, 0.276768, 0.974844, 0.756484), v2.xyxy
   sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r5.xyzw
   sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-24.000000, 8.000000, -24.000000, 12.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
+  mad r4.xyzw, r2.zwzw, l(0.443233, -0.975116, 0.537430, -0.473734), v2.xyxy
   sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r5.xyzw
   sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-24.000000, 16.000000, -24.000000, 20.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
+  mad r4.xyzw, r2.zwzw, l(-0.264969, -0.418930, 0.791975, 0.190902), v2.xyxy
   sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r5.xyzw
   sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-24.000000, 24.000000, -20.000000, -24.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
+  mad r4.xyzw, r2.zwzw, l(-0.241888, 0.997065, -0.814100, 0.914376), v2.xyxy
   sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r5.xyzw
   sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-20.000000, -20.000000, -20.000000, -16.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-20.000000, -12.000000, -20.000000, -8.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-20.000000, -4.000000, -20.000000, 0.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-20.000000, 4.000000, -20.000000, 8.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-20.000000, 12.000000, -20.000000, 16.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-20.000000, 20.000000, -20.000000, 24.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-16.000000, -24.000000, -16.000000, -20.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-16.000000, -16.000000, -16.000000, -12.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-16.000000, -8.000000, -16.000000, -4.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-16.000000, 0.000000, -16.000000, 4.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-16.000000, 8.000000, -16.000000, 12.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-16.000000, 16.000000, -16.000000, 20.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-16.000000, 24.000000, -12.000000, -24.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-12.000000, -20.000000, -12.000000, -16.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-12.000000, -12.000000, -12.000000, -8.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-12.000000, -4.000000, -12.000000, 0.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-12.000000, 4.000000, -12.000000, 8.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-12.000000, 12.000000, -12.000000, 16.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-12.000000, 20.000000, -12.000000, 24.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-8.000000, -24.000000, -8.000000, -20.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-8.000000, -16.000000, -8.000000, -12.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-8.000000, -8.000000, -8.000000, -4.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-8.000000, 0.000000, -8.000000, 4.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-8.000000, 8.000000, -8.000000, 12.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-8.000000, 16.000000, -8.000000, 20.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-8.000000, 24.000000, -4.000000, -24.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-4.000000, -20.000000, -4.000000, -16.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-4.000000, -12.000000, -4.000000, -8.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-4.000000, -4.000000, -4.000000, 0.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-4.000000, 4.000000, -4.000000, 8.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-4.000000, 12.000000, -4.000000, 16.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(-4.000000, 20.000000, -4.000000, 24.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(0.000000, -24.000000, 0.000000, -20.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(0.000000, -16.000000, 0.000000, -12.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(0.000000, -8.000000, 0.000000, -4.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  add r3.xyzw, r1.xyzw, r3.xyzw
-  div r4.xyzw, l(0.000000, 4.000000, 0.000000, 8.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(0.000000, 12.000000, 0.000000, 16.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(0.000000, 20.000000, 0.000000, 24.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(4.000000, -24.000000, 4.000000, -20.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(4.000000, -16.000000, 4.000000, -12.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(4.000000, -8.000000, 4.000000, -4.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(4.000000, 0.000000, 4.000000, 4.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(4.000000, 8.000000, 4.000000, 12.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(4.000000, 16.000000, 4.000000, 20.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(4.000000, 24.000000, 8.000000, -24.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(8.000000, -20.000000, 8.000000, -16.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(8.000000, -12.000000, 8.000000, -8.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(8.000000, -4.000000, 8.000000, 0.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(8.000000, 4.000000, 8.000000, 8.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(8.000000, 12.000000, 8.000000, 16.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(8.000000, 20.000000, 8.000000, 24.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(12.000000, -24.000000, 12.000000, -20.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(12.000000, -16.000000, 12.000000, -12.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(12.000000, -8.000000, 12.000000, -4.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(12.000000, 0.000000, 12.000000, 4.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(12.000000, 8.000000, 12.000000, 12.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(12.000000, 16.000000, 12.000000, 20.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(12.000000, 24.000000, 16.000000, -24.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(16.000000, -20.000000, 16.000000, -16.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(16.000000, -12.000000, 16.000000, -8.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(16.000000, -4.000000, 16.000000, 0.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(16.000000, 4.000000, 16.000000, 8.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(16.000000, 12.000000, 16.000000, 16.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(16.000000, 20.000000, 16.000000, 24.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(20.000000, -24.000000, 20.000000, -20.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(20.000000, -16.000000, 20.000000, -12.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(20.000000, -8.000000, 20.000000, -4.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(20.000000, 0.000000, 20.000000, 4.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(20.000000, 8.000000, 20.000000, 12.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(20.000000, 16.000000, 20.000000, 20.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(20.000000, 24.000000, 24.000000, -24.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(24.000000, -20.000000, 24.000000, -16.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(24.000000, -12.000000, 24.000000, -8.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(24.000000, -4.000000, 24.000000, 0.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(24.000000, 4.000000, 24.000000, 8.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r4.xyzw, l(24.000000, 12.000000, 24.000000, 16.000000), r2.xyxy
-  add r4.xyzw, r4.xyzw, v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r4.xyzw
-  div r2.xyzw, l(24.000000, 20.000000, 24.000000, 24.000000), r2.xyxy
-  add r2.xyzw, r2.xyzw, v2.xyxy
+  mad r2.xyzw, r2.xyzw, l(0.199841, 0.786414, 0.143832, -0.141008), v2.xyxy
   sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r2.xyxx, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r4.xyzw
   sample_indexable(texture2d)(float,float,float,float) r2.xyzw, r2.zwzz, t21.xyzw, s4
   add r2.xyzw, r2.xyzw, r3.xyzw
-  mad r2.xyzw, r2.xyzw, l(0.005917, 0.005917, 0.005917, 0.005917), -r1.xyzw
+  mad r2.xyzw, r2.xyzw, l(0.062500, 0.062500, 0.062500, 0.062500), -r1.xyzw
   mad r1.xyzw, r0.wwww, r2.xyzw, r1.xyzw
 endif 
 add r1.xyz, -r0.xyzx, r1.xyzx
 mad o0.xyz, r1.wwww, r1.xyzx, r0.xyzx
 mov o0.w, l(1.000000)
 ret 
-// Approximately 522 instruction slots used
+// Approximately 59 instruction slots used

@@ -48,7 +48,7 @@ dcl_globalFlags refactoringAllowed
 dcl_constantbuffer CB3[4], immediateIndexed
 dcl_uav_typed_texture2d (float,float,float,float) u0
 dcl_input vThreadID.xy
-dcl_temps 4
+dcl_temps 5
 dcl_thread_group 8, 8, 1
 resinfo_indexable(texture2d)(float,float,float,float)_uint r0.xy, l(0), u0.xyzw
 uge r0.zw, vThreadID.xxxy, r0.xxxy
@@ -102,30 +102,37 @@ mad r0.x, -r1.y, r1.y, l(1.000000)
 max r0.x, r0.x, l(0.000000)
 sqrt r1.x, r0.x
 mul r0.xz, r0.wwww, l(0.010417, 0.000000, 0.005208, 0.000000)
+max r1.zw, cb3[2].zzzw, l(0.000000, 0.000000, 0.000100, 0.000100)
 mov r2.x, l(0)
 mov r2.y, r0.y
 mov r0.w, l(0)
-mov r1.zw, l(0,0,0,0)
+mov r3.xyz, l(0,0,0,0)
 loop 
-  ige r3.x, r1.w, l(96)
-  breakc_nz r3.x
+  ige r3.w, r3.z, l(96)
+  breakc_nz r3.w
   mad r2.xyzw, r1.xyxy, r0.xxzz, r2.xyxy
   dp2 r2.z, r2.zwzz, r2.zwzz
   sqrt r2.z, r2.z
   add r2.z, r2.z, -cb3[2].x
   max r2.z, r2.z, l(0.000000)
-  div r2.zw, -r2.zzzz, cb3[2].zzzw
-  mul r2.zw, r2.zzzw, l(0.000000, 0.000000, 1.442695, 1.442695)
-  exp r2.zw, r2.zzzw
-  mad r0.w, r2.z, r0.x, r0.w
-  mad r1.z, r2.w, r0.x, r1.z
-  iadd r1.w, r1.w, l(1)
+  div r4.xy, -r2.zzzz, r1.zwzz
+  mul r4.xy, r4.xyxx, l(1.442695, 1.442695, 0.000000, 0.000000)
+  exp r4.xy, r4.xyxx
+  mad r0.w, r4.x, r0.x, r0.w
+  mad r3.x, r4.y, r0.x, r3.x
+  add r2.z, r2.z, l(-25.000000)
+  mad r2.z, -|r2.z|, l(0.066667), l(1.000000)
+  max r2.z, r2.z, l(0.000000)
+  mad r3.y, r2.z, r0.x, r3.y
+  iadd r3.z, r3.z, l(1)
 endloop 
-mul r0.x, r1.z, cb3[3].w
+mul r0.x, r3.x, cb3[3].w
+mul r0.x, r0.x, l(1.110000)
 mad r0.xyz, r0.wwww, cb3[3].xyzx, r0.xxxx
+mad r0.xyz, r3.yyyy, l(0.000650, 0.001881, 0.000085, 0.000000), r0.xyzx
 mul r0.xyz, r0.xyzx, l(-1.442695, -1.442695, -1.442695, 0.000000)
 exp r0.xyz, r0.xyzx
 mov r0.w, l(1.000000)
 store_uav_typed u0.xyzw, vThreadID.xyyy, r0.xyzw
 ret 
-// Approximately 78 instruction slots used
+// Approximately 85 instruction slots used

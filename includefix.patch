@@ -1,0 +1,105 @@
+From b587706cc70abcb8e544d6834433336d0bd3dd1e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 27 Jul 2026 04:17:32 +0000
+Subject: [PATCH] =?UTF-8?q?include=20=E3=83=91=E3=82=B9=E3=81=8C=E3=83=95?=
+ =?UTF-8?q?=E3=82=A9=E3=83=AB=E3=83=80=E6=A7=8B=E6=88=90=E3=81=A8=E4=B8=80?=
+ =?UTF-8?q?=E8=87=B4=E3=81=97=E3=81=A6=E3=81=84=E3=81=AA=E3=81=84=E4=B8=8D?=
+ =?UTF-8?q?=E5=85=B7=E5=90=88=E3=82=92=E4=BF=AE=E6=AD=A3?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Release|x64 のビルドで C1083 (include ファイルを開けません) が3件出ていた。
+実際の配置と include の記述がずれていたため修正する。
+C1083 は fatal error なので各翻訳単位で最初の1件しか報告されず、
+実際にずれていたのは8箇所だった。
+
+- Fullscreen_Quad.cpp: "shader.h"
+    -> "Graphics/Shader/Shader.h"
+- Skymap.cpp / Dof.cpp: "Graphics/Shader.h"
+    -> "Graphics/Shader/Shader.h"
+- Skymap.cpp / Dof.cpp: "Graphics/GraphicsManager.h"
+    -> "Graphics/GraphicsManager/GraphicsManager.h"
+- Dof.cpp: "Graphics/framebuffer.h"
+    -> "Graphics/FrameBuffer/FrameBuffer.h"
+- Dof.cpp: "Graphics/fullscreen_quad.h"
+    -> "Graphics/Fullscreen_Quad/Fullscreen_Quad.h"
+
+あわせて .gitignore の除外範囲を修正する。
+ビルド成果物向けの [Dd]ebug/ がソースの Source/Graphics/Debug/ まで
+巻き込んでおり、プロジェクトが参照する下記4ファイルがコミットされて
+いなかった。
+
+  Source/Graphics/Debug/DebugRenderer.cpp / .h
+  Source/Graphics/Debug/ImGuiRenderer.cpp / .h
+
+!Source/Graphics/Debug/ で除外を解除したので、これらは別途 git add
+する必要がある。
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_016yfceiHK6338fkMDJ5GvzF
+---
+ .gitignore                                          | 4 ++++
+ Source/Graphics/Dof/Dof.cpp                         | 8 ++++----
+ Source/Graphics/Fullscreen_Quad/Fullscreen_Quad.cpp | 2 +-
+ Source/Graphics/SKy/Skymap.cpp                      | 4 ++--
+ 4 files changed, 11 insertions(+), 7 deletions(-)
+
+diff --git a/.gitignore b/.gitignore
+index 382b9e8..a693898 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -20,6 +20,10 @@ mono_crash.*
+ [Dd]ebug/
+ [Dd]ebugPublic/
+ [Rr]elease/
++
++# [Dd]ebug/ はビルド成果物向けの指定だが、ソースの Source/Graphics/Debug/ まで
++# 除外してしまい DebugRenderer / ImGuiRenderer がコミットされなかったため除外を解除する
++!Source/Graphics/Debug/
+ [Rr]eleases/
+ x64/
+ x86/
+diff --git a/Source/Graphics/Dof/Dof.cpp b/Source/Graphics/Dof/Dof.cpp
+index 32849ae..9d40884 100644
+--- a/Source/Graphics/Dof/Dof.cpp
++++ b/Source/Graphics/Dof/Dof.cpp
+@@ -1,9 +1,9 @@
+ #include "DoF.h"
+-#include "Graphics/Shader.h"
++#include "Graphics/Shader/Shader.h"
+ #include "Graphics/Buffer.h"
+-#include "Graphics/GraphicsManager.h"
+-#include "Graphics/framebuffer.h"
+-#include "Graphics/fullscreen_quad.h"
++#include "Graphics/GraphicsManager/GraphicsManager.h"
++#include "Graphics/FrameBuffer/FrameBuffer.h"
++#include "Graphics/Fullscreen_Quad/Fullscreen_Quad.h"
+ 
+ #include "misc.h"
+ #include "imgui.h"
+diff --git a/Source/Graphics/Fullscreen_Quad/Fullscreen_Quad.cpp b/Source/Graphics/Fullscreen_Quad/Fullscreen_Quad.cpp
+index 6265a8b..089d2df 100644
+--- a/Source/Graphics/Fullscreen_Quad/Fullscreen_Quad.cpp
++++ b/Source/Graphics/Fullscreen_Quad/Fullscreen_Quad.cpp
+@@ -1,5 +1,5 @@
+ #include "Fullscreen_Quad.h"
+-#include "shader.h"
++#include "Graphics/Shader/Shader.h"
+ #include "misc.h"
+ 
+ Fullscreen_Quad::Fullscreen_Quad(ID3D11Device* device)
+diff --git a/Source/Graphics/SKy/Skymap.cpp b/Source/Graphics/SKy/Skymap.cpp
+index c1c1609..574aa08 100644
+--- a/Source/Graphics/SKy/Skymap.cpp
++++ b/Source/Graphics/SKy/Skymap.cpp
+@@ -1,7 +1,7 @@
+ #include "Skymap.h"
+ #include "Graphics/Buffer.h"
+-#include "Graphics/Shader.h"
+-#include "Graphics/GraphicsManager.h"
++#include "Graphics/Shader/Shader.h"
++#include "Graphics/GraphicsManager/GraphicsManager.h"
+ #include "misc.h"
+ 
+ #include <cstdio>

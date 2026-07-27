@@ -9,7 +9,7 @@
 //
 //   row_major float4x4 gWorld;         // Offset:    0 Size:    64 [unused]
 //   row_major float4x4 gViewProjection;// Offset:   64 Size:    64 [unused]
-//   float3 gCameraPos;                 // Offset:  128 Size:    12 [unused]
+//   float3 gCameraPos;                 // Offset:  128 Size:    12
 //   float _pad_cam;                    // Offset:  140 Size:     4 [unused]
 //   float gTime;                       // Offset:  144 Size:     4
 //   float gGravity;                    // Offset:  148 Size:     4 [unused]
@@ -40,7 +40,7 @@
 //   float4 iblParams;                  // Offset:   64 Size:    16 [unused]
 //   float4 waterTint;                  // Offset:   80 Size:    16 [unused]
 //   float4 alphaParam;                 // Offset:   96 Size:    16 [unused]
-//   float4 shadingParams;              // Offset:  112 Size:    16 [unused]
+//   float4 shadingParams;              // Offset:  112 Size:    16
 //   float4 rippleParams;               // Offset:  128 Size:    16
 //   row_major float4x4 gInvView;       // Offset:  144 Size:    64 [unused]
 //   row_major float4x4 gInvProjection; // Offset:  208 Size:    64 [unused]
@@ -70,7 +70,7 @@
 // Name                 Index   Mask Register SysValue  Format   Used
 // -------------------- ----- ------ -------- -------- ------- ------
 // SV_POSITION              0   xyzw        0      POS   float       
-// TEXCOORD                 0   xyz         1     NONE   float       
+// TEXCOORD                 0   xyz         1     NONE   float   xyz 
 // TEXCOORD                 1   xyz         2     NONE   float   xyz 
 // TEXCOORD                 2   xy          3     NONE   float   xy  
 // TEXCOORD                 3   xyz         4     NONE   float   xyz 
@@ -94,40 +94,54 @@ dcl_resource_texture2d (float,float,float,float) t0
 dcl_resource_texture2d (float,float,float,float) t1
 dcl_resource_texture2d (float,float,float,float) t2
 dcl_resource_texture2d (float,float,float,float) t6
+dcl_input_ps linear v1.xyz
 dcl_input_ps linear v2.xyz
 dcl_input_ps linear v3.xy
 dcl_input_ps linear v4.xyz
 dcl_input_ps linear v5.xyz
 dcl_output o0.xyzw
-dcl_temps 3
-add r0.xyzw, v3.xyxy, l(0.005000, 0.000000, 0.000000, 0.005000)
-sample_l_indexable(texture2d)(float,float,float,float) r0.x, r0.xyxx, t6.xyzw, s1, l(0.000000)
-sample_l_indexable(texture2d)(float,float,float,float) r0.y, r0.zwzz, t6.yxzw, s1, l(0.000000)
-sample_l_indexable(texture2d)(float,float,float,float) r0.z, v3.xyxx, t6.yzxw, s1, l(0.000000)
-add r0.xy, -r0.xyxx, r0.zzzz
-mul r1.xy, r0.xyxx, cb7[8].wwww
-mov r1.z, l(1.000000)
-dp3 r0.x, r1.xyzx, r1.xyzx
-rsq r0.x, r0.x
-mul r0.xyz, r0.xxxx, r1.xyzx
-mul r1.xy, cb6[9].xxxx, cb7[1].xyxx
-mad r1.xy, v3.xyxx, cb7[1].zzzz, r1.xyxx
-sample_indexable(texture2d)(float,float,float,float) r1.xyz, r1.xyxx, t1.xyzw, s2
+dcl_temps 4
+mul r0.xy, cb6[9].xxxx, cb7[2].xyxx
+mad r0.xy, v3.xyxx, cb7[2].zzzz, r0.xyxx
+sample_indexable(texture2d)(float,float,float,float) r0.xyz, r0.xyxx, t2.xyzw, s2
+mad r0.xyz, r0.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
+mul r1.xy, cb6[9].xxxx, cb7[0].xyxx
+mad r1.xy, v3.xyxx, cb7[0].zzzz, r1.xyxx
+sample_indexable(texture2d)(float,float,float,float) r1.xyz, r1.xyxx, t0.xyzw, s2
 mad r1.xyz, r1.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
-mul r1.xyz, r1.xyzx, cb7[1].wwww
-mul r2.xy, cb6[9].xxxx, cb7[0].xyxx
-mad r2.xy, v3.xyxx, cb7[0].zzzz, r2.xyxx
-sample_indexable(texture2d)(float,float,float,float) r2.xyz, r2.xyxx, t0.xyzw, s2
+mul r2.xy, cb6[9].xxxx, cb7[1].xyxx
+mad r2.xy, v3.xyxx, cb7[1].zzzz, r2.xyxx
+sample_indexable(texture2d)(float,float,float,float) r2.xyz, r2.xyxx, t1.xyzw, s2
 mad r2.xyz, r2.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
-mad r1.xyz, r2.xyzx, cb7[0].wwww, r1.xyzx
-mul r2.xy, cb6[9].xxxx, cb7[2].xyxx
-mad r2.xy, v3.xyxx, cb7[2].zzzz, r2.xyxx
-sample_indexable(texture2d)(float,float,float,float) r2.xyz, r2.xyxx, t2.xyzw, s2
-mad r2.xyz, r2.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
-mad r1.xyz, r2.xyzx, cb7[2].wwww, r1.xyzx
-dp3 r0.w, r1.xyzx, r1.xyzx
+add r3.xyz, -v1.xyzx, cb6[8].xyzx
+dp3 r0.w, r3.xyzx, r3.xyzx
+sqrt r0.w, r0.w
+lt r1.w, l(1.000000), cb7[7].z
+movc r1.w, r1.w, cb7[7].z, l(20000.000000)
+div r0.w, r0.w, r1.w
+min r0.w, r0.w, l(1.000000)
+mad r3.xyz, -r0.wwww, l(0.800000, 0.950000, 0.900000, 0.000000), l(1.000000, 1.000000, 1.000000, 0.000000)
+mad o0.w, r0.w, l(0.180000), l(0.020000)
+mul r0.w, r3.x, cb7[1].w
+mul r2.xyz, r0.wwww, r2.xyzx
+mad r1.xyz, r1.xyzx, cb7[0].wwww, r2.xyzx
+mul r0.w, r3.y, cb7[2].w
+mul r1.w, r3.z, cb7[8].w
+mad r0.xyz, r0.xyzx, r0.wwww, r1.xyzx
+dp3 r0.w, r0.xyzx, r0.xyzx
 rsq r0.w, r0.w
-mad r0.xyz, r1.xyzx, r0.wwww, r0.xyzx
+add r2.xw, v3.xxxy, cb7[8].yyyz
+mov r2.yz, v3.yyxy
+sample_l_indexable(texture2d)(float,float,float,float) r1.x, r2.xyxx, t6.xyzw, s1, l(0.000000)
+sample_l_indexable(texture2d)(float,float,float,float) r1.y, r2.zwzz, t6.yxzw, s1, l(0.000000)
+sample_l_indexable(texture2d)(float,float,float,float) r1.z, v3.xyxx, t6.yzxw, s1, l(0.000000)
+add r1.xy, -r1.xyxx, r1.zzzz
+mul r2.xy, r1.wwww, r1.xyxx
+mov r2.z, l(1.000000)
+dp3 r1.x, r2.xyzx, r2.xyzx
+rsq r1.x, r1.x
+mul r1.xyz, r1.xxxx, r2.xyzx
+mad r0.xyz, r0.xyzx, r0.wwww, r1.xyzx
 dp3 r0.w, r0.xyzx, r0.xyzx
 rsq r0.w, r0.w
 mul r0.xyz, r0.wwww, r0.xyzx
@@ -137,6 +151,5 @@ mad r0.xyz, r0.zzzz, v2.xyzx, r0.xywx
 dp3 r0.w, r0.xyzx, r0.xyzx
 rsq r0.w, r0.w
 mul o0.xyz, r0.wwww, r0.xyzx
-mov o0.w, l(0.020000)
 ret 
-// Approximately 39 instruction slots used
+// Approximately 51 instruction slots used

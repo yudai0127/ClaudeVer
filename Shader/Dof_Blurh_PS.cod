@@ -44,22 +44,71 @@ dcl_sampler s4, mode_default
 dcl_resource_texture2d (float,float,float,float) t0
 dcl_input_ps linear v1.xy
 dcl_output o0.xyzw
-dcl_temps 4
+dcl_temps 6
 sample_l_indexable(texture2d)(float,float,float,float) r0.xyzw, v1.xyxx, t0.xyzw, s4, l(0.000000)
-mov r1.xz, cb1[0].xxxx
-mov r1.yw, l(0,2.000000,0,0)
-mad r2.xy, -r1.xyxx, l(2.000000, 0.000000, 0.000000, 0.000000), v1.xyxx
-sample_l_indexable(texture2d)(float,float,float,float) r2.xyzw, r2.xyxx, t0.xyzw, s4, l(0.000000)
-add r3.xy, -r1.zwzz, v1.xyxx
-sample_l_indexable(texture2d)(float,float,float,float) r3.xyzw, r3.xyxx, t0.xyzw, s4, l(0.000000)
-mad r2.xyzw, r3.xyzw, l(2.000000, 2.000000, 2.000000, 2.000000), r2.xyzw
-mad r0.xyzw, r0.xyzw, l(3.000000, 3.000000, 3.000000, 3.000000), r2.xyzw
-add r1.zw, r1.zzzw, v1.xxxy
-mad r1.xy, r1.xyxx, l(2.000000, 0.000000, 0.000000, 0.000000), v1.xyxx
-sample_l_indexable(texture2d)(float,float,float,float) r2.xyzw, r1.xyxx, t0.xyzw, s4, l(0.000000)
-sample_l_indexable(texture2d)(float,float,float,float) r1.xyzw, r1.zwzz, t0.xyzw, s4, l(0.000000)
-mad r0.xyzw, r1.xyzw, l(2.000000, 2.000000, 2.000000, 2.000000), r0.xyzw
-add r0.xyzw, r2.xyzw, r0.xyzw
-mul o0.xyzw, r0.xyzw, l(0.111111, 0.111111, 0.111111, 0.111111)
+min r1.x, |r0.w|, l(1.000000)
+add r1.x, r1.x, l(0.020000)
+mov r2.x, cb1[0].x
+mov r2.y, l(0)
+add r1.zw, r2.xxxy, v1.xxxy
+sample_l_indexable(texture2d)(float,float,float,float) r3.xyzw, r1.zwzz, t0.xyzw, s4, l(0.000000)
+min r1.z, |r3.w|, l(1.000000)
+add r1.z, r1.z, l(0.020000)
+mul r1.yz, r1.xxzx, l(0.000000, 0.227027, 0.194595, 0.000000)
+mul r3.xyzw, r1.zzzz, r3.xyzw
+add r2.zw, -r2.xxxy, v1.xxxy
+sample_l_indexable(texture2d)(float,float,float,float) r4.xyzw, r2.zwzz, t0.xyzw, s4, l(0.000000)
+min r1.w, |r4.w|, l(1.000000)
+add r1.w, r1.w, l(0.020000)
+mul r2.z, r1.w, l(0.194595)
+mad r1.z, r1.w, l(0.194595), r1.z
+mad r1.x, r1.x, l(0.227027), r1.z
+mad r3.xyzw, r4.xyzw, r2.zzzz, r3.xyzw
+mad r0.xyzw, r0.xyzw, r1.yyyy, r3.xyzw
+mad r1.yz, r2.xxyx, l(0.000000, 2.000000, 2.000000, 0.000000), v1.xxyx
+sample_l_indexable(texture2d)(float,float,float,float) r3.xyzw, r1.yzyy, t0.xyzw, s4, l(0.000000)
+min r1.y, |r3.w|, l(1.000000)
+add r1.y, r1.y, l(0.020000)
+mul r1.y, r1.y, l(0.121622)
+mul r3.xyzw, r1.yyyy, r3.xyzw
+mad r1.zw, -r2.xxxy, l(0.000000, 0.000000, 2.000000, 2.000000), v1.xxxy
+sample_l_indexable(texture2d)(float,float,float,float) r4.xyzw, r1.zwzz, t0.xyzw, s4, l(0.000000)
+min r1.z, |r4.w|, l(1.000000)
+add r1.z, r1.z, l(0.020000)
+mul r1.w, r1.z, l(0.121622)
+mad r1.y, r1.z, l(0.121622), r1.y
+add r1.x, r1.y, r1.x
+mad r3.xyzw, r4.xyzw, r1.wwww, r3.xyzw
+add r0.xyzw, r0.xyzw, r3.xyzw
+mad r3.xyzw, r2.xyxy, l(3.000000, 3.000000, 4.000000, 4.000000), v1.xyxy
+mad r2.xyzw, -r2.xyxy, l(3.000000, 3.000000, 4.000000, 4.000000), v1.xyxy
+sample_l_indexable(texture2d)(float,float,float,float) r4.xyzw, r3.xyxx, t0.xyzw, s4, l(0.000000)
+sample_l_indexable(texture2d)(float,float,float,float) r3.xyzw, r3.zwzz, t0.xyzw, s4, l(0.000000)
+min r1.y, |r4.w|, l(1.000000)
+add r1.y, r1.y, l(0.020000)
+mul r1.y, r1.y, l(0.054054)
+mul r4.xyzw, r1.yyyy, r4.xyzw
+sample_l_indexable(texture2d)(float,float,float,float) r5.xyzw, r2.xyxx, t0.xyzw, s4, l(0.000000)
+sample_l_indexable(texture2d)(float,float,float,float) r2.xyzw, r2.zwzz, t0.xyzw, s4, l(0.000000)
+min r1.z, |r5.w|, l(1.000000)
+add r1.z, r1.z, l(0.020000)
+mul r1.w, r1.z, l(0.054054)
+mad r1.y, r1.z, l(0.054054), r1.y
+add r1.x, r1.y, r1.x
+mad r4.xyzw, r5.xyzw, r1.wwww, r4.xyzw
+add r0.xyzw, r0.xyzw, r4.xyzw
+min r1.y, |r3.w|, l(1.000000)
+add r1.y, r1.y, l(0.020000)
+mul r1.y, r1.y, l(0.016216)
+mul r3.xyzw, r1.yyyy, r3.xyzw
+min r1.z, |r2.w|, l(1.000000)
+add r1.z, r1.z, l(0.020000)
+mul r1.w, r1.z, l(0.016216)
+mad r1.y, r1.z, l(0.016216), r1.y
+add r1.x, r1.y, r1.x
+div r1.x, l(1.000000, 1.000000, 1.000000, 1.000000), r1.x
+mad r2.xyzw, r2.xyzw, r1.wwww, r3.xyzw
+add r0.xyzw, r0.xyzw, r2.xyzw
+mul o0.xyzw, r1.xxxx, r0.xyzw
 ret 
-// Approximately 17 instruction slots used
+// Approximately 66 instruction slots used
