@@ -110,6 +110,17 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
     float3 viewOpticalDepth = 0;
     float prevT = tStart;
 
+    // 位相関数（Phase Function）：光がどの方向に散乱するかを制御
+    // 視線方向と太陽方向だけで決まりサンプル位置に依存しないため、ループの外で1度だけ計算する
+    float mu = dot(worldPosKm, sunDirection);
+    // レイリー散乱：ほぼ全方向に均等に散乱
+    float rayleighPhase = (3.0 / (16.0 * PI)) * (1.0 + mu * mu);
+    // ミー散乱：前方への散乱が強い
+    // 非対称パラメータが1に近いと分母が0に近づくため下限でクランプする
+    float mieG = clamp(mieEccentricity, -0.999, 0.999);
+    float mieDenom = max(1.0 + mieG * mieG - 2.0 * mieG * mu, 1e-4);
+    float miePhase = (1.0 / (4.0 * PI)) * (1.0 - mieG * mieG) / pow(mieDenom, 1.5);
+
     for (int i = 0; i < NUM_SAMPLES; ++i)
     {
         // 非線形サンプリング
@@ -128,9 +139,11 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
             continue;
         }
             
-        // 指数分布に基づいた大気密度の計算
-        float densityRayleigh = exp(-height / rayleighScaleHeight);
-        float densityMie = exp(-height / mieScaleHeight);
+        // 指数分布に基づいた大気密度と、その高度での消散係数
+        // （レイリー散乱 + ミー消散 + オゾン吸収）
+        float densityRayleigh;
+        float densityMie;
+        float3 stepExtinction = GetAtmosphereExtinction(height, densityRayleigh, densityMie);
 
         // 太陽光の透過率の取得
         float3 posNorm = normalize(currentPos);
@@ -154,21 +167,12 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
         }
 
         float3 transmittance = lightOccludedByPlanet ? float3(0, 0, 0) : transmittanceLight;
-        
-       
-        viewOpticalDepth += densityRayleigh * variableStepSize * rayleighScatteringCoefficient;
-        viewOpticalDepth += densityMie * variableStepSize * mieScatteringCoefficient;
 
-        // 位相関数（Phase Function）：光がどの方向に散乱するかを制御
-        float mu = dot(worldPosKm, sunDirection);
-        // レイリー散乱：ほぼ全方向に均等に散乱
-        float rayleighPhase = (3.0 / (16.0 * PI)) * (1.0 + mu * mu);
-        // ミー散乱：前方への散乱が強い
-        float miePhase = (1.0 / (4.0 * PI)) * (1.0 - mieEccentricity * mieEccentricity)
-                       / pow(1.0 + mieEccentricity * mieEccentricity - 2.0 * mieEccentricity * mu, 1.5);
-        
-       
-        float3 attenuation = exp(-viewOpticalDepth);
+        // カメラから現在のサンプル点までの減衰。
+        // 区間全体を積算してから使うとサンプル自身の消散を丸ごと二重に数えてしまうため、
+        // 区間の中点までの光学的深さで評価する
+        float3 attenuation = exp(-(viewOpticalDepth + stepExtinction * (variableStepSize * 0.5)));
+        viewOpticalDepth += stepExtinction * variableStepSize;
 
         accumulatedRayleigh += densityRayleigh * variableStepSize * rayleighPhase * transmittance * attenuation;
         accumulatedMie += densityMie * variableStepSize * miePhase * transmittance * attenuation;

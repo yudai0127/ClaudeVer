@@ -30,15 +30,17 @@ float4 main(VS_OUT i) : SV_Target
 
 
    
-    float coc = gHalfCoC.SampleLevel(sampler_states[ClampPoint], i.texcoord, 0).a;
-    
-    coc = saturate(coc);
+    float coc = gHalfCoC.SampleLevel(sampler_states[ClampLinear], i.texcoord, 0).a;
+
+    // CoCは焦点より奥で正、手前で負になる。
+    // 以前は saturate() で負の値を捨てていたため手前側がまったくボケなかった
+    float blurAmount = saturate(abs(coc));
 
     // 半解像度でブラーした色
     float3 blur = gHalfBlur.SampleLevel(sampler_states[ClampLinear], i.texcoord, 0).rgb;
 
 
-    float3 outCol = lerp(sharp, blur, coc);
+    float3 outCol = lerp(sharp, blur, blurAmount);
    
     return float4(outCol, 1);
 }

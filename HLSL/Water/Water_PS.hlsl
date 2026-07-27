@@ -24,6 +24,24 @@ Texture2D CausticsMap : register(t9);
 
 
 
+// 遠景でノーマルの細部を落としきる距離（shadingParams.z が未設定のときのフォールバック）
+static const float WaterDetailFadeDistance = 20000.0f;
+
+// 地平線付近の反射ベクトルの下限とブレンド幅
+static const float WaterHorizonReflectionFloor = 0.06f;
+static const float WaterHorizonReflectionBlend = 0.18f;
+
+// 太陽のスペキュラローブ。近景は鋭く、遠景は広げてちらつきを防ぐ
+static const float WaterSpecularShininessNear = 1024.0f;
+static const float WaterSpecularShininessFar = 48.0f;
+static const float WaterSpecularClamp = 64.0f;
+
+// 水中光路長の上限（水底が取れないときに exp() が完全に潰れるのを防ぐ）
+static const float WaterMaxPathLength = 10000.0f;
+
+// 波長ごとの吸収の強さ。水は赤をもっとも強く吸収する
+static const float WaterAbsorptionMaxRatio = 3.0f;
+
 // Fresnel
 inline float3 SchlickFresnel(float3 F0, float cosTheta)
 {
@@ -63,12 +81,24 @@ float4 main(PSIn IN) : SV_TARGET
     float2 uv1 = uv * normal1.z + normal1.xy * gTime;
     float2 uv2 = uv * normal2.z + normal2.xy * gTime;
 
-    
-    float3 n0 = NormalMap0.Sample(sampler_states[WrapLinear], uv0).xyz * 2.0f - 1.0f;
-    float3 n1 = NormalMap1.Sample(sampler_states[WrapLinear], uv1).xyz * 2.0f - 1.0f;
-    float3 n2 = NormalMap2.Sample(sampler_states[WrapLinear], uv2).xyz * 2.0f - 1.0f;
+    // 遠景では1ピクセルに多数の波が収まり、ノーマルマップのタイリングが
+    // 縞状のちらつき（スペキュラエイリアシング）として見えてしまう。
+    // 距離に応じて高周波レイヤーの寄与を落とし、代わりに粗さを上げる
+    float viewDistance = length(gCameraPos - IN.WorldPos);
+    float detailFadeDistance = (shadingParams.z > 1.0f) ? shadingParams.z : WaterDetailFadeDistance;
+    float distFade = saturate(viewDistance / detailFadeDistance);
 
-    float3 nTS_Gerstner = normalize(n0 * normal0.w + n1 * normal1.w + n2 * normal2.w);
+    // 異方性フィルタリングで、浅い角度から見たときのストリーク状のにじみを軽減
+    float3 n0 = NormalMap0.Sample(sampler_states[WrapAnisotropic], uv0).xyz * 2.0f - 1.0f;
+    float3 n1 = NormalMap1.Sample(sampler_states[WrapAnisotropic], uv1).xyz * 2.0f - 1.0f;
+    float3 n2 = NormalMap2.Sample(sampler_states[WrapAnisotropic], uv2).xyz * 2.0f - 1.0f;
+
+    // 周波数が高いレイヤーほど強く減衰させる
+    float weight0 = normal0.w;
+    float weight1 = normal1.w * (1.0f - distFade * 0.80f);
+    float weight2 = normal2.w * (1.0f - distFade * 0.95f);
+
+    float3 nTS_Gerstner = normalize(n0 * weight0 + n1 * weight1 + n2 * weight2);
 
     
     //波紋高さマップから “波紋法線” を差分で作る
@@ -82,8 +112,10 @@ float4 main(PSIn IN) : SV_TARGET
     float h_v = RippleDisplacementMap.SampleLevel(sampler_states[WrapAnisotropic], uv + dv, 0).x;
 
     
-    float3 rippleN_TS = normalize(float3((h_c - h_u) * rippleParams.w,
-                                         (h_c - h_v) * rippleParams.w,
+    // 波紋も遠景では解像できないので同様に減衰させる
+    float rippleNormalStrength = rippleParams.w * (1.0f - distFade * 0.90f);
+    float3 rippleN_TS = normalize(float3((h_c - h_u) * rippleNormalStrength,
+                                         (h_c - h_v) * rippleNormalStrength,
                                          1.0f));
 
    
@@ -110,7 +142,10 @@ float4 main(PSIn IN) : SV_TARGET
 
     
     
-    R.y = max(R.y, 0.05f);
+    // 反射ベクトルが地平線より下を向くとキューブマップの暗い下半球を拾ってしまう。
+    // ハードクランプは境目に不連続な線を作るため、なめらかに水平方向へ寄せる
+    R.y = lerp(R.y, WaterHorizonReflectionFloor,
+               saturate(1.0f - R.y / WaterHorizonReflectionBlend));
     R = normalize(R);
     
     //画面座標 screenUV を作る
@@ -238,42 +273,65 @@ float4 main(PSIn IN) : SV_TARGET
 
     
     float reflWeight = saturate(max(f, iblParams.x));
-   
-    float thickness = shadingParams.x / max(cosTheta, 0.15f);
-    float att = exp(-waterTint.a * thickness);
 
-   
-    float3 refrTinted = lerp(waterTint.rgb, refr, att);
+    //--------------------------------------------------------------------------
+    // 水中での吸収（Beer-Lambert）
+    // 以前は視線角だけから求めた一定の厚みを使っていたため、浅瀬でも外洋でも
+    // 同じ色になっていた。実際の水底までの深さから光路長を求めることで、
+    // 浅い所は透明～ターコイズ、深い所は濃い青へと自然に変化する
+    //--------------------------------------------------------------------------
+    float bottomDepth = max(IN.WorldPos.y - finalWorldPosBehind.y, 0.0f);
+    float depthScale = (shadingParams.y > 0.0f) ? shadingParams.y : 1.0f;
+    // 視線が浅いほど水中を長く通る
+    float pathLength = min((bottomDepth * depthScale + shadingParams.x) / max(cosTheta, 0.15f),
+                           WaterMaxPathLength);
 
-    
+    // ティント色を波長ごとの吸収係数へ写像する。
+    // 暗い成分（＝水が吸収する色）ほど消散係数が大きい
+    float3 tintNormalized = saturate(waterTint.rgb / max(max(waterTint.r, waterTint.g),
+                                                         max(waterTint.b, 1e-3f)));
+    float3 absorptionRatio = lerp(float3(WaterAbsorptionMaxRatio, WaterAbsorptionMaxRatio, WaterAbsorptionMaxRatio),
+                                  float3(1.0f, 1.0f, 1.0f),
+                                  tintNormalized);
+    float3 extinction = waterTint.a * absorptionRatio;
+    float3 att3 = exp(-extinction * pathLength);
 
-   
-    
-    float3 L_sun = normalize(-sunDirection);
+    // 透過してきた背景色を減衰させ、失われた分を水自身の散乱色で補う
+    float3 refrTinted = refr * att3 + waterTint.rgb * (1.0f - att3);
 
-   
+    //--------------------------------------------------------------------------
+    // 太陽の鏡面反射
+    // sunDirection は「太陽へ向かうベクトル」なので符号を反転してはいけない
+    //--------------------------------------------------------------------------
+    float3 L_sun = normalize(sunDirection);
     float3 H_sun = normalize(L_sun + V);
 
-    
-    float specSun = pow(saturate(dot(N, H_sun)), 512.0f) * sunIntensity;
+    float NdotL_sun = saturate(dot(N, L_sun));
+    float NdotH_sun = saturate(dot(N, H_sun));
 
+    // 遠景ほど1ピクセルに多数のマイクロ波面が入るのでローブを広げる
+    float shininess = lerp(WaterSpecularShininessNear, WaterSpecularShininessFar, distFade);
+    float specNormalization = (shininess + 8.0f) / (8.0f * PI);
+    float specTerm = min(specNormalization * pow(NdotH_sun, shininess) * NdotL_sun,
+                         WaterSpecularClamp);
 
-    float sunLuma = dot(float3(1.0f, 1.0f, 1.0f),
-                        float3(0.2126f, 0.7152f, 0.0722f));
+    // 太陽が地平線より下にあるときはハイライトを消す
+    float sunVisibility = saturate((sunDirection.y + 0.02f) * 8.0f);
+    // 低い太陽ほど暖色に寄せる
+    float3 sunColor = lerp(float3(1.0f, 0.55f, 0.25f), float3(1.0f, 0.98f, 0.92f),
+                           saturate(sunDirection.y * 4.0f));
+    // misc.z（GUIのSpecular）は今まで未使用だったので強度として使う
+    float specIntensity = (misc.z > 0.0f) ? misc.z : 1.0f;
 
-    
-    float3 spec = specSun * float3(1.0f, 1.0f, 1.0f) * saturate(sunLuma + 0.0001f);
+    // フレネルを掛けることで、浅い角度ほどハイライトが強くなる
+    float3 spec = specTerm * sunColor * sunIntensity * sunVisibility * specIntensity * F;
 
-   
-   
    // 最終合成
     float3 baseColor = (misc.w > 0.5f) ? float3(0.02f, 0.06f, 0.12f) : refrTinted;
-   
-    
-    
-    
 
-    float3 subsurface = waterTint.rgb * alphaParam.x * (1.0f - att);
+    // サブサーフェス散乱は吸収量に比例させる（輝度の平均で代表させる）
+    float attLuma = dot(att3, float3(0.2126f, 0.7152f, 0.0722f));
+    float3 subsurface = waterTint.rgb * alphaParam.x * (1.0f - attLuma);
     float3 color = lerp(baseColor, refl * iblParams.y, reflWeight) + spec + subsurface;
  
     return float4(color, 1.0f);

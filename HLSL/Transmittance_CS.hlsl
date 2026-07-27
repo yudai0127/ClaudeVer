@@ -62,6 +62,7 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
     }
 
     float stepSize = distanceToTop / (float) NUM_SAMPLES;
+    // x=レイリー, y=ミー, z=オゾン の光学的深さ（密度の積分値）
     float3 opticalDepth = 0.0;
     float3 currentPos = rayOrigin;
 
@@ -71,17 +72,21 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
         float3 samplePos = currentPos + rayDir * (stepSize * 0.5);
         float h = max(0.0, length(samplePos) - planetRadius);
 
-        float densityR = exp(-h / rayleighScaleHeight);
-        float densityM = exp(-h / mieScaleHeight);
+        float densityR = exp(-h / max(rayleighScaleHeight, 1e-4));
+        float densityM = exp(-h / max(mieScaleHeight, 1e-4));
 
         opticalDepth.x += densityR * stepSize;
         opticalDepth.y += densityM * stepSize;
+        opticalDepth.z += GetOzoneDensity(h) * stepSize;
 
         currentPos += rayDir * stepSize;
     }
 
+    // ミーは散乱に加えて吸収があり、さらにオゾン吸収を加算する
+    // オゾンは赤と緑を選択的に吸収するため、日の出/日の入りの色が自然になる
     float3 extinction = opticalDepth.x * rayleighScatteringCoefficient
-                      + opticalDepth.y * mieScatteringCoefficient;
+                      + opticalDepth.y * (mieScatteringCoefficient * MIE_EXTINCTION_RATIO)
+                      + opticalDepth.z * OZONE_ABSORPTION_COEFFICIENT;
     float3 transmittance = exp(-extinction);
 
     g_TransmittanceLUT[dispatchID.xy] = float4(transmittance, 1.0);

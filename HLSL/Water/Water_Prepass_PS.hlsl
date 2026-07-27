@@ -7,6 +7,11 @@ Texture2D RippleDisplacementMap : register(t6);
 
 
 
+// Water_PS.hlsl と同じ距離減衰のフォールバック値
+static const float WaterPrepassDetailFadeDistance = 20000.0f;
+static const float WaterPrepassRoughnessNear = 0.02f;
+static const float WaterPrepassRoughnessFar = 0.20f;
+
 struct PS_OUTPUT_PREPASS
 {
     float4 normalRoughness : SV_Target0; 
@@ -21,18 +26,35 @@ PS_OUTPUT_PREPASS main(PSIn IN)
     float2 uv1 = uv * normal1.z + normal1.xy * gTime;
     float2 uv2 = uv * normal2.z + normal2.xy * gTime;
 
+    // 本パス(Water_PS)と同じ距離減衰を適用する。
+    // ここで作った法線はSSRとカスティクスに使われるため、
+    // 減衰が食い違うと水面と反射で波の形が一致しなくなる
+    float viewDistance = length(gCameraPos - IN.WorldPos);
+    float detailFadeDistance = (shadingParams.z > 1.0f) ? shadingParams.z : WaterPrepassDetailFadeDistance;
+    float distFade = saturate(viewDistance / detailFadeDistance);
+
     float3 n0 = NormalMap0.Sample(sampler_states[WrapAnisotropic], uv0).xyz * 2.0f - 1.0f;
     float3 n1 = NormalMap1.Sample(sampler_states[WrapAnisotropic], uv1).xyz * 2.0f - 1.0f;
     float3 n2 = NormalMap2.Sample(sampler_states[WrapAnisotropic], uv2).xyz * 2.0f - 1.0f;
 
-    float3 nTS_Gerstner = normalize(n0 * normal0.w + n1 * normal1.w + n2 * normal2.w);
+    float weight0 = normal0.w;
+    float weight1 = normal1.w * (1.0f - distFade * 0.80f);
+    float weight2 = normal2.w * (1.0f - distFade * 0.95f);
 
-    float2 du = float2(1.0f / 200.0f, 0.0f);
-    float2 dv = float2(0.0f, 1.0f / 200.0f);
+    float3 nTS_Gerstner = normalize(n0 * weight0 + n1 * weight1 + n2 * weight2);
+
+    // 差分オフセットは波紋テクスチャの実テクセルサイズ(rippleParams.yz)を使う。
+    // 固定値 1/200 では本パスと法線が食い違っていた
+    float2 du = float2(rippleParams.y, 0.0f);
+    float2 dv = float2(0.0f, rippleParams.z);
     float h_c = RippleDisplacementMap.SampleLevel(sampler_states[WrapLinear], uv, 0).x;
     float h_u = RippleDisplacementMap.SampleLevel(sampler_states[WrapLinear], uv + du, 0).x;
     float h_v = RippleDisplacementMap.SampleLevel(sampler_states[WrapLinear], uv + dv, 0).x;
-    float3 rippleN_TS = normalize(float3((h_c - h_u) * rippleParams.w, (h_c - h_v) * rippleParams.w, 1.0f));
+
+    float rippleNormalStrength = rippleParams.w * (1.0f - distFade * 0.90f);
+    float3 rippleN_TS = normalize(float3((h_c - h_u) * rippleNormalStrength,
+                                         (h_c - h_v) * rippleNormalStrength,
+                                         1.0f));
 
     float3 nTS = normalize(nTS_Gerstner + rippleN_TS);
 
@@ -41,7 +63,9 @@ PS_OUTPUT_PREPASS main(PSIn IN)
     float3 N_world = normalize(nTS.x * T + nTS.y * B + nTS.z * IN.WorldNorm);
 
 
-    const float roughness = 0.02f;
+    // 遠景では落とした細部を粗さとして戻す。
+    // これによりSSRが遠方でぼけ、細かいノイズの反射が拾われにくくなる
+    float roughness = lerp(WaterPrepassRoughnessNear, WaterPrepassRoughnessFar, distFade);
     o.normalRoughness = float4(N_world, roughness);
 
     return o;

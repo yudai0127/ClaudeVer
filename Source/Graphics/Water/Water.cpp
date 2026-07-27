@@ -222,11 +222,14 @@ bool Water_Simulation::Initialize(ID3D11Device* device, uint32_t gridWidth, uint
     psParams.normal1 = { -0.015f, 0.02f, 8.0f, 0.7f };
     psParams.normal2 = { 0.01f, -0.008f, 18.0f, 0.4f };
     psParams.misc = XMFLOAT4(0.02f, 0.1f, 1.0f, 0.0f);
-    psParams.iblParams = XMFLOAT4(0.3f, 1.0f, 1.0f, 0.0f);
+    // x=反射率の下限。0.3ではフレネルが効く前から常に3割反射してしまい
+    // 水全体が白っぽくなっていたので、水本来のF0に近い値まで下げる
+    psParams.iblParams = XMFLOAT4(0.08f, 1.0f, 1.0f, 0.0f);
     psParams.waterTint = XMFLOAT4(0.03f, 0.25f, 0.3f, 0.1f);
     psParams.alphaParam = XMFLOAT4(0.2f, 0.03f, 0.0f, 0.0f);
     psParams.rippleParams = XMFLOAT4(1.0f, 0.0f, 0.0f, 50.0f);
-    psParams.shadingParams = XMFLOAT4(1.0f, 0.0f, 0.0f, 0.0f);
+    // x=最低厚み, y=水深による吸収スケール, z=ノーマル細部のフェード距離
+    psParams.shadingParams = XMFLOAT4(1.0f, 0.02f, 20000.0f, 0.0f);
     // 波の初期パラメータ
     waves[0] = { {0.7f, 0.7f}, 180.0f, 3000.0f, 0.5f, 0.35f };
     waves[1] = { {-0.3f, 1.0f},100.0f, 2000.0f, 0.7f, 0.3f };
@@ -524,7 +527,9 @@ void Water_Simulation::renderCaustics(
     if (!dc || !pCausticsVS || !pCausticsPS) return;
 
     cbwater->UploadData<CB_Water>(dc, 6, cb, /*VS*/ true, /*HS*/ false, /*DS*/ false, /*GS*/ false, /*PS*/ true, /*CS*/ false);
-    pspara->UploadData<PSParams>(dc, 7, psParams, /*VS*/ false, /*HS*/ false, /*DS*/ false, /*GS*/ false, /*PS*/ true, /*CS*/ false);
+    // Caustics_VS は b7 の normal0/normal1/rippleParams を参照するため VS にもバインドする。
+    // 以前は PS だけだったので、直前のパスがVS側のb7を差し替えると値が壊れる状態だった
+    pspara->UploadData<PSParams>(dc, 7, psParams, /*VS*/ true, /*HS*/ false, /*DS*/ false, /*GS*/ false, /*PS*/ true, /*CS*/ false);
 
     //////定数バッファの更新
     
@@ -636,9 +641,15 @@ void Water_Simulation::debugGui()
         ImGui::DragFloat("Specular", &psParams.misc.z, 0.01f, 0.0f, 5.0f);
         ImGui::DragFloat("Reflection Scale", &psParams.iblParams.y, 0.01f, 0.0f, 2.0f);
         ImGui::DragFloat("Fresnel Power", &psParams.iblParams.z, 0.01f, 1.0f, 8.0f);
+        ImGui::DragFloat("Reflection Min", &psParams.iblParams.x, 0.005f, 0.0f, 1.0f);
         ImGui::DragFloat("Alpha Min", &psParams.alphaParam.x, 0.005f, 0.0f, 1.0f);
         ImGui::DragFloat("Alpha Max", &psParams.alphaParam.y, 0.005f, 0.0f, 1.0f);
         ImGui::DragFloat("Thickness Scale", &psParams.shadingParams.x, 0.01f, 0.0f, 5.0f);
+        // 水底までの実際の深さから光路長を求めるためのスケール。
+        // 上げるほど浅瀬と深場の色差がはっきりする
+        ImGui::DragFloat("Depth Absorption", &psParams.shadingParams.y, 0.001f, 0.0f, 1.0f, "%.4f");
+        // この距離で高周波ノイズの寄与が0になり、遠景のちらつきが収まる
+        ImGui::DragFloat("Detail Fade Distance", &psParams.shadingParams.z, 100.0f, 100.0f, 200000.0f);
 
         ImGui::TreePop();
     }

@@ -10,18 +10,45 @@ cbuffer BlurParams : register(b1)
     float2 _pad;
 };
 
+// 9タップのガウス重み（中心 + 片側4タップ）
+#define DOF_BLUR_TAP_COUNT 4
+static const float DofBlurWeights[DOF_BLUR_TAP_COUNT + 1] =
+{
+    0.2270270f, 0.1945946f, 0.1216216f, 0.0540541f, 0.0162162f
+};
+
+// CoCが0の画素の重みが完全に0にならないようにする下限
+static const float DofCocWeightBias = 0.02f;
+
 float4 main(VS_OUT i) : SV_Target
 {
-    // 横方向1ピクセル分のUVオフセット
-    float2 du = float2(gInvHalfRes.x, 0);
+    float2 tapStep = float2(gInvHalfRes.x, 0.0f);
 
-    // 5tap の重み付きブラー（1,2,3,2,1）
-    float4 c0 = gHalfColorCoC.SampleLevel(sampler_states[ClampLinear], i.texcoord - 2 * du, 0);
-    float4 c1 = gHalfColorCoC.SampleLevel(sampler_states[ClampLinear], i.texcoord - 1 * du, 0);
-    float4 c2 = gHalfColorCoC.SampleLevel(sampler_states[ClampLinear], i.texcoord, 0);
-    float4 c3 = gHalfColorCoC.SampleLevel(sampler_states[ClampLinear], i.texcoord + 1 * du, 0);
-    float4 c4 = gHalfColorCoC.SampleLevel(sampler_states[ClampLinear], i.texcoord + 2 * du, 0);
+    float4 center = gHalfColorCoC.SampleLevel(sampler_states[ClampLinear], i.texcoord, 0);
 
-    float4 sum = (c0 + 2 * c1 + 3 * c2 + 2 * c3 + c4) / 9.0;
-    return sum;
+    // ピントの合った画素（CoCが小さい）の色がボケ側へにじみ出すと
+    // 輪郭にハローが出る。CoCの大きさでタップを重み付けして防ぐ
+    float centerWeight = DofBlurWeights[0] * (saturate(abs(center.a)) + DofCocWeightBias);
+    float3 colorSum = center.rgb * centerWeight;
+    float cocSum = center.a * centerWeight;
+    float weightSum = centerWeight;
+
+    [unroll]
+    for (int t = 1; t <= DOF_BLUR_TAP_COUNT; ++t)
+    {
+        float2 offset = tapStep * (float) t;
+
+        float4 s0 = gHalfColorCoC.SampleLevel(sampler_states[ClampLinear], i.texcoord - offset, 0);
+        float4 s1 = gHalfColorCoC.SampleLevel(sampler_states[ClampLinear], i.texcoord + offset, 0);
+
+        float w0 = DofBlurWeights[t] * (saturate(abs(s0.a)) + DofCocWeightBias);
+        float w1 = DofBlurWeights[t] * (saturate(abs(s1.a)) + DofCocWeightBias);
+
+        colorSum += s0.rgb * w0 + s1.rgb * w1;
+        cocSum += s0.a * w0 + s1.a * w1;
+        weightSum += w0 + w1;
+    }
+
+    float invWeight = 1.0f / max(weightSum, 1e-5f);
+    return float4(colorSum * invWeight, cocSum * invWeight);
 }

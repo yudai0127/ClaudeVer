@@ -81,7 +81,13 @@ static const float STEP_BIAS_SCALE = 1.5;
 static const float MAX_DENSITY_MIP = 4.0;
 
 static const float JITTER_HASH_SCALE = 10.0;
-static const float PHASE_G = 0.1;
+// 位相関数（二重ローブ Henyey-Greenstein）
+static const float PHASE_G_FORWARD = 0.65;         // 前方散乱ローブ（太陽側の輝き）
+static const float PHASE_G_BACKWARD = -0.25;       // 後方散乱ローブ（雲縁のシルバーライニング）
+static const float PHASE_LOBE_BLEND = 0.4;         // 後方ローブの混合比
+static const float ISOTROPIC_PHASE = 0.0795774715; // 1 / (4 * PI)
+static const float PHASE_MAX_GAIN = 8.0;           // 等方散乱に対する最大ゲイン
+static const float PHASE_MIN_GAIN = 0.75;          // 等方散乱に対する最小ゲイン
 static const float CONE_SPREAD_DIVISOR = 36.0;
 static const float SEGMENT_STEP_EPSILON = 1e-5;
 static const int ZERO_DENSITY_RESET_COUNT = 6;
@@ -278,7 +284,22 @@ float hash(float3 p)
 // Henyey-Greenstein 位相関数: 光の散乱の向き(前方散乱/後方散乱)を表す
 float henyey_greenstein(float cos_theta, float g)
 {
-    return (1.0 - g * g) / (pow(1.0 + g * g - 2.0 * g * cos_theta, 1.50) * 4 * PI);
+    // g が 1 に近いと分母が 0 に落ちて発散するのでクランプする
+    float denom = max(1.0 + g * g - 2.0 * g * cos_theta, 1e-4);
+    return (1.0 - g * g) / (pow(denom, 1.50) * 4 * PI);
+}
+
+
+// 二重ローブ Henyey-Greenstein
+// 実際の雲は水滴が大きいため、強い前方散乱（太陽側の輝き）と
+// 後方散乱（雲縁のシルバーライニング）の両方を持つ。
+// 単一ローブでは g をどう選んでもどちらか片方しか再現できない。
+// どちらのローブも球面上で 1 に正規化されているので、混合しても総エネルギーは保存される
+float dual_lobe_henyey_greenstein(float cos_theta, float g_forward, float g_backward, float blend)
+{
+    return lerp(henyey_greenstein(cos_theta, g_forward),
+                henyey_greenstein(cos_theta, g_backward),
+                blend);
 }
 
 
@@ -355,6 +376,10 @@ float sample_cloud_density_along_cone(float3 ray_origin, float3 ray_direction, f
 
     const float stepLen = cone_spread_multplier;
 
+    // コーンの全長は雲層の厚みの 1/9 程度しかなく、天候マップは数十kmスケールでしか
+    // 変化しないため、コーン内では一定とみなして起点で1回だけサンプルする
+    float3 weather_data = sample_weather_data(ray_origin.xz);
+
     [unroll]
     for (int i = 0; i < CONE_SAMPLE_COUNT; i++)
     {
@@ -364,8 +389,10 @@ float sample_cloud_density_along_cone(float3 ray_origin, float3 ray_direction, f
         float3 lateral = noise_kernel[i] * (t * CONE_LATERAL_SCALE);
         float3 sample_point = ray_origin + ray_direction * t + lateral;
 
-        float3 weather_data = sample_weather_data(sample_point.xz);
-        density_along_cone += sample_cloud_density(sample_point, weather_data, float(i), false);
+        // ここは自己影の近似でしかないので、高周波ノイズ(curl + Worley)は
+        // 影の形に一番効く最寄りのサンプルだけで評価し、残りは安価なサンプルで済ませる
+        bool cheap_sample = (i > 0);
+        density_along_cone += sample_cloud_density(sample_point, weather_data, float(i), cheap_sample);
     }
 
     return density_along_cone;
@@ -380,7 +407,8 @@ float sample_cloud_density_long_distance(float3 ray_origin, float3 ray_direction
     float3 sample_point = ray_origin + ray_direction * long_distance;
     float3 weather_data = sample_weather_data(sample_point.xz);
 
-    return sample_cloud_density(sample_point, weather_data, LONG_DISTANCE_DENSITY_MIP, false);
+    // ミップ5で参照するため高周波ノイズはほぼ潰れる。安価なサンプルで十分
+    return sample_cloud_density(sample_point, weather_data, LONG_DISTANCE_DENSITY_MIP, true);
 }
 
 
@@ -449,13 +477,16 @@ float4 ray_march(float3 ray_origin, float3 ray_step, int steps)
     float cos_theta = dot(sun_direction, -view_dir);
 
     // 位相関数(Phase Function)の計算
-#if 1
-    // g: 前方散乱の強さ(0=等方、正で前方散乱が強い)
-    float g = PHASE_G;
-    float henyey_greenstein_phase = henyey_greenstein(cos_theta, g);
-#else
-    float henyey_greenstein_phase = max(max(henyey_greenstein(cos_theta, 0.6), henyey_greenstein(cos_theta, (0.4 - 1.4 * sun_direction.y))), henyey_greenstein(cos_theta, -0.2));
-#endif
+    // 以前は g=0.1 のほぼ等方散乱だったため、どの向きから見ても明るさが変わらず
+    // 雲がのっぺりして見えていた。二重ローブにして方向性を持たせる
+    float henyey_greenstein_phase = dual_lobe_henyey_greenstein(
+        cos_theta, PHASE_G_FORWARD, PHASE_G_BACKWARD, PHASE_LOBE_BLEND);
+
+    // 太陽の真正面ではローブが鋭く尖るのでフレアが暴れないよう上限を設ける。
+    // 逆に横方向は暗くなりすぎるため下限も設け、従来の明るさから大きく外れないようにする
+    henyey_greenstein_phase = clamp(henyey_greenstein_phase,
+                                    ISOTROPIC_PHASE * PHASE_MIN_GAIN,
+                                    ISOTROPIC_PHASE * PHASE_MAX_GAIN);
 
     const float cone_spread_multplier = ((cloud_altitudes_min_max.y - cloud_altitudes_min_max.x) / CONE_SPREAD_DIVISOR);
 

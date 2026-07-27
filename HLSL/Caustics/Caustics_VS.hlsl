@@ -66,6 +66,17 @@ CausticsVSOut main(VSInput IN)
     float3 lightDir = normalize(lightDirection.xyz);
     float3 refractedDir = refract(lightDir, finalWaterNorm, 1.0f / WaterIOR);
 
+    // 全反射が起きた場合 refract() はゼロベクトルを返す。
+    // そのまま進めるとレイマーチが原点に留まったまま無駄にループを回すので早期に破棄する
+    if (dot(refractedDir, refractedDir) < 1e-6f)
+    {
+        OUT.ShouldDiscard = -1.0f;
+        OUT.NewPos = waterPos;
+        OUT.SVPosition = mul(float4(waterPos, 1.0f), gViewProjection);
+        return OUT;
+    }
+    refractedDir = normalize(refractedDir);
+
     uint w, h;
     SceneDepth.GetDimensions(w, h);
 
@@ -102,8 +113,10 @@ CausticsVSOut main(VSInput IN)
 
     float3 hitPos = waterPos;
     float t = 0.0f;
+    // ステップ幅は maxDist/64 なので、maxDist に到達するのに必要な回数は64。
+    // 上限128は無駄なので半分に減らす（この探索は水面の頂点ごとに走るため効きが大きい）
     float stepSize = max(maxDist / 64.0f, 1.0f);
-    const int maxSteps = 128;
+    const int maxSteps = 64;
     bool hit = false;
 
     // レイマーチングによる海底との交点探索
