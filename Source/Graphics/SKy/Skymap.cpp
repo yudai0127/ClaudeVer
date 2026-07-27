@@ -1,7 +1,7 @@
 #include "Skymap.h"
 #include "Graphics/Buffer.h"
-#include "Graphics/Shader.h"
-#include "Graphics/GraphicsManager.h"
+#include "Graphics/Shader/Shader.h"
+#include "Graphics/GraphicsManager/GraphicsManager.h"
 #include "misc.h"
 
 #include <cstdio>

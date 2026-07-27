@@ -20,6 +20,10 @@ mono_crash.*
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/
+
+# [Dd]ebug/ はビルド成果物向けの指定だが、ソースの Source/Graphics/Debug/ まで
+# 除外してしまい DebugRenderer / ImGuiRenderer がコミットされなかったため除外を解除する
+!Source/Graphics/Debug/
 [Rr]eleases/
 x64/
 x86/

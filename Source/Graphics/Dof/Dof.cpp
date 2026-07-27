@@ -1,9 +1,9 @@
 #include "DoF.h"
-#include "Graphics/Shader.h"
+#include "Graphics/Shader/Shader.h"
 #include "Graphics/Buffer.h"
-#include "Graphics/GraphicsManager.h"
-#include "Graphics/framebuffer.h"
-#include "Graphics/fullscreen_quad.h"
+#include "Graphics/GraphicsManager/GraphicsManager.h"
+#include "Graphics/FrameBuffer/FrameBuffer.h"
+#include "Graphics/Fullscreen_Quad/Fullscreen_Quad.h"
 
 #include "misc.h"
 #include "imgui.h"
