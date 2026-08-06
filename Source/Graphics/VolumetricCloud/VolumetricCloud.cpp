@@ -138,6 +138,7 @@ void VolumetricCloud::initialize(ID3D11Device* device, const wchar_t* filename)
 	volumetric_cloud_constant_data.auto_ray_marching_steps = 0;
 	
 }
+
 void VolumetricCloud::blit(ID3D11DeviceContext* dc, ID3D11ShaderResourceView* sky_cubemap_srv, ID3D11ShaderResourceView* transmittance_srv, ID3D11ShaderResourceView* irradiance_srv, const AtmosphereConstants& atmosphere_data)
 {
 	
