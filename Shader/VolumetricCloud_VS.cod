@@ -18,18 +18,48 @@
 // TEXCOORD                 0   xy          1     NONE   float   xy  
 //
 vs_5_0
-dcl_globalFlags refactoringAllowed
-dcl_immediateConstantBuffer { { -1.000000, 1.000000, 0, 0},
-                              { 1.000000, 1.000000, 1.000000, 0},
-                              { -1.000000, -1.000000, 0, 1.000000},
-                              { 1.000000, -1.000000, 1.000000, 1.000000} }
+dcl_globalFlags refactoringAllowed | skipOptimization
 dcl_input_sgv v0.x, vertex_id
 dcl_output_siv o0.xyzw, position
 dcl_output o1.xy
-dcl_temps 1
-mov o0.zw, l(0,0,1.000000,1.000000)
+dcl_temps 2
+dcl_indexableTemp x0[4], 4
+dcl_indexableTemp x1[4], 4
+//
+// Initial variable locations:
+//   v0.x <- vertexid; 
+//   o1.x <- <main return value>.texcoord.x; o1.y <- <main return value>.texcoord.y; 
+//   o0.x <- <main return value>.position.x; o0.y <- <main return value>.position.y; o0.z <- <main return value>.position.z; o0.w <- <main return value>.position.w; 
+//   x0 <- position; x1 <- texcoords
+//
+#line 7 "D:\zed AI ver\HLSL\VolumetricCloud\VolumetricCloud_VS.hlsl"
+itof r0.xy, l(-1, 1, 0, 0)
+itof r0.zw, l(0, 0, 1, 1)
+itof r1.xyzw, l(-1, -1, 1, -1)
+mov x0[0].xy, r0.xyxx
+mov x0[1].xy, r0.zwzz
+mov x0[2].xy, r1.xyxx
+mov x0[3].xy, r1.zwzz
+
+#line 9
+itof r0.xy, l(0, 0, 0, 0)
+itof r0.zw, l(0, 0, 1, 0)
+itof r1.xyzw, l(0, 1, 1, 1)
+mov x1[0].xy, r0.xyxx
+mov x1[1].xy, r0.zwzz
+mov x1[2].xy, r1.xyxx
+mov x1[3].xy, r1.zwzz
+
+#line 11
 mov r0.x, v0.x
-mov o0.xy, icb[r0.x + 0].xyxx
-mov o1.xy, icb[r0.x + 0].zwzz
+mov r1.xy, x0[r0.x + 0].xyxx  // r1.x <- vout.position.x; r1.y <- vout.position.y
+mov r1.zw, l(0,0,1.000000,1.000000)  // r1.z <- vout.position.z; r1.w <- vout.position.w
+
+#line 12
+mov r0.xy, x1[r0.x + 0].xyxx  // r0.x <- vout.texcoord.x; r0.y <- vout.texcoord.y
+
+#line 13
+mov o0.xyzw, r1.xyzw
+mov o1.xy, r0.xyxx
 ret 
-// Approximately 5 instruction slots used
+// Approximately 21 instruction slots used

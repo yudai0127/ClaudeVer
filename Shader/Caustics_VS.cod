@@ -97,7 +97,7 @@
 // TEXCOORD                 1   xyz         2     NONE   float   xyz 
 //
 vs_5_0
-dcl_globalFlags refactoringAllowed
+dcl_globalFlags refactoringAllowed | skipOptimization
 dcl_constantbuffer CB6[26], dynamicIndexed
 dcl_constantbuffer CB7[17], immediateIndexed
 dcl_constantbuffer CB8[8], immediateIndexed
@@ -111,294 +111,853 @@ dcl_output_siv o0.xyzw, position
 dcl_output o1.xyz
 dcl_output o1.w
 dcl_output o2.xyz
-dcl_temps 8
-mov r2.yw, l(0,0,0,0)
-mov r0.xyzw, l(1.000000,0,0,0)
-mov r1.xyzw, l(1.000000,0,0,0)
+dcl_temps 9
+//
+// Initial variable locations:
+//   v0.x <- IN.Position.x; v0.y <- IN.Position.y; v0.z <- IN.Position.z; 
+//   v1.x <- IN.Normal.x; v1.y <- IN.Normal.y; v1.z <- IN.Normal.z; 
+//   v2.x <- IN.TexCoord.x; v2.y <- IN.TexCoord.y; 
+//   o2.x <- <main return value>.NewPos.x; o2.y <- <main return value>.NewPos.y; o2.z <- <main return value>.NewPos.z; 
+//   o1.x <- <main return value>.OldPos.x; o1.y <- <main return value>.OldPos.y; o1.z <- <main return value>.OldPos.z; o1.w <- <main return value>.ShouldDiscard; 
+//   o0.x <- <main return value>.SVPosition.x; o0.y <- <main return value>.SVPosition.y; o0.z <- <main return value>.SVPosition.z; o0.w <- <main return value>.SVPosition.w
+//
+#line 32 "D:\zed AI ver\HLSL\Caustics\Caustics_VS.hlsl"
+mov r0.x, l(1.000000)  // r0.x <- OUT.ShouldDiscard
+
+#line 36
+nop 
+mov r0.yzw, v0.xxyz
+
+#line 146 "D:\zed AI ver\HLSL\Water\Water.hlsli"
+mov r0.yzw, r0.yyzw  // r0.y <- P.x; r0.z <- P.y; r0.w <- P.z
+
+#line 149
+mov r1.xy, l(0,0,0,0)  // r1.x <- dispXZ.x; r1.y <- dispXZ.y
+
+#line 150
+mov r1.z, l(0)  // r1.z <- dispY
+
+#line 153
+mov r2.xyz, l(1.000000,0,0,0)  // r2.x <- tangentX.x; r2.y <- tangentX.y; r2.z <- tangentX.z
+
+#line 154
+mov r3.xyz, l(0,0,1.000000,0)  // r3.x <- tangentZ.x; r3.y <- tangentZ.y; r3.z <- tangentZ.z
+
+#line 158
+mov r1.w, l(0)  // r1.w <- i
+mov r4.xyz, r2.xyzx  // r4.x <- tangentX.x; r4.y <- tangentX.y; r4.z <- tangentX.z
+mov r5.xyz, r3.zxyz  // r5.x <- tangentZ.z; r5.y <- tangentZ.x; r5.z <- tangentZ.y
+mov r6.xz, r1.xxyx  // r6.x <- dispXZ.x; r6.z <- dispXZ.y
+mov r2.w, r1.z  // r2.w <- dispY
+mov r3.w, r1.w  // r3.w <- i
 loop 
-  uge r2.x, r1.w, cb6[9].z
-  breakc_nz r2.x
-  ishl r2.x, r1.w, l(1)
-  dp2 r2.z, cb6[r2.x + 10].xyxx, cb6[r2.x + 10].xyxx
-  rsq r2.z, r2.z
-  mul r3.xy, r2.zzzz, cb6[r2.x + 10].xyxx
-  max r2.z, l(0.000100), cb6[r2.x + 10].w
-  div r2.z, l(6.283185), r2.z
-  lt r3.z, l(0.000000), cb6[r2.x + 11].x
-  mul r3.w, r2.z, cb6[r2.x + 11].x
-  mul r4.x, r2.z, cb6[9].y
-  sqrt r4.x, r4.x
-  movc r3.z, r3.z, r3.w, r4.x
-  dp2 r3.w, r3.xyxx, v0.xzxx
-  mul r3.z, r3.z, cb6[9].x
-  mad r3.z, r3.w, r2.z, -r3.z
-  sincos r4.x, r5.x, r3.z
-  mul r3.z, cb6[r2.x + 10].z, cb6[r2.x + 11].y
-  mul r4.yz, r3.xxyx, r3.zzzz
-  mad r2.yw, r4.yyyz, r5.xxxx, r2.yyyw
-  mad r0.w, cb6[r2.x + 10].z, r4.x, r0.w
-  mul r3.z, r2.z, -r3.z
-  mul r6.xyzw, r3.xyxy, r3.zzzz
-  mul r6.xyzw, r3.xxyy, r6.xyzw
-  mul r2.x, r2.z, cb6[r2.x + 10].z
-  mul r2.xz, r3.xxyx, r2.xxxx
-  mad r0.y, r2.x, r5.x, r0.y
-  mad r0.xz, r6.xxyx, r4.xxxx, r0.xxzx
-  mad r1.z, r2.z, r5.x, r1.z
-  mad r1.xy, r6.wzww, r4.xxxx, r1.xyxx
-  iadd r1.w, r1.w, l(1)
+  ult r4.w, r3.w, cb6[9].z
+  breakc_z r4.w
+
+#line 160
+  imul null, r4.w, r3.w, l(2)
+  mov r6.yw, cb6[r4.w + 10].xxxy  // r6.y <- w.direction.x; r6.w <- w.direction.y
+  mov r7.xy, cb6[r4.w + 10].zwzz  // r7.x <- w.amplitude; r7.y <- w.wavelength
+  mov r7.zw, cb6[r4.w + 11].xxxy  // r7.z <- w.speed; r7.w <- w.steepness
+
+#line 163
+  dp2 r4.w, r6.ywyy, r6.ywyy
+  rsq r4.w, r4.w
+  mul r6.yw, r4.wwww, r6.yyyw  // r6.y <- D.x; r6.w <- D.y
+
+#line 166
+  max r4.w, r7.y, l(0.000100)
+  div r4.w, l(6.283185), r4.w  // r4.w <- k
+
+#line 169
+  lt r5.w, l(0.000000), r7.z
+  mul r7.y, r4.w, r7.z
+  mul r7.z, r4.w, cb6[9].y
+  sqrt r7.z, r7.z
+  movc r5.w, r5.w, r7.y, r7.z  // r5.w <- omega
+
+#line 172
+  dp2 r7.y, r6.ywyy, r0.ywyy
+  mul r7.y, r4.w, r7.y
+  mul r5.w, r5.w, cb6[9].x
+  mov r5.w, -r5.w
+  add r5.w, r5.w, r7.y  // r5.w <- theta
+
+#line 175
+  sincos r7.y, null, r5.w  // r7.y <- s
+
+#line 176
+  sincos null, r5.w, r5.w  // r5.w <- c
+
+#line 179
+  mul r7.z, r7.x, r7.w  // r7.z <- QA
+
+#line 183
+  mul r8.xy, r6.ywyy, r7.zzzz
+  mul r8.xy, r5.wwww, r8.xyxx
+  add r6.xz, r6.xxzx, r8.xxyx
+
+#line 185
+  mul r7.w, r7.y, r7.x
+  add r2.w, r2.w, r7.w
+
+#line 188
+  mov r7.w, -r7.z
+  mul r7.w, r4.w, r7.w
+  mul r7.w, r6.y, r7.w
+  mul r7.w, r6.y, r7.w
+  mul r7.w, r7.y, r7.w
+  add r4.x, r4.x, r7.w
+
+#line 189
+  mul r7.w, r4.w, r7.x
+  mul r7.w, r6.y, r7.w
+  mul r7.w, r5.w, r7.w
+  add r4.y, r4.y, r7.w
+
+#line 190
+  mov r7.w, -r7.z
+  mul r7.w, r4.w, r7.w
+  mul r7.w, r6.w, r7.w
+  mul r7.w, r6.y, r7.w
+  mul r7.w, r7.y, r7.w
+  add r4.z, r4.z, r7.w
+
+#line 193
+  mov r7.w, -r7.z
+  mul r7.w, r4.w, r7.w
+  mul r6.y, r6.y, r7.w
+  mul r6.y, r6.w, r6.y
+  mul r6.y, r7.y, r6.y
+  add r5.y, r5.y, r6.y
+
+#line 194
+  mul r6.y, r4.w, r7.x
+  mul r6.y, r6.w, r6.y
+  mul r5.w, r5.w, r6.y
+  add r5.z, r5.w, r5.z
+
+#line 195
+  mov r5.w, -r7.z
+  mul r4.w, r4.w, r5.w
+  mul r4.w, r6.w, r4.w
+  mul r4.w, r6.w, r4.w
+  mul r4.w, r7.y, r4.w
+  add r5.x, r4.w, r5.x
+
+#line 196
+  iadd r3.w, r3.w, l(1)
 endloop 
-add r2.yw, r2.yyyw, v0.xxxz
-add r2.z, r0.w, v0.y
-mul r3.xyz, r0.yzxy, r1.xyzx
-mad r1.xyz, r1.zxyz, r0.zxyz, -r3.xyzx
-dp3 r0.w, r1.xyzx, r1.xyzx
-rsq r0.w, r0.w
-mul r1.xyz, r0.wwww, r1.xyzx
-dp3 r0.w, r0.xyzx, r1.xyzx
-mad r0.xyz, -r1.xyzx, r0.wwww, r0.xyzx
-dp3 r0.w, r0.xyzx, r0.xyzx
-rsq r0.w, r0.w
-mul r0.xyz, r0.wwww, r0.xyzx
-mul r3.xyz, r0.yzxy, r1.zxyz
-mad r3.xyz, r1.yzxy, r0.zxyz, -r3.xyzx
-dp3 r0.w, r3.xyzx, r3.xyzx
-rsq r0.w, r0.w
-mul r3.xyz, r0.wwww, r3.xyzx
-max r4.xy, cb8[4].xyxx, l(0.000100, 0.000000, 0.000000, 0.000000)
-mul r4.xz, r4.xxxx, v2.xxyx
+
+#line 199
+add r1.xz, r0.yywy, r6.xxzx  // r1.x <- P.x; r1.z <- P.z
+
+#line 200
+add r1.y, r0.z, r2.w  // r1.y <- P.y
+
+#line 203
+mul r0.yzw, r4.zzxy, r5.zzxy
+mul r2.xyz, r4.yzxy, r5.xyzx
+mov r2.xyz, -r2.xyzx
+add r0.yzw, r0.yyzw, r2.xxyz
+dp3 r1.w, r0.yzwy, r0.yzwy
+rsq r1.w, r1.w
+mul r0.yzw, r0.yyzw, r1.wwww  // r0.y <- n.x; r0.z <- n.y; r0.w <- n.z
+
+#line 206
+dp3 r1.w, r4.xyzx, r0.yzwy
+mul r2.xyz, r0.yzwy, r1.wwww
+mov r2.xyz, -r2.xyzx
+add r2.xyz, r2.xyzx, r4.xyzx
+dp3 r1.w, r2.xyzx, r2.xyzx
+rsq r1.w, r1.w
+mul r2.xyz, r1.wwww, r2.xyzx  // r2.x <- t.x; r2.y <- t.y; r2.z <- t.z
+
+#line 207
+mul r3.xyz, r0.zwyz, r2.zxyz
+mul r4.xyz, r0.wyzw, r2.yzxy
+mov r4.xyz, -r4.xyzx
+add r3.xyz, r3.xyzx, r4.xyzx
+dp3 r1.w, r3.xyzx, r3.xyzx
+rsq r1.w, r1.w
+mul r3.xyz, r1.wwww, r3.xyzx  // r3.x <- b.x; r3.y <- b.y; r3.z <- b.z
+
+#line 209
+mov r1.xz, r1.xxzx  // r1.x <- outPos.x; r1.z <- outPos.z
+mov r1.y, r1.y  // r1.y <- outPos.y
+
+#line 210
+mov r0.yzw, r0.yyzw  // r0.y <- outNormal.x; r0.z <- outNormal.y; r0.w <- outNormal.z
+
+#line 211
+mov r2.xyz, r2.xyzx  // r2.x <- outTangent.x; r2.y <- outTangent.y; r2.z <- outTangent.z
+
+#line 212
+mov r3.xyz, r3.xyzx  // r3.x <- outBitangent.x; r3.y <- outBitangent.y; r3.z <- outBitangent.z
+
+#line 36 "D:\zed AI ver\HLSL\Caustics\Caustics_VS.hlsl"
+mov r1.xyz, r1.xyzx  // r1.x <- waterPos.x; r1.y <- waterPos.y; r1.z <- waterPos.z
+mov r0.yzw, r0.yyzw  // r0.y <- waterNorm.x; r0.z <- waterNorm.y; r0.w <- waterNorm.z
+mov r2.xyz, r2.xyzx  // r2.x <- waterTangent.x; r2.y <- waterTangent.y; r2.z <- waterTangent.z
+mov r3.xyz, r3.xyzx  // r3.x <- waterBitangent.x; r3.y <- waterBitangent.y; r3.z <- waterBitangent.z
+
+#line 37
+mov r1.xyz, r1.xyzx  // r1.x <- OUT.OldPos.x; r1.y <- OUT.OldPos.y; r1.z <- OUT.OldPos.z
+
+#line 40
+max r1.w, cb8[4].x, l(0.000100)  // r1.w <- causticsUvScale
+
+#line 41
+max r2.w, cb8[4].y, l(0.000000)  // r2.w <- causticsWobble
+
+#line 42
+mul r4.xy, r1.wwww, v2.xyxx  // r4.x <- uv.x; r4.y <- uv.y
+
+#line 45
+mul r4.zw, r4.xxxy, cb7[0].zzzz
 mul r5.xy, cb6[9].xxxx, cb7[0].xyxx
-mad r5.xy, r4.xzxx, cb7[0].zzzz, r5.xyxx
-mul r5.zw, cb6[9].xxxx, cb7[1].xxxy
-mad r4.xz, r4.xxzx, cb7[1].zzzz, r5.zzwz
-sample_l_indexable(texture2d)(float,float,float,float) r5.xyz, r5.xyxx, t1.xyzw, s1, l(0.000000)
-mad r5.xyz, r5.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000), l(-1.000000, -1.000000, -1.000000, 0.000000)
-sample_l_indexable(texture2d)(float,float,float,float) r4.xzw, r4.xzxx, t2.xwyz, s1, l(0.000000)
-mad r4.xzw, r4.xxzw, l(2.000000, 0.000000, 2.000000, 2.000000), l(-1.000000, 0.000000, -1.000000, -1.000000)
+add r4.zw, r4.zzzw, r5.xxxy  // r4.z <- uv0.x; r4.w <- uv0.y
+
+#line 46
+mul r4.xy, r4.xyxx, cb7[1].zzzz
+mul r5.xy, cb6[9].xxxx, cb7[1].xyxx
+add r4.xy, r4.xyxx, r5.xyxx  // r4.x <- uv1.x; r4.y <- uv1.y
+
+#line 49
+itof r1.w, l(0)
+sample_l_indexable(texture2d)(float,float,float,float) r5.xyz, r4.zwzz, t1.xyzw, s1, r1.w
+mul r5.xyz, r5.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000)
+mov r6.xyz, l(-1.000000,-1.000000,-1.000000,-0.000000)
+add r5.xyz, r5.xyzx, r6.xyzx  // r5.x <- n0.x; r5.y <- n0.y; r5.z <- n0.z
+
+#line 50
+itof r1.w, l(0)
+sample_l_indexable(texture2d)(float,float,float,float) r4.xyz, r4.xyxx, t2.xyzw, s1, r1.w
+mul r4.xyz, r4.xyzx, l(2.000000, 2.000000, 2.000000, 0.000000)
+mov r6.xyz, l(-1.000000,-1.000000,-1.000000,-0.000000)
+add r4.xyz, r4.xyzx, r6.xyzx  // r4.x <- n1.x; r4.y <- n1.y; r4.z <- n1.z
+
+#line 53
 mul r5.xyz, r5.xyzx, cb7[0].wwww
-mul r4.xzw, r4.xxzw, cb7[1].wwww
-mul r4.xzw, r4.yyyy, r4.xxzw
-mad r4.xyz, r5.xyzx, r4.yyyy, r4.xzwx
+mul r5.xyz, r2.wwww, r5.xyzx
+mul r4.xyz, r4.xyzx, cb7[1].wwww
+mul r4.xyz, r2.wwww, r4.xyzx
+add r4.xyz, r4.xyzx, r5.xyzx
 add r4.xyz, r4.xyzx, l(0.000000, 0.000000, 1.000000, 0.000000)
-dp3 r0.w, r4.xyzx, r4.xyzx
-rsq r0.w, r0.w
-mul r4.xyz, r0.wwww, r4.xyzx
+dp3 r1.w, r4.xyzx, r4.xyzx
+rsq r1.w, r1.w
+mul r4.xyz, r1.wwww, r4.xyzx  // r4.x <- texNormTS.x; r4.y <- texNormTS.y; r4.z <- texNormTS.z
+
+#line 59
+mul r2.xyz, r2.xyzx, r4.xxxx
 mul r3.xyz, r3.xyzx, r4.yyyy
-mad r0.xyz, r4.xxxx, r0.xyzx, r3.xyzx
-mad r0.xyz, r4.zzzz, r1.xyzx, r0.xyzx
-dp3 r0.w, r0.xyzx, r0.xyzx
-rsq r0.w, r0.w
-mul r0.xyz, r0.wwww, r0.xyzx
-dp3 r0.w, cb8[7].xyzx, cb8[7].xyzx
-rsq r0.w, r0.w
-mul r1.xyz, r0.wwww, cb8[7].xyzx
-dp3 r0.w, r1.xyzx, r0.xyzx
-mad r1.w, -r0.w, r0.w, l(1.000000)
-mad r1.w, -r1.w, l(0.565323), l(1.000000)
-sqrt r3.x, r1.w
-mad r0.w, r0.w, l(0.751880), r3.x
-ge r1.w, r1.w, l(0.000000)
-mul r0.xyz, r0.xyzx, r0.wwww
-mad r0.xyz, r1.xyzx, l(0.751880, 0.751880, 0.751880, 0.000000), -r0.xyzx
-and r0.xyz, r0.xyzx, r1.wwww
-dp3 r0.w, r0.xyzx, r0.xyzx
-lt r1.x, r0.w, l(0.000001)
-if_nz r1.x
-  mul r1.xyzw, r2.zzzz, cb6[5].xyzw
-  mad r1.xyzw, r2.yyyy, cb6[4].xyzw, r1.xyzw
-  mad r1.xyzw, r2.wwww, cb6[6].xyzw, r1.xyzw
-  add o0.xyzw, r1.xyzw, cb6[7].xyzw
-  mov o1.w, l(-1.000000)
-  mov o1.xyz, r2.yzwy
-  mov o2.xyz, r2.yzwy
+add r2.xyz, r2.xyzx, r3.xyzx
+mul r0.yzw, r0.yyzw, r4.zzzz
+add r0.yzw, r0.yyzw, r2.xxyz
+dp3 r1.w, r0.yzwy, r0.yzwy
+rsq r1.w, r1.w
+mul r0.yzw, r0.yyzw, r1.wwww  // r0.y <- finalWaterNorm.x; r0.z <- finalWaterNorm.y; r0.w <- finalWaterNorm.z
+
+#line 66
+dp3 r1.w, cb8[7].xyzx, cb8[7].xyzx
+rsq r1.w, r1.w
+mul r2.xyz, r1.wwww, cb8[7].xyzx  // r2.x <- lightDir.x; r2.y <- lightDir.y; r2.z <- lightDir.z
+
+#line 67
+dp3 r1.w, r2.xyzx, r0.yzwy
+mul r2.w, r1.w, r1.w
+mul r3.x, l(0.751880), l(0.751880)
+mov r2.w, -r2.w
+add r2.w, r2.w, l(1.000000)
+mul r2.w, r2.w, r3.x
+mov r2.w, -r2.w
+add r2.w, r2.w, l(1.000000)
+sqrt r3.x, r2.w
+mul r1.w, r1.w, l(0.751880)
+add r1.w, r3.x, r1.w
+ge r2.w, r2.w, l(0.000000)
+mul r2.xyz, r2.xyzx, l(0.751880, 0.751880, 0.751880, 0.000000)
+mul r0.yzw, r0.yyzw, r1.wwww
+mov r0.yzw, -r0.yyzw
+add r0.yzw, r0.yyzw, r2.xxyz
+movc r0.yzw, r2.wwww, r0.yyzw, l(0,0,0,0)  // r0.y <- refractedDir.x; r0.z <- refractedDir.y; r0.w <- refractedDir.z
+
+#line 71
+dp3 r1.w, r0.yzwy, r0.yzwy
+lt r1.w, r1.w, l(0.000001)
+if_nz r1.w
+
+#line 73
+  mov r1.w, l(-1.000000)  // r1.w <- OUT.ShouldDiscard
+
+#line 74
+  mov r1.xyz, r1.xyzx  // r1.x <- OUT.NewPos.x; r1.y <- OUT.NewPos.y; r1.z <- OUT.NewPos.z
+
+#line 75
+  mul r2.xyzw, r1.xxxx, cb6[4].xyzw
+  mul r3.xyzw, r1.yyyy, cb6[5].xyzw
+  add r2.xyzw, r2.xyzw, r3.xyzw
+  mul r3.xyzw, r1.zzzz, cb6[6].xyzw
+  add r2.xyzw, r2.xyzw, r3.xyzw
+  mul r3.xyzw, cb6[7].xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+  add r2.xyzw, r2.xyzw, r3.xyzw  // r2.x <- OUT.SVPosition.x; r2.y <- OUT.SVPosition.y; r2.z <- OUT.SVPosition.z; r2.w <- OUT.SVPosition.w
+
+#line 76
+  mov o0.xyzw, r2.xyzw
+  mov o1.xyz, r1.xyzx
+  mov o1.w, r1.w
+  mov o2.xyz, r1.xyzx
   ret 
-endif 
-mul r1.xyzw, r2.zzzz, cb6[5].xyzw
-mad r1.xyzw, r2.yyyy, cb6[4].xyzw, r1.xyzw
-mad r1.xyzw, r2.wwww, cb6[6].xyzw, r1.xyzw
-add r1.xyzw, r1.xyzw, cb6[7].xyzw
-div r3.xy, r1.xyxx, r1.wwww
-mad r3.xy, r3.xyxx, l(0.500000, -0.500000, 0.000000, 0.000000), l(0.500000, 0.500000, 0.000000, 0.000000)
-ge r3.zw, r3.xxxy, l(0.000000, 0.000000, 0.000000, 0.000000)
-and r3.z, r3.w, r3.z
-ge r4.xy, l(1.000000, 1.000000, 0.000000, 0.000000), r3.xyxx
-and r3.w, r4.y, r4.x
-and r3.z, r3.w, r3.z
-not r3.z, r3.z
-lt r3.w, r1.w, l(0.000000)
-or r3.z, r3.w, r3.z
-if_nz r3.z
-  mov o0.xyzw, r1.xyzw
-  mov o1.xyz, r2.yzwy
-  mov o1.w, l(-1.000000)
-  mov o2.xyz, r2.yzwy
+
+#line 77
+endif   // r0.x <- OUT.ShouldDiscard
+
+#line 78
+dp3 r1.w, r0.yzwy, r0.yzwy
+rsq r1.w, r1.w
+mul r0.yzw, r0.yyzw, r1.wwww
+
+#line 81
+resinfo_indexable(texture2d)(float,float,float,float)_uint r2.xy, l(0), t0.xyzw
+mov r2.x, r2.x  // r2.x <- w
+mov r2.y, r2.y  // r2.y <- h
+
+#line 84
+mul r3.xyzw, r1.xxxx, cb6[4].xyzw
+mul r4.xyzw, r1.yyyy, cb6[5].xyzw
+add r3.xyzw, r3.xyzw, r4.xyzw
+mul r4.xyzw, r1.zzzz, cb6[6].xyzw
+add r3.xyzw, r3.xyzw, r4.xyzw
+mul r4.xyzw, cb6[7].xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.xyzw, r3.xyzw, r4.xyzw  // r3.x <- oldClip.x; r3.y <- oldClip.y; r3.z <- oldClip.z; r3.w <- oldClip.w
+
+#line 85
+div r2.zw, r3.xxxy, r3.wwww
+mul r2.zw, r2.zzzw, l(0.000000, 0.000000, 0.500000, -0.500000)
+add r2.zw, r2.zzzw, l(0.000000, 0.000000, 0.500000, 0.500000)  // r2.z <- oldUv.x; r2.w <- oldUv.y
+
+#line 88
+nop 
+mov r2.zw, r2.zzzw
+
+#line 100 "D:\zed AI ver\HLSL\Water\Water.hlsli"
+ge r4.xy, r2.zwzz, l(0.000000, 0.000000, 0.000000, 0.000000)
+ine r4.xy, r4.xyxx, l(0, 0, 0, 0)
+and r1.w, r4.y, r4.x
+ge r4.xy, l(1.000000, 1.000000, 0.000000, 0.000000), r2.zwzz
+ine r4.xy, r4.xyxx, l(0, 0, 0, 0)
+and r4.x, r4.y, r4.x
+and r1.w, r1.w, r4.x  // r1.w <- <IsPointValid return value>
+
+#line 88 "D:\zed AI ver\HLSL\Caustics\Caustics_VS.hlsl"
+not r1.w, r1.w
+lt r4.x, r3.w, l(0.000000)
+or r1.w, r1.w, r4.x
+if_nz r1.w
+
+#line 90
+  mov r1.w, l(-1.000000)  // r1.w <- OUT.ShouldDiscard
+
+#line 91
+  mov r1.xyz, r1.xyzx  // r1.x <- OUT.NewPos.x; r1.y <- OUT.NewPos.y; r1.z <- OUT.NewPos.z
+
+#line 92
+  mov r3.xyzw, r3.xyzw  // r3.x <- OUT.SVPosition.x; r3.y <- OUT.SVPosition.y; r3.z <- OUT.SVPosition.z; r3.w <- OUT.SVPosition.w
+
+#line 93
+  mov o0.xyzw, r3.xyzw  // o0.x <- <main return value>.SVPosition.x; o0.y <- <main return value>.SVPosition.y; o0.z <- <main return value>.SVPosition.z; o0.w <- <main return value>.SVPosition.w
+  mov o1.xyz, r1.xyzx  // o1.x <- <main return value>.OldPos.x; o1.y <- <main return value>.OldPos.y; o1.z <- <main return value>.OldPos.z
+  mov o1.w, r1.w  // o1.w <- <main return value>.ShouldDiscard
+  mov o2.xyz, r1.xyzx  // o2.x <- <main return value>.NewPos.x; o2.y <- <main return value>.NewPos.y; o2.z <- <main return value>.NewPos.z
   ret 
-endif 
-resinfo_indexable(texture2d)(float,float,float,float)_uint r3.zw, l(0), t0.zwxy
-utof r3.zw, r3.zzzw
-mul r4.xy, r3.zwzz, r3.xyxx
-ftoi r4.xy, r4.xyxx
-mov r4.zw, l(0,0,0,0)
-ld_indexable(texture2d)(float,float,float,float) r4.x, r4.xyzw, t0.xyzw
-div r4.y, r1.z, r1.w
-add r4.z, r4.x, l(0.000100)
-lt r4.y, r4.z, r4.y
-if_nz r4.y
-  mov o0.xyzw, r1.xyzw
-  mov o1.xyz, r2.yzwy
-  mov o1.w, l(-1.000000)
-  mov o2.xyz, r2.yzwy
+
+#line 94
+endif   // r0.x <- OUT.ShouldDiscard
+
+#line 96
+utof r1.w, r2.x
+mul r1.w, r1.w, r2.z
+utof r4.x, r2.y
+mul r4.x, r2.w, r4.x
+ftoi r5.x, r1.w  // r5.x <- oldTexel.x
+ftoi r5.y, r4.x  // r5.y <- oldTexel.y
+
+#line 97
+mov r5.zw, l(0,0,0,0)
+ld_indexable(texture2d)(float,float,float,float) r1.w, r5.xyzw, t0.yzwx
+mov r1.w, r1.w  // r1.w <- oldDepth
+
+#line 98
+div r4.x, r3.z, r3.w  // r4.x <- oldZ
+
+#line 101
+add r4.y, r1.w, l(0.000100)
+lt r4.x, r4.y, r4.x
+if_nz r4.x
+
+#line 103
+  mov r4.x, l(-1.000000)  // r4.x <- OUT.ShouldDiscard
+
+#line 104
+  mov r1.xyz, r1.xyzx  // r1.x <- OUT.NewPos.x; r1.y <- OUT.NewPos.y; r1.z <- OUT.NewPos.z
+
+#line 105
+  mov r3.xyzw, r3.xyzw  // r3.x <- OUT.SVPosition.x; r3.y <- OUT.SVPosition.y; r3.z <- OUT.SVPosition.z; r3.w <- OUT.SVPosition.w
+
+#line 106
+  mov o0.xyzw, r3.xyzw  // o0.x <- <main return value>.SVPosition.x; o0.y <- <main return value>.SVPosition.y; o0.z <- <main return value>.SVPosition.z; o0.w <- <main return value>.SVPosition.w
+  mov o1.xyz, r1.xyzx  // o1.x <- <main return value>.OldPos.x; o1.y <- <main return value>.OldPos.y; o1.z <- <main return value>.OldPos.z
+  mov o1.w, r4.x  // o1.w <- <main return value>.ShouldDiscard
+  mov o2.xyz, r1.xyzx  // o2.x <- <main return value>.NewPos.x; o2.y <- <main return value>.NewPos.y; o2.z <- <main return value>.NewPos.z
   ret 
-endif 
-rsq r0.w, r0.w
-mul r0.xyz, r0.wwww, r0.xyzx
-mad r0.w, r3.x, l(2.000000), l(-1.000000)
-mad r1.x, -r3.y, l(2.000000), l(1.000000)
-mul r1.xyzw, r1.xxxx, cb7[14].xyzw
-mad r1.xyzw, r0.wwww, cb7[13].xyzw, r1.xyzw
-mad r1.xyzw, r4.xxxx, cb7[15].xyzw, r1.xyzw
-add r1.xyzw, r1.xyzw, cb7[16].xyzw
-div r1.xyz, r1.xyzx, r1.wwww
-mul r4.xyz, r1.yyyy, cb7[10].xyzx
-mad r1.xyw, r1.xxxx, cb7[9].xyxz, r4.xyxz
-mad r1.xyz, r1.zzzz, cb7[11].xyzx, r1.xywx
-add r1.xyz, r1.xyzx, cb7[12].xyzx
-add r1.xyz, -r2.yzwy, r1.xyzx
-dp3 r0.w, r1.xyzx, r1.xyzx
-sqrt r0.w, r0.w
-max r0.w, r0.w, l(1.000000)
-mul r1.x, r0.w, l(0.015625)
-max r1.x, r1.x, l(1.000000)
-mov r3.y, l(0)
-mov r4.zw, l(0,0,0,0)
-mov r1.yz, l(0,0,0,0)
-mov r5.z, l(0)
+
+#line 107
+endif   // r0.x <- OUT.ShouldDiscard
+
+#line 110
+nop 
+mov r2.zw, r2.zzzw
+mov r1.w, r1.w
+
+#line 110 "D:\zed AI ver\HLSL\Water\Water.hlsli"
+mul r2.z, r2.z, l(2.000000)
+mov r3.x, l(-1.000000)
+add r2.z, r2.z, r3.x  // r2.z <- ndcCoords.x
+mul r2.w, r2.w, l(2.000000)
+mov r2.w, -r2.w
+add r2.w, r2.w, l(1.000000)  // r2.w <- ndcCoords.y
+mov r1.w, r1.w  // r1.w <- ndcCoords.z
+
+#line 112
+mul r3.xyzw, r2.zzzz, cb7[13].xyzw
+mul r4.xyzw, r2.wwww, cb7[14].xyzw
+add r3.xyzw, r3.xyzw, r4.xyzw
+mul r4.xyzw, r1.wwww, cb7[15].xyzw
+add r3.xyzw, r3.xyzw, r4.xyzw
+mul r4.xyzw, cb7[16].xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.xyzw, r3.xyzw, r4.xyzw  // r3.x <- viewPos.x; r3.y <- viewPos.y; r3.z <- viewPos.z; r3.w <- viewPos.w
+
+#line 113
+div r3.xyz, r3.xyzx, r3.wwww
+
+#line 114
+mul r4.xyz, r3.xxxx, cb7[9].xyzx
+mul r3.xyw, r3.yyyy, cb7[10].xyxz
+add r3.xyw, r3.xyxw, r4.xyxz
+mul r4.xyz, r3.zzzz, cb7[11].xyzx
+add r3.xyz, r3.xywx, r4.xyzx
+mul r4.xyz, cb7[12].xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+add r3.xyz, r3.xyzx, r4.xyzx  // r3.x <- worldPos.x; r3.y <- worldPos.y; r3.z <- worldPos.z
+
+#line 115
+mov r3.xyz, r3.xyzx  // r3.x <- <GetWorldPosFromDepth return value>.x; r3.y <- <GetWorldPosFromDepth return value>.y; r3.z <- <GetWorldPosFromDepth return value>.z
+
+#line 110 "D:\zed AI ver\HLSL\Caustics\Caustics_VS.hlsl"
+mov r3.xyz, r3.xyzx  // r3.x <- worldPosBehind.x; r3.y <- worldPosBehind.y; r3.z <- worldPosBehind.z
+
+#line 111
+mov r4.xyz, -r1.xyzx
+add r3.xyz, r3.xyzx, r4.xyzx
+dp3 r1.w, r3.xyzx, r3.xyzx
+sqrt r1.w, r1.w  // r1.w <- maxDist
+
+#line 112
+max r1.w, r1.w, l(1.000000)
+
+#line 115
+mov r2.z, l(0)  // r2.z <- t
+
+#line 118
+div r2.w, r1.w, l(64.000000)
+max r2.w, r2.w, l(1.000000)  // r2.w <- stepSize
+
+#line 119
+mov r3.x, l(64)  // r3.x <- maxSteps
+
+#line 120
+mov r3.y, l(0)  // r3.y <- hit
+
+#line 124
+mov r3.z, l(0)  // r3.z <- i
+mov r4.x, r3.y  // r4.x <- hit
+mov r4.y, r3.z  // r4.y <- i
+mov r5.x, r2.z  // r5.x <- t
 loop 
-  ilt r1.w, r1.z, l(64)
-  lt r5.w, r5.z, r0.w
-  and r1.w, r1.w, r5.w
-  breakc_z r1.w
-  add r1.w, r1.x, r5.z
-  mad r6.xyz, r0.xyzx, r1.wwww, r2.yzwy
-  mul r7.xyzw, r6.yyyy, cb6[5].xyzw
-  mad r7.xyzw, r6.xxxx, cb6[4].xyzw, r7.xyzw
-  mad r6.xyzw, r6.zzzz, cb6[6].xyzw, r7.xyzw
-  add r6.xyzw, r6.xyzw, cb6[7].xyzw
-  div r6.xy, r6.xyxx, r6.wwww
-  mad r6.xy, r6.xyxx, l(0.500000, -0.500000, 0.000000, 0.000000), l(0.500000, 0.500000, 0.000000, 0.000000)
-  lt r7.xy, r6.xyxx, l(0.000000, 0.000000, 0.000000, 0.000000)
-  lt r7.zw, l(0.000000, 0.000000, 1.000000, 1.000000), r6.xxxy
-  or r5.w, r7.z, r7.x
-  or r5.w, r7.y, r5.w
-  or r5.w, r7.w, r5.w
-  lt r7.x, r6.w, l(0.000000)
-  or r5.w, r5.w, r7.x
-  if_nz r5.w
-    mov r5.z, r1.w
+  ilt r3.w, r4.y, r3.x
+  lt r4.z, r5.x, r1.w
+  and r3.w, r3.w, r4.z
+  breakc_z r3.w
+
+#line 126
+  add r3.w, r2.w, r5.x  // r3.w <- t
+
+#line 127
+  mul r6.xyz, r0.yzwy, r3.wwww
+  add r6.xyz, r1.xyzx, r6.xyzx  // r6.x <- p.x; r6.y <- p.y; r6.z <- p.z
+
+#line 128
+  mul r7.xyzw, r6.xxxx, cb6[4].xyzw
+  mul r8.xyzw, r6.yyyy, cb6[5].xyzw
+  add r7.xyzw, r7.xyzw, r8.xyzw
+  mul r6.xyzw, r6.zzzz, cb6[6].xyzw
+  add r6.xyzw, r6.xyzw, r7.xyzw
+  mul r7.xyzw, cb6[7].xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+  add r6.xyzw, r6.xyzw, r7.xyzw  // r6.x <- clip.x; r6.y <- clip.y; r6.z <- clip.z; r6.w <- clip.w
+
+#line 129
+  div r4.zw, r6.xxxy, r6.wwww
+  mul r4.zw, r4.zzzw, l(0.000000, 0.000000, 0.500000, -0.500000)
+  add r4.zw, r4.zzzw, l(0.000000, 0.000000, 0.500000, 0.500000)  // r4.z <- uvScreen.x; r4.w <- uvScreen.y
+
+#line 132
+  lt r6.x, r4.z, l(0.000000)
+  lt r6.y, l(1.000000), r4.z
+  or r6.x, r6.y, r6.x
+  lt r6.y, r4.w, l(0.000000)
+  or r6.x, r6.y, r6.x
+  lt r6.y, l(1.000000), r4.w
+  or r6.x, r6.y, r6.x
+  lt r6.y, r6.w, l(0.000000)
+  or r6.x, r6.y, r6.x
+  if_nz r6.x
+
+#line 134
+    mov r5.x, r3.w  // r5.x <- t
     break 
-  endif 
-  mul r6.xy, r3.zwzz, r6.xyxx
-  ftoi r4.xy, r6.xyxx
-  ld_indexable(texture2d)(float,float,float,float) r4.x, r4.xyzw, t0.xyzw
-  div r4.y, r6.z, r6.w
-  ge r4.x, r4.y, r4.x
-  if_nz r4.x
-    mov r5.z, r1.w
-    mov r1.y, l(-1)
+
+#line 135
+  endif   // r3.w <- t
+
+#line 137
+  utof r6.x, r2.x
+  mul r4.z, r4.z, r6.x
+  utof r6.x, r2.y
+  mul r4.w, r4.w, r6.x
+  ftoi r7.x, r4.z  // r7.x <- texel.x
+  ftoi r7.y, r4.w  // r7.y <- texel.y
+
+#line 138
+  mov r7.zw, l(0,0,0,0)
+  ld_indexable(texture2d)(float,float,float,float) r4.z, r7.xyzw, t0.yzxw
+  mov r4.z, r4.z  // r4.z <- depthZ
+
+#line 139
+  div r4.w, r6.z, r6.w  // r4.w <- curZ
+
+#line 142
+  ge r4.z, r4.w, r4.z
+  if_nz r4.z
+
+#line 145
+    mov r4.x, l(-1)
+
+#line 146
+    mov r5.x, r3.w  // r5.x <- t
     break 
-  endif 
-  iadd r3.x, r1.z, l(1)
-  mov r1.yz, r3.yyxy
-  mov r5.z, r1.w
+
+#line 147
+  endif   // r3.w <- t
+
+#line 124
+  iadd r4.y, r4.y, l(1)
+
+#line 148
+  mov r5.x, r3.w  // r5.x <- t
 endloop 
-if_nz r1.y
-  add r5.x, -r1.x, r5.z
-  add r0.w, r5.z, r5.x
-  mul r5.y, r0.w, l(0.500000)
-  mad r1.xyz, r0.xyzx, r5.yyyy, r2.yzwy
-  mul r4.xyzw, r1.yyyy, cb6[5].xyzw
-  mad r4.xyzw, r1.xxxx, cb6[4].xyzw, r4.xyzw
-  mad r1.xyzw, r1.zzzz, cb6[6].xyzw, r4.xyzw
-  add r1.xyzw, r1.xyzw, cb6[7].xyzw
-  div r1.xyz, r1.xyzx, r1.wwww
-  mad r1.xy, r1.xyxx, l(0.500000, -0.500000, 0.000000, 0.000000), l(0.500000, 0.500000, 0.000000, 0.000000)
-  mul r1.xy, r3.zwzz, r1.xyxx
-  ftoi r4.xy, r1.xyxx
+
+#line 151
+if_nz r4.x
+
+#line 153
+  mov r1.w, -r2.w
+  add r5.z, r1.w, r5.x  // r5.z <- t0
+
+#line 154
+  mov r5.x, r5.x  // r5.x <- t1
+
+#line 159
+  add r1.w, r5.x, r5.z
+  mul r1.w, r1.w, l(0.500000)  // r1.w <- tMid
+
+#line 160
+  mul r3.xyz, r0.yzwy, r1.wwww
+  add r3.xyz, r1.xyzx, r3.xyzx  // r3.x <- pMid.x; r3.y <- pMid.y; r3.z <- pMid.z
+
+#line 161
+  mul r4.xyzw, r3.xxxx, cb6[4].xyzw
+  mul r6.xyzw, r3.yyyy, cb6[5].xyzw
+  add r4.xyzw, r4.xyzw, r6.xyzw
+  mul r3.xyzw, r3.zzzz, cb6[6].xyzw
+  add r3.xyzw, r3.xyzw, r4.xyzw
+  mul r4.xyzw, cb6[7].xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+  add r3.xyzw, r3.xyzw, r4.xyzw  // r3.x <- clipMid.x; r3.y <- clipMid.y; r3.z <- clipMid.z; r3.w <- clipMid.w
+
+#line 162
+  div r2.zw, r3.xxxy, r3.wwww
+  mul r2.zw, r2.zzzw, l(0.000000, 0.000000, 0.500000, -0.500000)
+  add r2.zw, r2.zzzw, l(0.000000, 0.000000, 0.500000, 0.500000)  // r2.z <- uvMid.x; r2.w <- uvMid.y
+
+#line 164
+  utof r3.x, r2.x
+  mul r2.z, r2.z, r3.x
+  utof r3.x, r2.y
+  mul r2.w, r2.w, r3.x
+  ftoi r4.x, r2.z  // r4.x <- texelMid.x
+  ftoi r4.y, r2.w  // r4.y <- texelMid.y
+
+#line 165
   mov r4.zw, l(0,0,0,0)
-  ld_indexable(texture2d)(float,float,float,float) r0.w, r4.xyzw, t0.yzwx
-  ge r0.w, r1.z, r0.w
-  movc r1.xy, r0.wwww, r5.xyxx, r5.yzyy
-  add r0.w, r1.y, r1.x
-  mul r1.z, r0.w, l(0.500000)
-  mad r4.xyz, r0.xyzx, r1.zzzz, r2.yzwy
-  mul r6.xyzw, r4.yyyy, cb6[5].xyzw
-  mad r6.xyzw, r4.xxxx, cb6[4].xyzw, r6.xyzw
-  mad r4.xyzw, r4.zzzz, cb6[6].xyzw, r6.xyzw
-  add r4.xyzw, r4.xyzw, cb6[7].xyzw
-  div r4.xyz, r4.xyzx, r4.wwww
-  mad r3.xy, r4.xyxx, l(0.500000, -0.500000, 0.000000, 0.000000), l(0.500000, 0.500000, 0.000000, 0.000000)
-  mul r3.xy, r3.zwzz, r3.xyxx
-  ftoi r6.xy, r3.xyxx
-  mov r6.zw, l(0,0,0,0)
-  ld_indexable(texture2d)(float,float,float,float) r0.w, r6.xyzw, t0.yzwx
-  ge r0.w, r4.z, r0.w
-  movc r1.xy, r0.wwww, r1.xzxx, r1.zyzz
-  add r0.w, r1.y, r1.x
-  mul r1.z, r0.w, l(0.500000)
-  mad r4.xyz, r0.xyzx, r1.zzzz, r2.yzwy
-  mul r6.xyzw, r4.yyyy, cb6[5].xyzw
-  mad r6.xyzw, r4.xxxx, cb6[4].xyzw, r6.xyzw
-  mad r4.xyzw, r4.zzzz, cb6[6].xyzw, r6.xyzw
-  add r4.xyzw, r4.xyzw, cb6[7].xyzw
-  div r4.xyz, r4.xyzx, r4.wwww
-  mad r3.xy, r4.xyxx, l(0.500000, -0.500000, 0.000000, 0.000000), l(0.500000, 0.500000, 0.000000, 0.000000)
-  mul r3.xy, r3.zwzz, r3.xyxx
-  ftoi r6.xy, r3.xyxx
-  mov r6.zw, l(0,0,0,0)
-  ld_indexable(texture2d)(float,float,float,float) r0.w, r6.xyzw, t0.yzwx
-  ge r0.w, r4.z, r0.w
-  movc r1.xy, r0.wwww, r1.xzxx, r1.zyzz
-  add r0.w, r1.y, r1.x
-  mul r1.z, r0.w, l(0.500000)
-  mad r4.xyz, r0.xyzx, r1.zzzz, r2.yzwy
-  mul r6.xyzw, r4.yyyy, cb6[5].xyzw
-  mad r6.xyzw, r4.xxxx, cb6[4].xyzw, r6.xyzw
-  mad r4.xyzw, r4.zzzz, cb6[6].xyzw, r6.xyzw
-  add r4.xyzw, r4.xyzw, cb6[7].xyzw
-  div r4.xyz, r4.xyzx, r4.wwww
-  mad r3.xy, r4.xyxx, l(0.500000, -0.500000, 0.000000, 0.000000), l(0.500000, 0.500000, 0.000000, 0.000000)
-  mul r3.xy, r3.zwzz, r3.xyxx
-  ftoi r6.xy, r3.xyxx
-  mov r6.zw, l(0,0,0,0)
-  ld_indexable(texture2d)(float,float,float,float) r0.w, r6.xyzw, t0.yzwx
-  ge r0.w, r4.z, r0.w
-  movc r1.xy, r0.wwww, r1.xzxx, r1.zyzz
-  add r0.w, r1.y, r1.x
-  mul r0.w, r0.w, l(0.500000)
-  mad r1.xzw, r0.xxyz, r0.wwww, r2.yyzw
-  mul r4.xyzw, r1.zzzz, cb6[5].xyzw
-  mad r4.xyzw, r1.xxxx, cb6[4].xyzw, r4.xyzw
-  mad r4.xyzw, r1.wwww, cb6[6].xyzw, r4.xyzw
-  add r4.xyzw, r4.xyzw, cb6[7].xyzw
-  div r1.xzw, r4.xxyz, r4.wwww
-  mad r1.xz, r1.xxzx, l(0.500000, 0.000000, -0.500000, 0.000000), l(0.500000, 0.000000, 0.500000, 0.000000)
-  mul r1.xz, r3.zzwz, r1.xxzx
-  ftoi r3.xy, r1.xzxx
-  mov r3.zw, l(0,0,0,0)
-  ld_indexable(texture2d)(float,float,float,float) r1.x, r3.xyzw, t0.xyzw
-  ge r1.x, r1.w, r1.x
-  movc r0.w, r1.x, r0.w, r1.y
-  mad r1.xyz, r0.xyzx, r0.wwww, r2.yzwy
-  mov r2.x, l(1.000000)
-else 
-  mad r1.xyz, r0.xyzx, r5.zzzz, r2.yzwy
-  mov r2.x, l(-1.000000)
+  ld_indexable(texture2d)(float,float,float,float) r2.z, r4.xyzw, t0.yzxw
+  mov r2.z, r2.z  // r2.z <- depthMid
+
+#line 166
+  div r2.w, r3.z, r3.w  // r2.w <- curZMid
+
+#line 168
+  ge r2.z, r2.w, r2.z
+  if_nz r2.z
+
+#line 169
+    mov r5.x, r1.w
+  else   // Prior locations: r5.x <- t
+
+#line 171
+    mov r5.z, r1.w
+  endif 
+
+#line 159
+  add r1.w, r5.x, r5.z
+  mul r5.y, r1.w, l(0.500000)  // r5.y <- tMid
+
+#line 160
+  mul r3.xyz, r0.yzwy, r5.yyyy
+  add r3.xyz, r1.xyzx, r3.xyzx  // r3.x <- pMid.x; r3.y <- pMid.y; r3.z <- pMid.z
+
+#line 161
+  mul r4.xyzw, r3.xxxx, cb6[4].xyzw
+  mul r6.xyzw, r3.yyyy, cb6[5].xyzw
+  add r4.xyzw, r4.xyzw, r6.xyzw
+  mul r3.xyzw, r3.zzzz, cb6[6].xyzw
+  add r3.xyzw, r3.xyzw, r4.xyzw
+  mul r4.xyzw, cb6[7].xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+  add r3.xyzw, r3.xyzw, r4.xyzw  // r3.x <- clipMid.x; r3.y <- clipMid.y; r3.z <- clipMid.z; r3.w <- clipMid.w
+
+#line 162
+  div r2.zw, r3.xxxy, r3.wwww
+  mul r2.zw, r2.zzzw, l(0.000000, 0.000000, 0.500000, -0.500000)
+  add r2.zw, r2.zzzw, l(0.000000, 0.000000, 0.500000, 0.500000)  // r2.z <- uvMid.x; r2.w <- uvMid.y
+
+#line 164
+  utof r1.w, r2.x
+  mul r1.w, r1.w, r2.z
+  utof r2.z, r2.y
+  mul r2.z, r2.z, r2.w
+  ftoi r4.x, r1.w  // r4.x <- texelMid.x
+  ftoi r4.y, r2.z  // r4.y <- texelMid.y
+
+#line 165
+  mov r4.zw, l(0,0,0,0)
+  ld_indexable(texture2d)(float,float,float,float) r1.w, r4.xyzw, t0.yzwx
+  mov r1.w, r1.w  // r1.w <- depthMid
+
+#line 166
+  div r2.z, r3.z, r3.w  // r2.z <- curZMid
+
+#line 168
+  ge r1.w, r2.z, r1.w
+  if_nz r1.w
+
+#line 169
+    mov r5.w, r5.y  // r5.w <- t1
+    mov r5.xy, r5.wzww  // r5.y <- t0; r5.x <- t1
+  else   // Prior locations: r5.x <- t; r5.z <- t0; r5.y <- tMid
+
+#line 171
+    mov r5.y, r5.y  // r5.y <- t0
+  endif 
+
+#line 159
+  add r1.w, r5.x, r5.y
+  mul r5.z, r1.w, l(0.500000)  // r5.z <- tMid
+
+#line 160
+  mul r3.xyz, r0.yzwy, r5.zzzz
+  add r3.xyz, r1.xyzx, r3.xyzx  // r3.x <- pMid.x; r3.y <- pMid.y; r3.z <- pMid.z
+
+#line 161
+  mul r4.xyzw, r3.xxxx, cb6[4].xyzw
+  mul r6.xyzw, r3.yyyy, cb6[5].xyzw
+  add r4.xyzw, r4.xyzw, r6.xyzw
+  mul r3.xyzw, r3.zzzz, cb6[6].xyzw
+  add r3.xyzw, r3.xyzw, r4.xyzw
+  mul r4.xyzw, cb6[7].xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+  add r3.xyzw, r3.xyzw, r4.xyzw  // r3.x <- clipMid.x; r3.y <- clipMid.y; r3.z <- clipMid.z; r3.w <- clipMid.w
+
+#line 162
+  div r2.zw, r3.xxxy, r3.wwww
+  mul r2.zw, r2.zzzw, l(0.000000, 0.000000, 0.500000, -0.500000)
+  add r2.zw, r2.zzzw, l(0.000000, 0.000000, 0.500000, 0.500000)  // r2.z <- uvMid.x; r2.w <- uvMid.y
+
+#line 164
+  utof r1.w, r2.x
+  mul r1.w, r1.w, r2.z
+  utof r2.z, r2.y
+  mul r2.z, r2.z, r2.w
+  ftoi r4.x, r1.w  // r4.x <- texelMid.x
+  ftoi r4.y, r2.z  // r4.y <- texelMid.y
+
+#line 165
+  mov r4.zw, l(0,0,0,0)
+  ld_indexable(texture2d)(float,float,float,float) r1.w, r4.xyzw, t0.yzwx
+  mov r1.w, r1.w  // r1.w <- depthMid
+
+#line 166
+  div r2.z, r3.z, r3.w  // r2.z <- curZMid
+
+#line 168
+  ge r1.w, r2.z, r1.w
+  if_nz r1.w
+
+#line 169
+    mov r5.w, r5.z  // r5.w <- t1
+    mov r5.xz, r5.wwyw  // r5.z <- t0; r5.x <- t1
+  else   // Prior locations: r5.y <- t0; r5.z <- tMid
+
+#line 171
+    mov r5.z, r5.z  // r5.z <- t0
+  endif 
+
+#line 159
+  add r1.w, r5.x, r5.z
+  mul r5.y, r1.w, l(0.500000)  // r5.y <- tMid
+
+#line 160
+  mul r3.xyz, r0.yzwy, r5.yyyy
+  add r3.xyz, r1.xyzx, r3.xyzx  // r3.x <- pMid.x; r3.y <- pMid.y; r3.z <- pMid.z
+
+#line 161
+  mul r4.xyzw, r3.xxxx, cb6[4].xyzw
+  mul r6.xyzw, r3.yyyy, cb6[5].xyzw
+  add r4.xyzw, r4.xyzw, r6.xyzw
+  mul r3.xyzw, r3.zzzz, cb6[6].xyzw
+  add r3.xyzw, r3.xyzw, r4.xyzw
+  mul r4.xyzw, cb6[7].xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+  add r3.xyzw, r3.xyzw, r4.xyzw  // r3.x <- clipMid.x; r3.y <- clipMid.y; r3.z <- clipMid.z; r3.w <- clipMid.w
+
+#line 162
+  div r2.zw, r3.xxxy, r3.wwww
+  mul r2.zw, r2.zzzw, l(0.000000, 0.000000, 0.500000, -0.500000)
+  add r2.zw, r2.zzzw, l(0.000000, 0.000000, 0.500000, 0.500000)  // r2.z <- uvMid.x; r2.w <- uvMid.y
+
+#line 164
+  utof r1.w, r2.x
+  mul r1.w, r1.w, r2.z
+  utof r2.z, r2.y
+  mul r2.z, r2.z, r2.w
+  ftoi r4.x, r1.w  // r4.x <- texelMid.x
+  ftoi r4.y, r2.z  // r4.y <- texelMid.y
+
+#line 165
+  mov r4.zw, l(0,0,0,0)
+  ld_indexable(texture2d)(float,float,float,float) r1.w, r4.xyzw, t0.yzwx
+  mov r1.w, r1.w  // r1.w <- depthMid
+
+#line 166
+  div r2.z, r3.z, r3.w  // r2.z <- curZMid
+
+#line 168
+  ge r1.w, r2.z, r1.w
+  if_nz r1.w
+
+#line 169
+    mov r5.w, r5.y  // r5.w <- t1
+    mov r5.xy, r5.wzww  // r5.y <- t0; r5.x <- t1
+  else   // Prior locations: r5.z <- t0; r5.y <- tMid
+
+#line 171
+    mov r5.y, r5.y  // r5.y <- t0
+  endif 
+
+#line 159
+  add r1.w, r5.x, r5.y
+  mul r1.w, r1.w, l(0.500000)  // r1.w <- tMid
+
+#line 160
+  mul r3.xyz, r0.yzwy, r1.wwww
+  add r3.xyz, r1.xyzx, r3.xyzx  // r3.x <- pMid.x; r3.y <- pMid.y; r3.z <- pMid.z
+
+#line 161
+  mul r4.xyzw, r3.xxxx, cb6[4].xyzw
+  mul r6.xyzw, r3.yyyy, cb6[5].xyzw
+  add r4.xyzw, r4.xyzw, r6.xyzw
+  mul r3.xyzw, r3.zzzz, cb6[6].xyzw
+  add r3.xyzw, r3.xyzw, r4.xyzw
+  mul r4.xyzw, cb6[7].xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+  add r3.xyzw, r3.xyzw, r4.xyzw  // r3.x <- clipMid.x; r3.y <- clipMid.y; r3.z <- clipMid.z; r3.w <- clipMid.w
+
+#line 162
+  div r2.zw, r3.xxxy, r3.wwww
+  mul r2.zw, r2.zzzw, l(0.000000, 0.000000, 0.500000, -0.500000)
+  add r2.zw, r2.zzzw, l(0.000000, 0.000000, 0.500000, 0.500000)  // r2.z <- uvMid.x; r2.w <- uvMid.y
+
+#line 164
+  utof r2.x, r2.x
+  mul r2.x, r2.x, r2.z
+  utof r2.y, r2.y
+  mul r2.y, r2.y, r2.w
+  ftoi r4.x, r2.x  // r4.x <- texelMid.x
+  ftoi r4.y, r2.y  // r4.y <- texelMid.y
+
+#line 165
+  mov r4.zw, l(0,0,0,0)
+  ld_indexable(texture2d)(float,float,float,float) r2.x, r4.xyzw, t0.xyzw  // r2.x <- depthMid
+
+#line 166
+  div r2.y, r3.z, r3.w  // r2.y <- curZMid
+
+#line 168
+  ge r2.x, r2.y, r2.x
+  if_nz r2.x
+
+#line 169
+    mov r5.x, r1.w
+
+#line 171
+  endif 
+
+#line 173
+  mul r2.xyz, r0.yzwy, r5.xxxx
+  add r2.xyz, r1.xyzx, r2.xyzx  // r2.x <- hitPos.x; r2.y <- hitPos.y; r2.z <- hitPos.z
+
+#line 174
+else   // Prior locations: r2.x <- w; r2.y <- h; r5.y <- oldTexel.y; r1.w <- maxDist; r5.x <- t; r2.w <- stepSize; r3.x <- maxSteps; r4.x <- hit; r4.y <- i; r6.z <- clip.z; r6.w <- clip.w; r4.w <- curZ
+
+#line 178
+  mov r0.x, l(-1.000000)
+
+#line 179
+  mul r0.yzw, r0.yyzw, r5.xxxx
+  add r2.xyz, r0.yzwy, r1.xyzx  // r2.x <- hitPos.x; r2.y <- hitPos.y; r2.z <- hitPos.z
+
+#line 180
 endif 
-mul r0.xyzw, r1.yyyy, cb6[5].xyzw
-mad r0.xyzw, r1.xxxx, cb6[4].xyzw, r0.xyzw
-mad r0.xyzw, r1.zzzz, cb6[6].xyzw, r0.xyzw
-add o0.xyzw, r0.xyzw, cb6[7].xyzw
-mov o1.xyzw, r2.yzwx
-mov o2.xyz, r1.xyzx
+
+#line 182
+mov r2.xyz, r2.xyzx  // r2.x <- OUT.NewPos.x; r2.y <- OUT.NewPos.y; r2.z <- OUT.NewPos.z
+
+#line 184
+mul r3.xyzw, r2.xxxx, cb6[4].xyzw
+mul r4.xyzw, r2.yyyy, cb6[5].xyzw
+add r3.xyzw, r3.xyzw, r4.xyzw
+mul r4.xyzw, r2.zzzz, cb6[6].xyzw
+add r3.xyzw, r3.xyzw, r4.xyzw
+mul r4.xyzw, cb6[7].xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r3.xyzw, r3.xyzw, r4.xyzw  // r3.x <- OUT.SVPosition.x; r3.y <- OUT.SVPosition.y; r3.z <- OUT.SVPosition.z; r3.w <- OUT.SVPosition.w
+
+#line 185
+mov o0.xyzw, r3.xyzw  // o0.x <- <main return value>.SVPosition.x; o0.y <- <main return value>.SVPosition.y; o0.z <- <main return value>.SVPosition.z; o0.w <- <main return value>.SVPosition.w
+mov o1.xyz, r1.xyzx  // o1.x <- <main return value>.OldPos.x; o1.y <- <main return value>.OldPos.y; o1.z <- <main return value>.OldPos.z
+mov o1.w, r0.x  // o1.w <- <main return value>.ShouldDiscard
+mov o2.xyz, r2.xyzx  // o2.x <- <main return value>.NewPos.x; o2.y <- <main return value>.NewPos.y; o2.z <- <main return value>.NewPos.z
 ret 
-// Approximately 289 instruction slots used
+// Approximately 510 instruction slots used

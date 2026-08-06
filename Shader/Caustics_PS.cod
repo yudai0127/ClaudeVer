@@ -44,56 +44,150 @@
 // SV_TARGET                0   xyzw        0   TARGET   float   xyzw
 //
 ps_5_0
-dcl_globalFlags refactoringAllowed
+dcl_globalFlags refactoringAllowed | skipOptimization
 dcl_constantbuffer CB8[5], immediateIndexed
 dcl_input_ps_siv linear noperspective v0.w, position
 dcl_input_ps linear v1.xyz
 dcl_input_ps linear v1.w
 dcl_input_ps linear v2.xyz
 dcl_output o0.xyzw
-dcl_temps 2
+dcl_temps 3
+//
+// Initial variable locations:
+//   v0.x <- IN.SVPosition.x; v0.y <- IN.SVPosition.y; v0.z <- IN.SVPosition.z; v0.w <- IN.SVPosition.w; 
+//   v1.x <- IN.OldPos.x; v1.y <- IN.OldPos.y; v1.z <- IN.OldPos.z; 
+//   v2.x <- IN.NewPos.x; v2.y <- IN.NewPos.y; v2.z <- IN.NewPos.z; 
+//   v1.w <- IN.ShouldDiscard; 
+//   o0.x <- <main return value>.x; o0.y <- <main return value>.y; o0.z <- <main return value>.z; o0.w <- <main return value>.w
+//
+#line 24 "D:\zed AI ver\HLSL\Caustics\Caustics_PS.hlsl"
 lt r0.x, v1.w, l(0.000000)
-discard_nz r0.x
-deriv_rtx_coarse r0.xyz, v2.xyzx
+if_nz r0.x
+
+#line 26
+  discard_nz l(-1)
+
+#line 27
+endif 
+
+#line 29
+mov r0.xyz, v1.xyzx  // r0.x <- oldPos.x; r0.y <- oldPos.y; r0.z <- oldPos.z
+
+#line 30
+mov r1.xyz, v2.xyzx  // r1.x <- newPos.x; r1.y <- newPos.y; r1.z <- newPos.z
+
+#line 33
+deriv_rtx_coarse r2.xyz, v1.xyzx
+dp3 r0.w, r2.xyzx, r2.xyzx
+sqrt r0.w, r0.w  // r0.w <- dx_old
+
+#line 34
+deriv_rty_coarse r2.xyz, v1.xyzx
+dp3 r1.w, r2.xyzx, r2.xyzx
+sqrt r1.w, r1.w  // r1.w <- dy_old
+
+#line 36
+deriv_rtx_coarse r2.xyz, v2.xyzx
+dp3 r2.x, r2.xyzx, r2.xyzx
+sqrt r2.x, r2.x  // r2.x <- dx_new
+
+#line 37
+deriv_rty_coarse r2.yzw, v2.xxyz
+dp3 r2.y, r2.yzwy, r2.yzwy
+sqrt r2.y, r2.y  // r2.y <- dy_new
+
+#line 39
+mul r0.w, r0.w, r1.w  // r0.w <- oldArea
+
+#line 40
+mul r1.w, r2.y, r2.x  // r1.w <- newArea
+
+#line 43
+lt r2.x, r1.w, l(0.000010)
+ne r2.y, r1.w, r1.w
+or r2.x, r2.y, r2.x
+and r2.y, r1.w, l(0x7fffffff)
+ieq r2.y, r2.y, l(0x7f800000)
+or r2.x, r2.y, r2.x
+if_nz r2.x
+
+#line 45
+  discard_nz l(-1)
+
+#line 46
+endif 
+
+#line 48
+mov r2.x, l(0.000500)  // r2.x <- absorptionCoeff
+
+#line 49
+mov r0.xyz, -r0.xyzx
+add r0.xyz, r0.xyzx, r1.xyzx
 dp3 r0.x, r0.xyzx, r0.xyzx
-deriv_rty_coarse r0.yzw, v2.xxyz
-dp3 r0.y, r0.yzwy, r0.yzwy
-sqrt r0.xy, r0.xyxx
-mul r0.x, r0.y, r0.x
-lt r0.y, r0.x, l(0.000010)
-ne r0.z, r0.x, r0.x
-or r0.y, r0.z, r0.y
-and r0.z, r0.x, l(0x7fffffff)
-ieq r0.z, r0.z, l(0x7f800000)
-or r0.y, r0.z, r0.y
-discard_nz r0.y
-deriv_rtx_coarse r0.yzw, v1.xxyz
-dp3 r0.y, r0.yzwy, r0.yzwy
-deriv_rty_coarse r1.xyz, v1.xyzx
-dp3 r0.z, r1.xyzx, r1.xyzx
-sqrt r0.yz, r0.yyzy
-mul r0.y, r0.z, r0.y
-add r1.xyz, -v1.xyzx, v2.xyzx
-dp3 r0.z, r1.xyzx, r1.xyzx
-sqrt r0.z, r0.z
-min r0.z, r0.z, l(3000.000000)
-div r0.x, r0.y, r0.x
-mul r0.y, r0.z, l(-0.000721)
-exp r0.y, r0.y
-mad r0.x, r0.x, r0.y, l(-0.900000)
+sqrt r0.x, r0.x  // r0.x <- dist
+
+#line 50
+min r0.x, r0.x, l(3000.000000)
+
+#line 53
+div r0.y, r0.w, r1.w
+mov r0.z, -r2.x
+mul r0.x, r0.x, r0.z
+mul r0.x, r0.x, l(1.442695)
+exp r0.x, r0.x
+mul r0.x, r0.x, r0.y  // r0.x <- col
+
+#line 56
+mov r0.y, l(-0.900000)
+add r0.x, r0.y, r0.x
+max r0.x, r0.x, l(0.000000)  // r0.x <- col
+
+#line 58
 max r0.x, r0.x, l(0.000000)
 max r0.y, cb8[4].z, l(0.000100)
 log r0.x, r0.x
 mul r0.x, r0.x, r0.y
-exp r0.x, r0.x
+exp r0.x, r0.x  // r0.x <- col
+
+#line 59
 mul r0.x, r0.x, cb8[4].w
+
+#line 62
 min r0.x, r0.x, l(5.000000)
-add r0.y, -v0.w, l(60000.000000)
-mul_sat r0.y, r0.y, l(0.000033)
-mad r0.z, r0.y, l(-2.000000), l(3.000000)
+
+#line 64
+mov r0.y, l(30000.000000)  // r0.y <- fadeStart
+
+#line 65
+mov r0.z, l(60000.000000)  // r0.z <- fadeEnd
+
+#line 68
+mov r0.w, -v0.w
+add r0.w, r0.w, r0.z
+mov r0.y, -r0.y
+add r0.y, r0.y, r0.z
+div r0.y, r0.w, r0.y
+max r0.y, r0.y, l(0.000000)
+min r0.y, r0.y, l(1.000000)  // r0.y <- fadeFactor
+
+#line 71
+mov r0.z, l(-0.000000)
+add r0.w, r0.z, l(1.000000)
+add r0.y, r0.z, r0.y
+div r0.z, l(1.000000, 1.000000, 1.000000, 1.000000), r0.w
+mul r0.y, r0.z, r0.y
+max r0.y, r0.y, l(0.000000)
+min r0.y, r0.y, l(1.000000)
+mul r0.z, r0.y, l(-2.000000)
+add r0.z, r0.z, l(3.000000)
 mul r0.y, r0.y, r0.y
-mul r0.y, r0.y, r0.z
-mul o0.x, r0.y, r0.x
-mov o0.yzw, l(0,0,0,1.000000)
+mul r0.y, r0.y, r0.z  // r0.y <- fadeFactor
+
+#line 74
+mul r0.x, r0.y, r0.x
+
+#line 76
+mov r0.yzw, l(0,0,0,1.000000)
+mov o0.xyzw, r0.xyzw
 ret 
-// Approximately 44 instruction slots used
+// Approximately 75 instruction slots used

@@ -71,7 +71,7 @@
 // TEXCOORD                 4   xyzw        8     NONE   float   xyzw
 //
 vs_5_0
-dcl_globalFlags refactoringAllowed
+dcl_globalFlags refactoringAllowed | skipOptimization
 dcl_constantbuffer CB0[4], immediateIndexed
 dcl_constantbuffer CB1[4], immediateIndexed
 dcl_constantbuffer CB4[16], immediateIndexed
@@ -88,60 +88,210 @@ dcl_output o5.xyzw
 dcl_output o6.xyzw
 dcl_output o7.xyzw
 dcl_output o8.xyzw
-dcl_temps 3
-mul r0.xyzw, v0.yyyy, cb0[1].xyzw
-mad r0.xyzw, v0.xxxx, cb0[0].xyzw, r0.xyzw
-mad r0.xyzw, v0.zzzz, cb0[2].xyzw, r0.xyzw
-add r0.xyzw, r0.xyzw, cb0[3].xyzw
-mul r1.xyzw, r0.yyyy, cb1[1].xyzw
-mad r1.xyzw, r0.xxxx, cb1[0].xyzw, r1.xyzw
-mad r1.xyzw, r0.zzzz, cb1[2].xyzw, r1.xyzw
-mad o0.xyzw, r0.wwww, cb1[3].xyzw, r1.xyzw
+dcl_temps 10
+//
+// Initial variable locations:
+//   v0.x <- vin.position.x; v0.y <- vin.position.y; v0.z <- vin.position.z; v0.w <- vin.position.w; 
+//   v1.x <- vin.normal.x; v1.y <- vin.normal.y; v1.z <- vin.normal.z; v1.w <- vin.normal.w; 
+//   v2.x <- vin.tangent.x; v2.y <- vin.tangent.y; v2.z <- vin.tangent.z; v2.w <- vin.tangent.w; 
+//   v3.x <- vin.texcoord.x; v3.y <- vin.texcoord.y; 
+//   o8.x <- <main return value>.cascade_shadow_texcoord[3].x; o8.y <- <main return value>.cascade_shadow_texcoord[3].y; o8.z <- <main return value>.cascade_shadow_texcoord[3].z; o8.w <- <main return value>.cascade_shadow_texcoord[3].w; 
+//   o7.x <- <main return value>.cascade_shadow_texcoord[2].x; o7.y <- <main return value>.cascade_shadow_texcoord[2].y; o7.z <- <main return value>.cascade_shadow_texcoord[2].z; o7.w <- <main return value>.cascade_shadow_texcoord[2].w; 
+//   o6.x <- <main return value>.cascade_shadow_texcoord[1].x; o6.y <- <main return value>.cascade_shadow_texcoord[1].y; o6.z <- <main return value>.cascade_shadow_texcoord[1].z; o6.w <- <main return value>.cascade_shadow_texcoord[1].w; 
+//   o5.x <- <main return value>.cascade_shadow_texcoord[0].x; o5.y <- <main return value>.cascade_shadow_texcoord[0].y; o5.z <- <main return value>.cascade_shadow_texcoord[0].z; o5.w <- <main return value>.cascade_shadow_texcoord[0].w; 
+//   o4.x <- <main return value>.texcoord.x; o4.y <- <main return value>.texcoord.y; 
+//   o3.x <- <main return value>.w_tangent.x; o3.y <- <main return value>.w_tangent.y; o3.z <- <main return value>.w_tangent.z; o3.w <- <main return value>.w_tangent.w; 
+//   o2.x <- <main return value>.w_normal.x; o2.y <- <main return value>.w_normal.y; o2.z <- <main return value>.w_normal.z; o2.w <- <main return value>.w_normal.w; 
+//   o1.x <- <main return value>.w_position.x; o1.y <- <main return value>.w_position.y; o1.z <- <main return value>.w_position.z; o1.w <- <main return value>.w_position.w; 
+//   o0.x <- <main return value>.position.x; o0.y <- <main return value>.position.y; o0.z <- <main return value>.position.z; o0.w <- <main return value>.position.w
+//
+#line 8 "D:\zed AI ver\HLSL\Gltf\Gltf_Model_Static_Batching_VS.hlsl"
+mul r0.xyzw, v0.xxxx, cb0[0].xyzw
+mul r1.xyzw, v0.yyyy, cb0[1].xyzw
+add r0.xyzw, r0.xyzw, r1.xyzw
+mul r1.xyzw, v0.zzzz, cb0[2].xyzw
+add r0.xyzw, r0.xyzw, r1.xyzw
+mul r1.xyzw, cb0[3].xyzw, l(1.000000, 1.000000, 1.000000, 1.000000)
+add r0.xyzw, r0.xyzw, r1.xyzw  // r0.x <- w_pos.x; r0.y <- w_pos.y; r0.z <- w_pos.z; r0.w <- w_pos.w
+
+#line 11
+mov r1.x, l(0)  // r1.x <- totalFactor
+
+#line 13
+mul r2.xyzw, r0.xxxx, cb1[0].xyzw
+mul r3.xyzw, r0.yyyy, cb1[1].xyzw
+add r2.xyzw, r2.xyzw, r3.xyzw
+mul r3.xyzw, r0.zzzz, cb1[2].xyzw
+add r2.xyzw, r2.xyzw, r3.xyzw
+mul r3.xyzw, r0.wwww, cb1[3].xyzw
+add r2.xyzw, r2.xyzw, r3.xyzw  // r2.x <- vout.position.x; r2.y <- vout.position.y; r2.z <- vout.position.z; r2.w <- vout.position.w
+
+#line 14
+mov r0.xyzw, r0.xyzw  // r0.x <- vout.w_position.x; r0.y <- vout.w_position.y; r0.z <- vout.w_position.z; r0.w <- vout.w_position.w
+
+#line 17
+itof r1.y, l(0)  // r1.y <- vin.normal.w
+
+#line 18
+mul r3.xyz, v1.xxxx, cb0[0].xyzx
+mul r4.xyz, v1.yyyy, cb0[1].xyzx
+add r3.xyz, r3.xyzx, r4.xyzx
+mul r4.xyz, v1.zzzz, cb0[2].xyzx
+add r3.xyz, r3.xyzx, r4.xyzx
+mul r1.yzw, r1.yyyy, cb0[3].xxyz
+add r1.yzw, r1.yyzw, r3.xxyz
+dp3 r3.x, r1.yzwy, r1.yzwy
+rsq r3.x, r3.x
+mul r1.yzw, r1.yyzw, r3.xxxx  // r1.y <- original_normal.x; r1.z <- original_normal.y; r1.w <- original_normal.z
+
+#line 20
+mov r3.xyz, -r1.yzwy
+add r3.xyz, r3.xyzx, l(0.000000, 1.000000, 0.000000, 0.000000)
+mul r3.xyz, r1.xxxx, r3.xyzx
+add r1.xyz, r1.yzwy, r3.xyzx
+dp3 r1.w, r1.xyzx, r1.xyzx
+rsq r1.w, r1.w
+mul r1.xyz, r1.wwww, r1.xyzx  // r1.x <- new_normal.x; r1.y <- new_normal.y; r1.z <- new_normal.z
+
+#line 21
+mov r1.w, l(0)
+mov r1.xyzw, r1.xyzw  // r1.x <- vout.w_normal.x; r1.y <- vout.w_normal.y; r1.z <- vout.w_normal.z; r1.w <- vout.w_normal.w
+
+#line 24
+mov r3.w, v2.w  // r3.w <- sigma
+
+#line 25
+itof r4.x, l(0)  // r4.x <- vin.tangent.w
+
+#line 26
+mul r4.yzw, v2.xxxx, cb0[0].xxyz
+mul r5.xyz, v2.yyyy, cb0[1].xyzx
+add r4.yzw, r4.yyzw, r5.xxyz
+mul r5.xyz, v2.zzzz, cb0[2].xyzx
+add r4.yzw, r4.yyzw, r5.xxyz
+mul r5.xyz, r4.xxxx, cb0[3].xyzx
+add r4.xyz, r4.yzwy, r5.xyzx
+dp3 r4.w, r4.xyzx, r4.xyzx
+rsq r4.w, r4.w
+mul r4.xyz, r4.wwww, r4.xyzx  // r4.x <- original_tangent.x; r4.y <- original_tangent.y; r4.z <- original_tangent.z
+
+#line 28
+dp3 r4.w, r4.xyzx, r1.xyzx
+mul r5.xyz, r1.xyzx, r4.wwww
+mov r5.xyz, -r5.xyzx
+add r4.xyz, r4.xyzx, r5.xyzx
+dp3 r4.w, r4.xyzx, r4.xyzx
+rsq r4.w, r4.w
+mul r3.xyz, r4.wwww, r4.xyzx  // r3.x <- new_tangent.x; r3.y <- new_tangent.y; r3.z <- new_tangent.z
+
+#line 29
+mov r3.xyz, r3.xyzx  // r3.x <- vout.w_tangent.x; r3.y <- vout.w_tangent.y; r3.z <- vout.w_tangent.z
+mov r3.w, r3.w  // r3.w <- vout.w_tangent.w
+
+#line 31
+mov r4.xy, v3.xyxx  // r4.x <- vout.texcoord.x; r4.y <- vout.texcoord.y
+
+#line 37
+mul r5.xyzw, r0.xxxx, cb4[0].xyzw
+mul r6.xyzw, r0.yyyy, cb4[1].xyzw
+add r5.xyzw, r5.xyzw, r6.xyzw
+mul r6.xyzw, r0.zzzz, cb4[2].xyzw
+add r5.xyzw, r5.xyzw, r6.xyzw
+mul r6.xyzw, r0.wwww, cb4[3].xyzw
+add r5.xyzw, r5.xyzw, r6.xyzw  // r5.x <- light_space_pos.x; r5.y <- light_space_pos.y; r5.z <- light_space_pos.z; r5.w <- light_space_pos.w
+
+#line 38
+div r5.xyzw, r5.xyzw, r5.wwww
+
+#line 41
+mov r5.y, -r5.y
+
+#line 42
+mul r4.zw, r5.xxxy, l(0.000000, 0.000000, 0.500000, 0.500000)
+add r5.xy, r4.zwzz, l(0.500000, 0.500000, 0.000000, 0.000000)
+
+#line 43
+mov r5.xy, r5.xyxx  // r5.x <- vout.cascade_shadow_texcoord[0].x; r5.y <- vout.cascade_shadow_texcoord[0].y
+mov r5.zw, r5.zzzw  // r5.z <- vout.cascade_shadow_texcoord[0].z; r5.w <- vout.cascade_shadow_texcoord[0].w
+
+#line 37
+mul r6.xyzw, r0.xxxx, cb4[4].xyzw
+mul r7.xyzw, r0.yyyy, cb4[5].xyzw
+add r6.xyzw, r6.xyzw, r7.xyzw
+mul r7.xyzw, r0.zzzz, cb4[6].xyzw
+add r6.xyzw, r6.xyzw, r7.xyzw
+mul r7.xyzw, r0.wwww, cb4[7].xyzw
+add r6.xyzw, r6.xyzw, r7.xyzw  // r6.x <- light_space_pos.x; r6.y <- light_space_pos.y; r6.z <- light_space_pos.z; r6.w <- light_space_pos.w
+
+#line 38
+div r6.xyzw, r6.xyzw, r6.wwww
+
+#line 41
+mov r6.y, -r6.y
+
+#line 42
+mul r4.zw, r6.xxxy, l(0.000000, 0.000000, 0.500000, 0.500000)
+add r6.xy, r4.zwzz, l(0.500000, 0.500000, 0.000000, 0.000000)
+
+#line 43
+mov r6.xy, r6.xyxx  // r6.x <- vout.cascade_shadow_texcoord[1].x; r6.y <- vout.cascade_shadow_texcoord[1].y
+mov r6.zw, r6.zzzw  // r6.z <- vout.cascade_shadow_texcoord[1].z; r6.w <- vout.cascade_shadow_texcoord[1].w
+
+#line 37
+mul r7.xyzw, r0.xxxx, cb4[8].xyzw
+mul r8.xyzw, r0.yyyy, cb4[9].xyzw
+add r7.xyzw, r7.xyzw, r8.xyzw
+mul r8.xyzw, r0.zzzz, cb4[10].xyzw
+add r7.xyzw, r7.xyzw, r8.xyzw
+mul r8.xyzw, r0.wwww, cb4[11].xyzw
+add r7.xyzw, r7.xyzw, r8.xyzw  // r7.x <- light_space_pos.x; r7.y <- light_space_pos.y; r7.z <- light_space_pos.z; r7.w <- light_space_pos.w
+
+#line 38
+div r7.xyzw, r7.xyzw, r7.wwww
+
+#line 41
+mov r7.y, -r7.y
+
+#line 42
+mul r4.zw, r7.xxxy, l(0.000000, 0.000000, 0.500000, 0.500000)
+add r7.xy, r4.zwzz, l(0.500000, 0.500000, 0.000000, 0.000000)
+
+#line 43
+mov r7.xy, r7.xyxx  // r7.x <- vout.cascade_shadow_texcoord[2].x; r7.y <- vout.cascade_shadow_texcoord[2].y
+mov r7.zw, r7.zzzw  // r7.z <- vout.cascade_shadow_texcoord[2].z; r7.w <- vout.cascade_shadow_texcoord[2].w
+
+#line 37
+mul r8.xyzw, r0.xxxx, cb4[12].xyzw
+mul r9.xyzw, r0.yyyy, cb4[13].xyzw
+add r8.xyzw, r8.xyzw, r9.xyzw
+mul r9.xyzw, r0.zzzz, cb4[14].xyzw
+add r8.xyzw, r8.xyzw, r9.xyzw
+mul r9.xyzw, r0.wwww, cb4[15].xyzw
+add r8.xyzw, r8.xyzw, r9.xyzw  // r8.x <- light_space_pos.x; r8.y <- light_space_pos.y; r8.z <- light_space_pos.z; r8.w <- light_space_pos.w
+
+#line 38
+div r8.xyzw, r8.xyzw, r8.wwww
+
+#line 41
+mov r8.y, -r8.y
+
+#line 42
+mul r4.zw, r8.xxxy, l(0.000000, 0.000000, 0.500000, 0.500000)
+add r8.xy, r4.zwzz, l(0.500000, 0.500000, 0.000000, 0.000000)
+
+#line 43
+mov r8.xy, r8.xyxx  // r8.x <- vout.cascade_shadow_texcoord[3].x; r8.y <- vout.cascade_shadow_texcoord[3].y
+mov r8.zw, r8.zzzw  // r8.z <- vout.cascade_shadow_texcoord[3].z; r8.w <- vout.cascade_shadow_texcoord[3].w
+
+#line 46
+mov o0.xyzw, r2.xyzw
 mov o1.xyzw, r0.xyzw
-mul r1.xyz, v1.yyyy, cb0[1].xyzx
-mad r1.xyz, v1.xxxx, cb0[0].xyzx, r1.xyzx
-mad r1.xyz, v1.zzzz, cb0[2].xyzx, r1.xyzx
-dp3 r1.w, r1.xyzx, r1.xyzx
-rsq r1.w, r1.w
-mul r1.xyz, r1.wwww, r1.xyzx
-mov o2.xyz, r1.xyzx
-mov o2.w, l(0)
-mul r2.xyz, v2.yyyy, cb0[1].xyzx
-mad r2.xyz, v2.xxxx, cb0[0].xyzx, r2.xyzx
-mad r2.xyz, v2.zzzz, cb0[2].xyzx, r2.xyzx
-dp3 r1.w, r2.xyzx, r2.xyzx
-rsq r1.w, r1.w
-mul r2.xyz, r1.wwww, r2.xyzx
-dp3 r1.w, r2.xyzx, r1.xyzx
-mad r1.xyz, -r1.wwww, r1.xyzx, r2.xyzx
-dp3 r1.w, r1.xyzx, r1.xyzx
-rsq r1.w, r1.w
-mul o3.xyz, r1.wwww, r1.xyzx
-mov o3.w, v2.w
-mov o4.xy, v3.xyxx
-mul r1.xyzw, r0.yyyy, cb4[1].xyzw
-mad r1.xyzw, r0.xxxx, cb4[0].xyzw, r1.xyzw
-mad r1.xyzw, r0.zzzz, cb4[2].xyzw, r1.xyzw
-mad r1.xyzw, r0.wwww, cb4[3].xyzw, r1.xyzw
-div r1.xyzw, r1.xyzw, r1.wwww
-mad o5.xyzw, r1.xyzw, l(0.500000, -0.500000, 1.000000, 1.000000), l(0.500000, 0.500000, 0.000000, 0.000000)
-mul r1.xyzw, r0.yyyy, cb4[5].xyzw
-mad r1.xyzw, r0.xxxx, cb4[4].xyzw, r1.xyzw
-mad r1.xyzw, r0.zzzz, cb4[6].xyzw, r1.xyzw
-mad r1.xyzw, r0.wwww, cb4[7].xyzw, r1.xyzw
-div r1.xyzw, r1.xyzw, r1.wwww
-mad o6.xyzw, r1.xyzw, l(0.500000, -0.500000, 1.000000, 1.000000), l(0.500000, 0.500000, 0.000000, 0.000000)
-mul r1.xyzw, r0.yyyy, cb4[9].xyzw
-mad r1.xyzw, r0.xxxx, cb4[8].xyzw, r1.xyzw
-mad r1.xyzw, r0.zzzz, cb4[10].xyzw, r1.xyzw
-mad r1.xyzw, r0.wwww, cb4[11].xyzw, r1.xyzw
-div r1.xyzw, r1.xyzw, r1.wwww
-mad o7.xyzw, r1.xyzw, l(0.500000, -0.500000, 1.000000, 1.000000), l(0.500000, 0.500000, 0.000000, 0.000000)
-mul r1.xyzw, r0.yyyy, cb4[13].xyzw
-mad r1.xyzw, r0.xxxx, cb4[12].xyzw, r1.xyzw
-mad r1.xyzw, r0.zzzz, cb4[14].xyzw, r1.xyzw
-mad r0.xyzw, r0.wwww, cb4[15].xyzw, r1.xyzw
-div r0.xyzw, r0.xyzw, r0.wwww
-mad o8.xyzw, r0.xyzw, l(0.500000, -0.500000, 1.000000, 1.000000), l(0.500000, 0.500000, 0.000000, 0.000000)
+mov o2.xyzw, r1.xyzw
+mov o3.xyzw, r3.xyzw
+mov o5.xyzw, r5.xyzw
+mov o6.xyzw, r6.xyzw
+mov o7.xyzw, r7.xyzw
+mov o8.xyzw, r8.xyzw
+mov o4.xy, r4.xyxx
 ret 
-// Approximately 55 instruction slots used
+// Approximately 120 instruction slots used

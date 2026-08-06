@@ -44,95 +44,289 @@
 // -------------------- ----- ------ -------- -------- ------- ------
 // no Output
 cs_5_0
-dcl_globalFlags refactoringAllowed
+dcl_globalFlags refactoringAllowed | skipOptimization
 dcl_constantbuffer CB3[4], immediateIndexed
 dcl_uav_typed_texture2d (float,float,float,float) u0
 dcl_input vThreadID.xy
-dcl_temps 5
+dcl_temps 8
 dcl_thread_group 8, 8, 1
-resinfo_indexable(texture2d)(float,float,float,float)_uint r0.xy, l(0), u0.xyzw
-uge r0.zw, vThreadID.xxxy, r0.xxxy
-or r0.z, r0.w, r0.z
-if_nz r0.z
-  ret 
-endif 
-utof r0.zw, vThreadID.xxxy
-add r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.500000, 0.500000)
-utof r0.xy, r0.xyxx
-div r0.xy, r0.zwzz, r0.xyxx
-add r0.z, -cb3[2].x, cb3[2].y
-mad r0.y, r0.z, r0.y, cb3[2].x
-mad r1.y, r0.x, l(2.000000), l(-1.000000)
-dp2 r0.x, r1.yyyy, r0.yyyy
-mul r0.z, r0.y, r0.y
-mad r0.w, -cb3[2].y, cb3[2].y, r0.z
-mul r1.z, r0.x, r0.x
-mad r0.w, -r0.w, l(4.000000), r1.z
-lt r1.w, r0.w, l(0.000000)
+//
+// Initial variable locations:
+//   vThreadID.x <- dispatchID.x; vThreadID.y <- dispatchID.y; vThreadID.z <- dispatchID.z
+//
+#line 24 "D:\zed AI ver\HLSL\Atmosphere.hlsli"
+mov r0.x, l(1.110000)  // r0.x <- MIE_EXTINCTION_RATIO
+
+#line 28
+mov r0.yzw, l(0,0.000650,0.001881,0.000085)  // r0.y <- OZONE_ABSORPTION_COEFFICIENT.x; r0.z <- OZONE_ABSORPTION_COEFFICIENT.y; r0.w <- OZONE_ABSORPTION_COEFFICIENT.z
+
+#line 29
+mov r1.x, l(25.000000)  // r1.x <- OZONE_CENTER_ALTITUDE_KM
+
+#line 30
+mov r1.y, l(15.000000)  // r1.y <- OZONE_LAYER_HALF_WIDTH_KM
+
+#line 5 "D:\zed AI ver\HLSL\Transmittance_CS.hlsl"
+mov r1.z, l(96)  // r1.z <- NUM_SAMPLES
+
+#line 11
+resinfo_indexable(texture2d)(float,float,float,float)_uint r2.xy, l(0), u0.xyzw
+mov r2.x, r2.x  // r2.x <- width
+mov r2.y, r2.y  // r2.y <- height
+
+#line 13
+uge r1.w, vThreadID.x, r2.x
+uge r2.z, vThreadID.y, r2.y
+or r1.w, r1.w, r2.z
 if_nz r1.w
-  store_uav_typed u0.xyzw, vThreadID.xyyy, l(0,0,0,1.000000)
+
+#line 14
   ret 
 endif 
-sqrt r0.w, r0.w
-add r0.w, r0.w, -r0.x
-mul r0.w, r0.w, l(0.500000)
-max r0.w, r0.w, l(0.000000)
-mad r0.z, -cb3[2].x, cb3[2].x, r0.z
-mad r0.z, -r0.z, l(4.000000), r1.z
-ge r1.z, r0.z, l(0.000000)
-if_nz r1.z
-  sqrt r0.z, r0.z
-  add r1.z, -r0.z, -r0.x
-  mul r1.w, r1.z, l(0.500000)
-  add r0.x, r0.z, -r0.x
-  mul r0.z, r0.x, l(0.500000)
-  lt r1.z, l(0.000000), r1.z
-  min r1.w, r1.w, l(100000002004087734272.000000)
-  movc r1.z, r1.z, r1.w, l(100000002004087734272.000000)
-  lt r0.x, l(0.000000), r0.x
-  min r0.z, r0.z, r1.z
-  movc r0.x, r0.x, r0.z, r1.z
-  lt r0.x, r0.x, r0.w
-  if_nz r0.x
-    store_uav_typed u0.xyzw, vThreadID.xyyy, l(0,0,0,1.000000)
-    ret 
-  endif 
+
+#line 17
+utof r1.w, vThreadID.x
+add r1.w, r1.w, l(0.500000)
+utof r2.x, r2.x
+div r1.w, r1.w, r2.x  // r1.w <- u
+
+#line 18
+utof r2.x, vThreadID.y
+add r2.x, r2.x, l(0.500000)
+utof r2.y, r2.y
+div r2.x, r2.x, r2.y  // r2.x <- v
+
+#line 20
+mov r2.y, -cb3[2].x
+add r2.y, r2.y, cb3[2].y
+mul r2.x, r2.x, r2.y
+add r2.y, r2.x, cb3[2].x  // r2.y <- r
+
+#line 21
+mul r1.w, r1.w, l(2.000000)
+mov r2.w, l(-1.000000)
+add r3.y, r1.w, r2.w  // r3.y <- mu
+
+#line 23
+mov r2.xz, l(0,0,0,0)
+mov r2.xyz, r2.xyzx  // r2.x <- rayOrigin.x; r2.y <- rayOrigin.y; r2.z <- rayOrigin.z
+
+#line 24
+mul r1.w, r3.y, r3.y
+mov r1.w, -r1.w
+add r1.w, r1.w, l(1.000000)
+max r1.w, r1.w, l(0.000000)
+min r1.w, r1.w, l(1.000000)
+sqrt r3.x, r1.w  // r3.x <- sinTheta
+
+#line 25
+mov r3.z, l(0)
+mov r3.xyz, r3.xyzx  // r3.x <- rayDir.x; r3.y <- rayDir.y; r3.z <- rayDir.z
+
+#line 28
+mul r1.w, r2.y, l(2.000000)
+mul r1.w, r3.y, r1.w  // r1.w <- bAtm
+
+#line 29
+mul r2.w, r2.y, r2.y
+mul r3.w, cb3[2].y, cb3[2].y
+mov r3.w, -r3.w
+add r2.w, r2.w, r3.w  // r2.w <- cAtm
+
+#line 30
+mul r3.w, r1.w, r1.w
+mul r2.w, r2.w, l(4.000000)
+mov r2.w, -r2.w
+add r2.w, r2.w, r3.w  // r2.w <- dAtm
+
+#line 32
+lt r3.w, r2.w, l(0.000000)
+if_nz r3.w
+
+#line 34
+  store_uav_typed u0.xyzw, vThreadID.xyyy, l(0,0,0,1.000000)
+
+#line 35
+  ret 
+
+#line 36
 endif 
-mad r0.x, -r1.y, r1.y, l(1.000000)
-max r0.x, r0.x, l(0.000000)
-sqrt r1.x, r0.x
-mul r0.xz, r0.wwww, l(0.010417, 0.000000, 0.005208, 0.000000)
-max r1.zw, cb3[2].zzzw, l(0.000000, 0.000000, 0.000100, 0.000100)
-mov r2.x, l(0)
-mov r2.y, r0.y
-mov r0.w, l(0)
-mov r3.xyz, l(0,0,0,0)
+
+#line 38
+mov r1.w, -r1.w
+sqrt r2.w, r2.w
+add r1.w, r1.w, r2.w
+mul r1.w, r1.w, l(0.500000)  // r1.w <- distanceToTop
+
+#line 39
+max r1.w, r1.w, l(0.000000)
+
+#line 42
+mul r2.w, r2.y, l(2.000000)
+mul r2.w, r3.y, r2.w  // r2.w <- bGnd
+
+#line 43
+mul r3.w, r2.y, r2.y
+mul r4.x, cb3[2].x, cb3[2].x
+mov r4.x, -r4.x
+add r3.w, r3.w, r4.x  // r3.w <- cGnd
+
+#line 44
+mul r4.x, r2.w, r2.w
+mul r3.w, r3.w, l(4.000000)
+mov r3.w, -r3.w
+add r3.w, r3.w, r4.x  // r3.w <- dGnd
+
+#line 46
+ge r4.x, r3.w, l(0.000000)
+if_nz r4.x
+
+#line 48
+  mov r4.x, -r2.w
+  sqrt r4.y, r3.w
+  mov r4.y, -r4.y
+  add r4.x, r4.y, r4.x
+  mul r4.x, r4.x, l(0.500000)  // r4.x <- t0
+
+#line 49
+  mov r2.w, -r2.w
+  sqrt r3.w, r3.w
+  add r2.w, r2.w, r3.w
+  mul r2.w, r2.w, l(0.500000)  // r2.w <- t1
+
+#line 51
+  mov r3.w, l(100000002004087734272.000000)  // r3.w <- tGround
+
+#line 52
+  lt r4.y, l(0.000000), r4.x
+  if_nz r4.y
+
+#line 53
+    min r3.w, r4.x, r3.w
+  endif 
+
+#line 54
+  lt r4.x, l(0.000000), r2.w
+  if_nz r4.x
+
+#line 55
+    min r3.w, r2.w, r3.w
+  endif 
+
+#line 57
+  lt r2.w, r3.w, r1.w
+  if_nz r2.w
+
+#line 59
+    store_uav_typed u0.xyzw, vThreadID.xyyy, l(0,0,0,1.000000)
+
+#line 60
+    ret 
+
+#line 61
+  endif 
+
+#line 62
+endif 
+
+#line 64
+itof r2.w, r1.z
+div r1.w, r1.w, r2.w  // r1.w <- stepSize
+
+#line 66
+mov r4.xyz, l(0,0,0,0)  // r4.x <- opticalDepth.x; r4.y <- opticalDepth.y; r4.z <- opticalDepth.z
+
+#line 67
+mov r2.xyz, r2.xyzx  // r2.x <- currentPos.x; r2.y <- currentPos.y; r2.z <- currentPos.z
+
+#line 70
+mov r2.w, l(0)  // r2.w <- i
+mov r5.xyz, r2.xyzx  // r5.x <- currentPos.x; r5.y <- currentPos.y; r5.z <- currentPos.z
+mov r3.w, r4.x  // r3.w <- opticalDepth.x
+mov r4.w, r4.y  // r4.w <- opticalDepth.y
+mov r5.w, r4.z  // r5.w <- opticalDepth.z
+mov r6.x, r2.w  // r6.x <- i
 loop 
-  ige r3.w, r3.z, l(96)
-  breakc_nz r3.w
-  mad r2.xyzw, r1.xyxy, r0.xxzz, r2.xyxy
-  dp2 r2.z, r2.zwzz, r2.zwzz
-  sqrt r2.z, r2.z
-  add r2.z, r2.z, -cb3[2].x
-  max r2.z, r2.z, l(0.000000)
-  div r4.xy, -r2.zzzz, r1.zwzz
-  mul r4.xy, r4.xyxx, l(1.442695, 1.442695, 0.000000, 0.000000)
-  exp r4.xy, r4.xyxx
-  mad r0.w, r4.x, r0.x, r0.w
-  mad r3.x, r4.y, r0.x, r3.x
-  add r2.z, r2.z, l(-25.000000)
-  mad r2.z, -|r2.z|, l(0.066667), l(1.000000)
-  max r2.z, r2.z, l(0.000000)
-  mad r3.y, r2.z, r0.x, r3.y
-  iadd r3.z, r3.z, l(1)
+  ilt r6.y, r6.x, r1.z
+  breakc_z r6.y
+
+#line 72
+  mul r6.y, r1.w, l(0.500000)
+  mul r6.yzw, r3.xxyz, r6.yyyy
+  add r6.yzw, r5.xxyz, r6.yyzw  // r6.y <- samplePos.x; r6.z <- samplePos.y; r6.w <- samplePos.z
+
+#line 73
+  dp3 r6.y, r6.yzwy, r6.yzwy
+  sqrt r6.y, r6.y
+  mov r6.z, -cb3[2].x
+  add r6.y, r6.z, r6.y
+  max r6.y, r6.y, l(0.000000)  // r6.y <- h
+
+#line 75
+  mov r6.z, -r6.y
+  max r6.w, cb3[2].z, l(0.000100)
+  div r6.z, r6.z, r6.w
+  mul r6.z, r6.z, l(1.442695)
+  exp r6.z, r6.z  // r6.z <- densityR
+
+#line 76
+  mov r6.w, -r6.y
+  max r7.x, cb3[2].w, l(0.000100)
+  div r6.w, r6.w, r7.x
+  mul r6.w, r6.w, l(1.442695)
+  exp r6.w, r6.w  // r6.w <- densityM
+
+#line 78
+  mul r6.z, r1.w, r6.z
+  add r3.w, r3.w, r6.z
+
+#line 79
+  mul r6.z, r1.w, r6.w
+  add r4.w, r4.w, r6.z
+
+#line 80
+  nop 
+  mov r6.y, r6.y
+
+#line 35 "D:\zed AI ver\HLSL\Atmosphere.hlsli"
+  mov r6.z, -r1.x
+  add r6.y, r6.z, r6.y
+  mov r6.z, -r6.y
+  max r6.y, r6.z, r6.y
+  div r6.y, r6.y, r1.y
+  mov r6.y, -r6.y
+  add r6.y, r6.y, l(1.000000)
+  max r6.y, r6.y, l(0.000000)  // r6.y <- <GetOzoneDensity return value>
+
+#line 80 "D:\zed AI ver\HLSL\Transmittance_CS.hlsl"
+  mul r6.y, r1.w, r6.y
+  add r5.w, r5.w, r6.y
+
+#line 82
+  mul r6.yzw, r1.wwww, r3.xxyz
+  add r5.xyz, r5.xyzx, r6.yzwy
+
+#line 83
+  iadd r6.x, r6.x, l(1)
 endloop 
-mul r0.x, r3.x, cb3[3].w
-mul r0.x, r0.x, l(1.110000)
-mad r0.xyz, r0.wwww, cb3[3].xyzx, r0.xxxx
-mad r0.xyz, r3.yyyy, l(0.000650, 0.001881, 0.000085, 0.000000), r0.xyzx
-mul r0.xyz, r0.xyzx, l(-1.442695, -1.442695, -1.442695, 0.000000)
-exp r0.xyz, r0.xyzx
+
+#line 87
+mul r1.xyz, r3.wwww, cb3[3].xyzx
+mul r0.x, r0.x, cb3[3].w
+mul r0.x, r0.x, r4.w
+add r1.xyz, r0.xxxx, r1.xyzx
+mul r0.xyz, r0.yzwy, r5.wwww
+add r0.xyz, r0.xyzx, r1.xyzx  // r0.x <- extinction.x; r0.y <- extinction.y; r0.z <- extinction.z
+
+#line 90
+mov r0.xyz, -r0.xyzx
+mul r0.xyz, r0.xyzx, l(1.442695, 1.442695, 1.442695, 0.000000)
+exp r0.xyz, r0.xyzx  // r0.x <- transmittance.x; r0.y <- transmittance.y; r0.z <- transmittance.z
+
+#line 92
 mov r0.w, l(1.000000)
 store_uav_typed u0.xyzw, vThreadID.xyyy, r0.xyzw
+
+#line 93
 ret 
-// Approximately 85 instruction slots used
+// Approximately 158 instruction slots used

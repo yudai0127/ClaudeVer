@@ -43,7 +43,7 @@
 // SV_TARGET                0   xyzw        0   TARGET   float   xyzw
 //
 ps_5_0
-dcl_globalFlags refactoringAllowed
+dcl_globalFlags refactoringAllowed | skipOptimization
 dcl_constantbuffer CB7[1], immediateIndexed
 dcl_sampler s4, mode_default
 dcl_resource_texture2d (float,float,float,float) t20
@@ -51,64 +51,239 @@ dcl_resource_texture2d (float,float,float,float) t21
 dcl_resource_texture2d (float,float,float,float) t22
 dcl_input_ps linear v2.xy
 dcl_output o0.xyzw
-dcl_temps 6
-sample_indexable(texture2d)(float,float,float,float) r0.xyz, v2.xyxx, t20.xyzw, s4
-sample_indexable(texture2d)(float,float,float,float) r1.xyzw, v2.xyxx, t21.xyzw, s4
-sample_indexable(texture2d)(float,float,float,float) r0.w, v2.xyxx, t22.xyzw, s4
-ge r2.x, r1.w, l(0.010000)
-ge r2.y, r0.w, l(0.010000)
-and r2.x, r2.y, r2.x
-and r2.y, cb7[0].w, l(8)
-ine r2.y, r2.y, l(0)
-and r2.x, r2.y, r2.x
-if_nz r2.x
-  resinfo_indexable(texture2d)(float,float,float,float) r2.xy, l(0), t21.xyzw
-  mul r2.z, r0.w, l(24.000000)
-  div r2.xyzw, r2.zzzz, r2.xyxy
-  mad r3.xyzw, r2.zwzw, l(-0.942016, -0.399062, 0.945586, -0.768907), v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r3.xyxx, t21.xyzw, s4
-  sample_indexable(texture2d)(float,float,float,float) r3.xyzw, r3.zwzz, t21.xyzw, s4
+dcl_temps 5
+dcl_indexableTemp x0[16], 4
+//
+// Initial variable locations:
+//   v0.x <- pin.position.x; v0.y <- pin.position.y; v0.z <- pin.position.z; v0.w <- pin.position.w; 
+//   v1.x <- pin.color.x; v1.y <- pin.color.y; v1.z <- pin.color.z; v1.w <- pin.color.w; 
+//   v2.x <- pin.texcoord.x; v2.y <- pin.texcoord.y; 
+//   o0.x <- <main return value>.x; o0.y <- <main return value>.y; o0.z <- <main return value>.z; o0.w <- <main return value>.w
+//
+#line 34 "D:\zed AI ver\HLSL\SSR\SSR.hlsli"
+mov r0.x, l(3)  // r0.x <- screen_space_reflection_flags_consideration_rougness
+
+#line 10 "D:\zed AI ver\HLSL\SSR\SSR_Composite_PS.hlsl"
+mov r0.y, l(24.000000)  // r0.y <- BLUR_MAX_RADIUS_PIXELS
+
+#line 11
+mov x0[0].xy, l(-0.942016,-0.399062,0,0)
+mov x0[1].xy, l(0.945586,-0.768907,0,0)
+mov x0[2].xy, l(-0.094184,-0.929389,0,0)
+mov x0[3].xy, l(0.344959,0.293878,0,0)
+mov x0[4].xy, l(-0.915886,0.457714,0,0)
+mov x0[5].xy, l(-0.815442,-0.879125,0,0)
+mov x0[6].xy, l(-0.382775,0.276768,0,0)
+mov x0[7].xy, l(0.974844,0.756484,0,0)
+mov x0[8].xy, l(0.443233,-0.975116,0,0)
+mov x0[9].xy, l(0.537430,-0.473734,0,0)
+mov x0[10].xy, l(-0.264969,-0.418930,0,0)
+mov x0[11].xy, l(0.791975,0.190902,0,0)
+mov x0[12].xy, l(-0.241888,0.997065,0,0)
+mov x0[13].xy, l(-0.814100,0.914376,0,0)
+mov x0[14].xy, l(0.199841,0.786414,0,0)
+mov x0[15].xy, l(0.143832,-0.141008,0,0)
+
+#line 34
+sample_indexable(texture2d)(float,float,float,float) r1.xyz, v2.xyxx, t20.xyzw, s4
+mov r1.xyz, r1.xyzx  // r1.x <- base_color.x; r1.y <- base_color.y; r1.z <- base_color.z
+
+#line 37
+sample_indexable(texture2d)(float,float,float,float) r2.xyzw, v2.xyxx, t21.xyzw, s4  // r2.x <- reflection_color.x; r2.y <- reflection_color.y; r2.z <- reflection_color.z; r2.w <- reflection_color.w
+
+#line 40
+sample_indexable(texture2d)(float,float,float,float) r0.z, v2.xyxx, t22.xywz, s4
+mov r0.z, r0.z  // r0.z <- roughness
+
+#line 43
+ge r0.w, r2.w, l(0.010000)
+ge r1.w, r0.z, l(0.010000)
+and r0.w, r0.w, r1.w
+nop 
+mov r0.x, r0.x
+
+#line 39 "D:\zed AI ver\HLSL\SSR\SSR.hlsli"
+ishl r0.x, l(1), r0.x
+and r0.x, r0.x, cb7[0].w
+ine r0.x, l(0, 0, 0, 0), r0.x  // r0.x <- <is_flag return value>
+
+#line 43 "D:\zed AI ver\HLSL\SSR\SSR_Composite_PS.hlsl"
+and r0.x, r0.x, r0.w
+if_nz r0.x
+
+#line 46
+  resinfo_indexable(texture2d)(float,float,float,float) r0.xw, l(0), t21.xzwy  // r0.x <- texture_size.x; r0.w <- texture_size.y
+
+#line 51
+  mul r0.y, r0.z, r0.y
+  div r0.xy, r0.yyyy, r0.xwxx  // r0.x <- blur_radius.x; r0.y <- blur_radius.y
+
+#line 53
+  itof r3.xyzw, l(0, 0, 0, 0)  // r3.x <- accum_color.x; r3.y <- accum_color.y; r3.z <- accum_color.z; r3.w <- accum_color.w
+
+#line 58
+  mov r4.xy, x0[0].xyxx
+  mul r4.xy, r0.xyxx, r4.xyxx  // r4.x <- delta.x; r4.y <- delta.y
+
+#line 59
+  add r4.xy, r4.xyxx, v2.xyxx
+  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.xyxx, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r4.xyzw
-  mad r4.xyzw, r2.zwzw, l(-0.094184, -0.929389, 0.344959, 0.293878), v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
+
+#line 58
+  mov r4.xy, x0[1].xyxx
+  mul r4.xy, r0.xyxx, r4.xyxx  // r4.x <- delta.x; r4.y <- delta.y
+
+#line 59
+  add r4.xy, r4.xyxx, v2.xyxx
+  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.xyxx, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r4.xyzw
-  mad r4.xyzw, r2.zwzw, l(-0.915886, 0.457714, -0.815442, -0.879125), v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
+
+#line 58
+  mov r4.xy, x0[2].xyxx
+  mul r4.xy, r0.xyxx, r4.xyxx  // r4.x <- delta.x; r4.y <- delta.y
+
+#line 59
+  add r4.xy, r4.xyxx, v2.xyxx
+  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.xyxx, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r4.xyzw
-  mad r4.xyzw, r2.zwzw, l(-0.382775, 0.276768, 0.974844, 0.756484), v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
+
+#line 58
+  mov r4.xy, x0[3].xyxx
+  mul r4.xy, r0.xyxx, r4.xyxx  // r4.x <- delta.x; r4.y <- delta.y
+
+#line 59
+  add r4.xy, r4.xyxx, v2.xyxx
+  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.xyxx, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r4.xyzw
-  mad r4.xyzw, r2.zwzw, l(0.443233, -0.975116, 0.537430, -0.473734), v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
+
+#line 58
+  mov r4.xy, x0[4].xyxx
+  mul r4.xy, r0.xyxx, r4.xyxx  // r4.x <- delta.x; r4.y <- delta.y
+
+#line 59
+  add r4.xy, r4.xyxx, v2.xyxx
+  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.xyxx, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r4.xyzw
-  mad r4.xyzw, r2.zwzw, l(-0.264969, -0.418930, 0.791975, 0.190902), v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
+
+#line 58
+  mov r4.xy, x0[5].xyxx
+  mul r4.xy, r0.xyxx, r4.xyxx  // r4.x <- delta.x; r4.y <- delta.y
+
+#line 59
+  add r4.xy, r4.xyxx, v2.xyxx
+  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.xyxx, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r4.xyzw
-  mad r4.xyzw, r2.zwzw, l(-0.241888, 0.997065, -0.814100, 0.914376), v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r5.xyzw, r4.xyxx, t21.xyzw, s4
-  add r3.xyzw, r3.xyzw, r5.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.zwzz, t21.xyzw, s4
+
+#line 58
+  mov r4.xy, x0[6].xyxx
+  mul r4.xy, r0.xyxx, r4.xyxx  // r4.x <- delta.x; r4.y <- delta.y
+
+#line 59
+  add r4.xy, r4.xyxx, v2.xyxx
+  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.xyxx, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r4.xyzw
-  mad r2.xyzw, r2.xyzw, l(0.199841, 0.786414, 0.143832, -0.141008), v2.xyxy
-  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r2.xyxx, t21.xyzw, s4
+
+#line 58
+  mov r4.xy, x0[7].xyxx
+  mul r4.xy, r0.xyxx, r4.xyxx  // r4.x <- delta.x; r4.y <- delta.y
+
+#line 59
+  add r4.xy, r4.xyxx, v2.xyxx
+  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.xyxx, t21.xyzw, s4
   add r3.xyzw, r3.xyzw, r4.xyzw
-  sample_indexable(texture2d)(float,float,float,float) r2.xyzw, r2.zwzz, t21.xyzw, s4
-  add r2.xyzw, r2.xyzw, r3.xyzw
-  mad r2.xyzw, r2.xyzw, l(0.062500, 0.062500, 0.062500, 0.062500), -r1.xyzw
-  mad r1.xyzw, r0.wwww, r2.xyzw, r1.xyzw
+
+#line 58
+  mov r4.xy, x0[8].xyxx
+  mul r4.xy, r0.xyxx, r4.xyxx  // r4.x <- delta.x; r4.y <- delta.y
+
+#line 59
+  add r4.xy, r4.xyxx, v2.xyxx
+  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.xyxx, t21.xyzw, s4
+  add r3.xyzw, r3.xyzw, r4.xyzw
+
+#line 58
+  mov r4.xy, x0[9].xyxx
+  mul r4.xy, r0.xyxx, r4.xyxx  // r4.x <- delta.x; r4.y <- delta.y
+
+#line 59
+  add r4.xy, r4.xyxx, v2.xyxx
+  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.xyxx, t21.xyzw, s4
+  add r3.xyzw, r3.xyzw, r4.xyzw
+
+#line 58
+  mov r4.xy, x0[10].xyxx
+  mul r4.xy, r0.xyxx, r4.xyxx  // r4.x <- delta.x; r4.y <- delta.y
+
+#line 59
+  add r4.xy, r4.xyxx, v2.xyxx
+  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.xyxx, t21.xyzw, s4
+  add r3.xyzw, r3.xyzw, r4.xyzw
+
+#line 58
+  mov r4.xy, x0[11].xyxx
+  mul r4.xy, r0.xyxx, r4.xyxx  // r4.x <- delta.x; r4.y <- delta.y
+
+#line 59
+  add r4.xy, r4.xyxx, v2.xyxx
+  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.xyxx, t21.xyzw, s4
+  add r3.xyzw, r3.xyzw, r4.xyzw
+
+#line 58
+  mov r4.xy, x0[12].xyxx
+  mul r4.xy, r0.xyxx, r4.xyxx  // r4.x <- delta.x; r4.y <- delta.y
+
+#line 59
+  add r4.xy, r4.xyxx, v2.xyxx
+  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.xyxx, t21.xyzw, s4
+  add r3.xyzw, r3.xyzw, r4.xyzw
+
+#line 58
+  mov r4.xy, x0[13].xyxx
+  mul r4.xy, r0.xyxx, r4.xyxx  // r4.x <- delta.x; r4.y <- delta.y
+
+#line 59
+  add r4.xy, r4.xyxx, v2.xyxx
+  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.xyxx, t21.xyzw, s4
+  add r3.xyzw, r3.xyzw, r4.xyzw
+
+#line 58
+  mov r4.xy, x0[14].xyxx
+  mul r4.xy, r0.xyxx, r4.xyxx  // r4.x <- delta.x; r4.y <- delta.y
+
+#line 59
+  add r4.xy, r4.xyxx, v2.xyxx
+  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r4.xyxx, t21.xyzw, s4
+  add r3.xyzw, r3.xyzw, r4.xyzw
+
+#line 58
+  mov r4.xy, x0[15].xyxx
+  mul r0.xy, r0.xyxx, r4.xyxx  // r0.x <- delta.x; r0.y <- delta.y
+
+#line 59
+  add r0.xy, r0.xyxx, v2.xyxx
+  sample_indexable(texture2d)(float,float,float,float) r4.xyzw, r0.xyxx, t21.xyzw, s4
+  add r3.xyzw, r3.xyzw, r4.xyzw
+
+#line 62
+  itof r0.x, l(16)
+  div r3.xyzw, r3.xyzw, r0.xxxx
+  mov r4.xyzw, -r2.xyzw
+  add r3.xyzw, r3.xyzw, r4.xyzw
+  mul r0.xyzw, r0.zzzz, r3.xyzw
+  add r2.xyzw, r0.xyzw, r2.xyzw
+
+#line 63
 endif 
-add r1.xyz, -r0.xyzx, r1.xyzx
-mad o0.xyz, r1.wwww, r1.xyzx, r0.xyzx
+
+#line 66
+mov r0.xyz, -r1.xyzx
+add r0.xyz, r0.xyzx, r2.xyzx
+mul r0.xyz, r0.xyzx, r2.wwww
+add r0.xyz, r0.xyzx, r1.xyzx  // r0.x <- color.x; r0.y <- color.y; r0.z <- color.z
+
+#line 68
+mov o0.xyz, r0.xyzx
 mov o0.w, l(1.000000)
 ret 
-// Approximately 59 instruction slots used
+// Approximately 131 instruction slots used
