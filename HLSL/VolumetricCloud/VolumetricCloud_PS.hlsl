@@ -11,7 +11,6 @@ static const float MAX_RAY_MARCH_STEPS = 256.0;
 
 static const float HORIZON_FADE_START = 0.6;
 static const float HORIZON_FADE_END = 1.0;
-static const float SKYBOX_BACKGROUND_LOD = 3.0;
 
 float4 main(VS_OUT pin) : SV_TARGET
 {
@@ -29,7 +28,6 @@ float4 main(VS_OUT pin) : SV_TARGET
    
     float3 ray_dir = normalize(pos.xyz - camera_position.xyz);
     float3 background = skybox.SampleLevel(sampler_states[ClampLinear], ray_dir, 0).rgb;
-    float3 backgroundForBlend = skybox.SampleLevel(sampler_states[ClampLinear], ray_dir, SKYBOX_BACKGROUND_LOD).rgb;
     float3 color = background;
 
     float3 eye_pos = float3(0.0, planetRadius, 0.0) + camera_position.xyz;
@@ -106,8 +104,13 @@ float4 main(VS_OUT pin) : SV_TARGET
 
         float4 volume = ray_march(ray_origin, ray_step, int(steps));
 
-        float3 blended = backgroundForBlend * (1.0 - volume.a) + volume.xyz;
-        color = lerp(background, blended, volume.a);
+        // volume.xyz is already premultiplied by the integrated opacity.
+        // Applying another lerp multiplied opacity twice and made the clouds
+        // look like faint grey smudges instead of white, shadowed masses.
+        // 薄い雲の背景だけを高LODのぼかし色に置き換えると、
+        // 小さな雲片が丸い光点・色むらとして浮き出る。元の空色で合成する。
+        float3 blended = background * (1.0 - volume.a) + volume.xyz;
+        color = blended;
         
         if (!inside_cloud_layer)
         {

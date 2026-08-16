@@ -41,13 +41,29 @@ CausticsVSOut main(VSInput IN)
     float causticsWobble = max(params.y, 0.0f);
     float2 uv = IN.TexCoord * causticsUvScale;
 
-    // スクロール用UVの計算
-    float2 uv0 = uv * normal0.z + normal0.xy * gTime;
-    float2 uv1 = uv * normal1.z + normal1.xy * gTime;
+    // 専用の低速時間を使う。水面のスクロール時間を直接使うと、
+    // 小さな明るい塗りが高速で移動し「魚の群れ」のように見えやすい。
+    float2 uv0 = uv * normal0.z + normal0.xy * time;
+    float2 uv1 = uv * normal1.z + normal1.xy * time;
 
     // テクスチャから法線を取得し、-1.0?1.0の範囲に展開
-    float3 n0 = NormalMap0.SampleLevel(sampler_states[WrapLinear], uv0, 0).xyz * 2.0f - 1.0f;
-    float3 n1 = NormalMap1.SampleLevel(sampler_states[WrapLinear], uv1, 0).xyz * 2.0f - 1.0f;
+    // 元テクスチャにミップがないため、対角の2点を平均して広い法線を作る。
+    // これにより、魚の輪郭のような細かい孤立模様を抑える。
+    uint normalWidth0, normalHeight0;
+    uint normalWidth1, normalHeight1;
+    NormalMap0.GetDimensions(normalWidth0, normalHeight0);
+    NormalMap1.GetDimensions(normalWidth1, normalHeight1);
+    float2 blurOffset0 = 2.0f / float2(max(normalWidth0, 1u), max(normalHeight0, 1u));
+    float2 blurOffset1 = 2.5f / float2(max(normalWidth1, 1u), max(normalHeight1, 1u));
+
+    float3 n0 = 0.5f * (
+        NormalMap0.SampleLevel(sampler_states[WrapLinear], uv0 + blurOffset0, 0).xyz +
+        NormalMap0.SampleLevel(sampler_states[WrapLinear], uv0 - blurOffset0, 0).xyz);
+    float3 n1 = 0.5f * (
+        NormalMap1.SampleLevel(sampler_states[WrapLinear], uv1 + float2(blurOffset1.x, -blurOffset1.y), 0).xyz +
+        NormalMap1.SampleLevel(sampler_states[WrapLinear], uv1 - float2(blurOffset1.x, -blurOffset1.y), 0).xyz);
+    n0 = n0 * 2.0f - 1.0f;
+    n1 = n1 * 2.0f - 1.0f;
 
     // 2枚のノーマルマップをブレンドし、タンジェント空間での合成法線を作成
     float3 texNormTS = normalize(

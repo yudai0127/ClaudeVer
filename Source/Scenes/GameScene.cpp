@@ -1,4 +1,4 @@
-﻿#include "GameScene.h"
+#include "GameScene.h"
 #include "misc.h"
 #include "high_resolution_timer.h"
 #include "Graphics/DeviceManager/DeviceManager.h"
@@ -134,6 +134,11 @@ void GameScene::initialize()
 	
 	
 	elapsedTime = 0.0f;
+	// Model lighting defaults. The BRDF contains the 1/PI diffuse
+	// normalization, so the previous 1.0-class sun and 0.1 diffuse IBL left
+	// ships and terrain several stops too dark.
+	iblDiffuseIntensity = 0.32f;
+	iblSpecularIntensity = 0.55f;
 
 	skyMap = std::make_unique<SkyMap>();
 	skyMap->initialize(DeviceManager::instance()->getDevice());
@@ -407,6 +412,35 @@ void GameScene::update(float elapsedTime)
 		DirectX::XMVECTOR lightDir = DirectX::XMVectorNegate(sunDir);
 		lightDir = DirectX::XMVector3Normalize(lightDir);
 		DirectX::XMStoreFloat4(&LightDirection, DirectX::XMVectorSetW(lightDir, 0.0f));
+
+		// Keep ships, terrain, clouds and water on one time-of-day palette.
+		// Previously only the sky changed colour during sunset.
+		DirectX::XMFLOAT3 sunDirection{};
+		DirectX::XMStoreFloat3(&sunDirection, sunDir);
+		const float sunY = sunDirection.y;
+		const float dayVisibility = std::clamp((sunY + 0.06f) * 6.0f, 0.0f, 1.0f);
+		const float dayWhiteness = std::clamp((sunY - 0.04f) * 3.0f, 0.0f, 1.0f);
+		const float horizonGlow = (1.0f - std::clamp(fabsf(sunY) / 0.34f, 0.0f, 1.0f)) * dayVisibility;
+
+		const DirectX::XMFLOAT3 sunsetColor{ 1.0f, 0.30f, 0.075f };
+		const DirectX::XMFLOAT3 daylightColor{ 1.0f, 0.98f, 0.90f };
+		const float directIntensity = (0.06f + dayVisibility * 2.55f) * (1.0f + horizonGlow * 0.22f);
+		LightColor = {
+			lerp(sunsetColor.x, daylightColor.x, dayWhiteness) * directIntensity,
+			lerp(sunsetColor.y, daylightColor.y, dayWhiteness) * directIntensity,
+			lerp(sunsetColor.z, daylightColor.z, dayWhiteness) * directIntensity,
+			1.0f };
+
+		const DirectX::XMFLOAT3 nightAmbient{ 0.024f, 0.034f, 0.075f };
+		const DirectX::XMFLOAT3 dayAmbient{ 0.16f, 0.18f, 0.20f };
+		DirectX::XMFLOAT3 ambient{
+			lerp(nightAmbient.x, dayAmbient.x, dayVisibility),
+			lerp(nightAmbient.y, dayAmbient.y, dayVisibility),
+			lerp(nightAmbient.z, dayAmbient.z, dayVisibility) };
+		ambient.x = lerp(ambient.x, 0.16f, horizonGlow * 0.60f);
+		ambient.y = lerp(ambient.y, 0.060f, horizonGlow * 0.60f);
+		ambient.z = lerp(ambient.z, 0.032f, horizonGlow * 0.60f);
+		AmbientColor = { ambient.x, ambient.y, ambient.z, 0.0f };
 	}
 
 	// マウス入力で自由カメラ更新
@@ -417,6 +451,7 @@ void GameScene::update(float elapsedTime)
 		// 波紋生成（クリック注入 + 自動注入）
 		injectRippleFromCursor();
 		injectAutoRipple(elapsedTime);
+		injectShipInteractionRipples(elapsedTime);
 
 		Camera* cam = Camera::instance();
 		DirectX::XMMATRIX world = DirectX::XMMatrixIdentity();
@@ -826,7 +861,10 @@ void GameScene::render()
 		ID3D11SamplerState* linearSamplerPtr = linearSampler.Get();
 		if (linearSamplerPtr)
 		{
-			dc->PSSetSamplers(1, 1, &linearSamplerPtr);
+			// FinalPass_PS indexes sampler_states[ClampLinear], so the sampler
+			// must be bound at the enum's actual register (s4), not s1.
+			const UINT samplerSlot = static_cast<UINT>(SAMPLER_STATE::CLAMP_LINEAR);
+			dc->PSSetSamplers(samplerSlot, 1, &linearSamplerPtr);
 		}
 
 		ID3D11ShaderResourceView* src = hdrSceneBuffer->shader_resource_views[0].Get();
@@ -1260,6 +1298,49 @@ void GameScene::injectAutoRipple(float elapsedTime)
 		-0.2f,
 		5.0f
 	);
+}
+
+void GameScene::injectShipInteractionRipples(float elapsedTime)
+{
+	if (!water_simulation || !enableShipInteractionRipples || ships.empty())
+		return;
+
+	shipRippleTimer += elapsedTime;
+	if (shipRippleTimer < shipRippleInterval)
+		return;
+
+	shipRippleTimer = 0.0f;
+	++shipRipplePhase;
+	auto* dc = DeviceManager::instance()->getDeviceContext();
+	const float waterY = water_simulation->worldOffsetY;
+
+	for (const auto& ship : ships)
+	{
+		const float yaw = ship->rotation.y;
+		const DirectX::XMFLOAT3 forward{ sinf(yaw), 0.0f, cosf(yaw) };
+		const DirectX::XMFLOAT3 right{ forward.z, 0.0f, -forward.x };
+
+		// Emit just outside the hull instead of at its centre. The resulting
+		// rings split around the silhouette and make hull contact readable.
+		DirectX::XMFLOAT3 bow{
+			ship->position.x + forward.x * 850.0f,
+			waterY,
+			ship->position.z + forward.z * 850.0f };
+		DirectX::XMFLOAT3 stern{
+			ship->position.x - forward.x * 720.0f,
+			waterY,
+			ship->position.z - forward.z * 720.0f };
+
+		const float sideSign = (shipRipplePhase & 1u) ? 1.0f : -1.0f;
+		DirectX::XMFLOAT3 side{
+			ship->position.x + right.x * 330.0f * sideSign,
+			waterY,
+			ship->position.z + right.z * 330.0f * sideSign };
+
+		water_simulation->InjectRippleWorld(dc, bow, 0.34f, 260.0f);
+		water_simulation->InjectRippleWorld(dc, stern, 0.22f, 210.0f);
+		water_simulation->InjectRippleWorld(dc, side, 0.16f, 160.0f);
+	}
 }
 
 
@@ -1710,6 +1791,8 @@ void GameScene::debugGui()
 
 		ImGui::Separator();
 		ImGui::Text("Atmosphere Blur");
+		ImGui::Checkbox("Low Resolution Atmosphere", &enableLowResAtmosphere);
+		ImGui::TextDisabled("ON = 640x360 atmosphere pass (recommended for performance)");
 		if (ImGui::DragFloat2("gInvHalfRes", &atmoBlurInvRes.x, 1e-5f, 0.0f, 1.0f, "%.6f"))
 		{
 
@@ -1755,12 +1838,17 @@ void GameScene::debugGui()
 	{
 		if (water_simulation)
 		{	
-			ImGui::DragFloat("Caustics Scale", &causticsScale, 0.01f, 0.0f, 500.0f);
-			ImGui::DragFloat("Caustics Intensity", &causticsIntensity, 0.01f, 0.0f, 10.0f);
+			ImGui::DragFloat("Caustics Tiling", &causticsScale, 0.1f, 1.0f, 120.0f);
+			ImGui::DragFloat("Caustics Intensity", &causticsIntensity, 0.01f, 0.0f, 2.0f);
+			ImGui::DragFloat("Caustics Speed", &causticsSpeed, 0.01f, 0.0f, 2.0f);
+			ImGui::DragFloat("Caustics Wobble", &causticsWobble, 0.01f, 0.0f, 2.0f);
+			ImGui::DragFloat("Caustics Softness", &causticsPower, 0.01f, 0.35f, 2.0f);
 
 
 			ImGui::Checkbox("Auto Ripple", &enableAutoRipple);
 			ImGui::DragFloat("Auto Ripple Interval (sec)", &autoRippleInterval, 0.1f, 0.1f, 10.0f);
+			ImGui::Checkbox("Ship Interaction Ripples", &enableShipInteractionRipples);
+			ImGui::DragFloat("Ship Ripple Interval (sec)", &shipRippleInterval, 0.05f, 0.1f, 3.0f);
 			water_simulation->debugGui();
 		}
 		ImGui::TreePop();

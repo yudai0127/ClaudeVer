@@ -54,6 +54,7 @@ private:
 	void updateIBLMaps(ID3D11DeviceContext* dc, const DirectX::XMFLOAT3& cameraPos);
 	void injectRippleFromCursor();
 	void injectAutoRipple(float elapsedTime);
+	void injectShipInteractionRipples(float elapsedTime);
 	void copySceneColor(ID3D11DeviceContext* dc, ID3D11RenderTargetView* rtv);
 	void copySceneDepth(ID3D11DeviceContext* dc);
 
@@ -198,6 +199,9 @@ private:
 
 	float rippleTimer = 0.0f;
 	float autoRippleInterval = 1.5f;
+	float shipRippleTimer = 0.0f;
+	float shipRippleInterval = 0.65f;
+	unsigned int shipRipplePhase = 0;
 
 	float targetWeatherT = 0.0f;
 	float weatherBlendSpeed = 0.05f;
@@ -217,6 +221,7 @@ private:
 	bool useCascadeShadowMap = true;
 	bool useSSR = true;
 	bool enableAutoRipple = false;
+	bool enableShipInteractionRipples = true;
 	bool queryStarted = false;
 
 	bool enableVolumetricCloud = true;                                                                                                                                                                                  
@@ -246,16 +251,16 @@ private:
 	float cpuHistory[GRAPH_HISTORY_COUNT] = {};
 	float gpuHistory[GRAPH_HISTORY_COUNT] = {};
 private:
-	int   shadowUpdateIndex = 0;           // ŽŸ‚ÉXV‚·‚éƒJƒXƒP[ƒh‚ÌƒCƒ“ƒfƒbƒNƒX
-	int   shadowUpdatesPerFrame = 4;       // 1ƒtƒŒ[ƒ€‚ ‚½‚èXV‚·‚éƒJƒXƒP[ƒh”
+	int   shadowUpdateIndex = 0;           // æ¬¡ã«æ›´æ–°ã™ã‚‹ã‚«ã‚¹ã‚±ãƒ¼ãƒ‰ã®ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹
+	int   shadowUpdatesPerFrame = 4;       // 1ãƒ•ãƒ¬ãƒ¼ãƒ ã‚ãŸã‚Šæ›´æ–°ã™ã‚‹ã‚«ã‚¹ã‚±ãƒ¼ãƒ‰æ•°
 	bool  staggerShadowUpdates = true;
 
 private:
-	float causticsScale = 250.0f;
-	float causticsPower = 1.0f;
-	float causticsIntensity = 0.2f;
-	float causticsSpeed = 1.5f;
-	float causticsWobble = 2.5f;
+	float causticsScale = 28.0f;
+	float causticsPower = 0.85f;
+	float causticsIntensity = 0.16f;
+	float causticsSpeed = 0.22f;
+	float causticsWobble = 0.55f;
 
 	std::unique_ptr<FrameBuffer> causticsBuffer;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> causticsPS;

@@ -23,9 +23,10 @@ public:
     struct ParamCB 
     {
         float	screen_space_reflection_max_distance = 1000.0f;
-        float	screen_space_reflection_ray_resolution = 0.333f;
+        float	screen_space_reflection_ray_resolution = 0.65f;
         float	screen_space_reflection_tickness = 0.5f;
-        int		screen_space_reflection_flags = 0;
+        // Direction correction, UV-hole fill, roughness and sub-step search.
+        int		screen_space_reflection_flags = 30;
     };
     ParamCB params;
 

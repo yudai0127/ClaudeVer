@@ -219,22 +219,31 @@ bool Water_Simulation::Initialize(ID3D11Device* device, uint32_t gridWidth, uint
 
 
     psParams.normal0 = { 0.02f, 0.01f,  3.0f, 1.0f };
-    psParams.normal1 = { -0.015f, 0.02f, 8.0f, 0.7f };
-    psParams.normal2 = { 0.01f, -0.008f, 18.0f, 0.4f };
-    psParams.misc = XMFLOAT4(0.02f, 0.1f, 1.0f, 0.0f);
+    psParams.normal1 = { -0.015f, 0.02f, 8.0f, 0.72f };
+    psParams.normal2 = { 0.01f, -0.008f, 18.0f, 0.48f };
+    psParams.misc = XMFLOAT4(0.02f, 0.12f, 1.35f, 0.0f);
     // x=反射率の下限。0.3ではフレネルが効く前から常に3割反射してしまい
     // 水全体が白っぽくなっていたので、水本来のF0に近い値まで下げる
-    psParams.iblParams = XMFLOAT4(0.08f, 1.0f, 1.0f, 0.0f);
-    psParams.waterTint = XMFLOAT4(0.03f, 0.25f, 0.3f, 0.1f);
-    psParams.alphaParam = XMFLOAT4(0.2f, 0.03f, 0.0f, 0.0f);
-    psParams.rippleParams = XMFLOAT4(1.0f, 0.0f, 0.0f, 50.0f);
-    // x=最低厚み, y=水深による吸収スケール, z=ノーマル細部のフェード距離
-    psParams.shadingParams = XMFLOAT4(1.0f, 0.02f, 20000.0f, 0.0f);
-    // 波の初期パラメータ
+    // w is an artistic SSR-presence control. It only affects valid SSR hits,
+    // leaving the cubemap fallback and the Fresnel silhouette intact.
+    psParams.iblParams = XMFLOAT4(0.10f, 1.15f, 1.0f, 1.60f);
+    psParams.waterTint = XMFLOAT4(0.018f, 0.18f, 0.24f, 0.075f);
+    // x=scattering, y=caustics, z=turbidity, w=shore/crest foam
+    psParams.alphaParam = XMFLOAT4(0.16f, 0.80f, 0.10f, 0.85f);
+    psParams.rippleParams = XMFLOAT4(1.2f, 0.0f, 0.0f, 70.0f);
+    // x=minimum path, y=depth absorption, z=detail fade, w=shore foam depth
+    psParams.shadingParams = XMFLOAT4(0.75f, 0.016f, 26000.0f, 260.0f);
+
+    // Two long swells, two mid-frequency waves and four short wind-chop
+    // bands break up the conspicuous repeating sine pattern.
     waves[0] = { {0.7f, 0.7f}, 180.0f, 3000.0f, 0.5f, 0.35f };
     waves[1] = { {-0.3f, 1.0f},100.0f, 2000.0f, 0.7f, 0.3f };
     waves[2] = { {1.0f, 0.2f}, 45.0f, 700.0f, 0.9f, 0.5f };
     waves[3] = { {-0.8f, 0.4f}, 20.0f, 300.0f, 1.2f, 0.55f };
+    waves[4] = { {0.25f, -1.0f}, 11.0f, 150.0f, 1.65f, 0.42f };
+    waves[5] = { {-1.0f, -0.15f}, 6.0f, 72.0f, 2.10f, 0.36f };
+    waves[6] = { {0.82f, -0.58f}, 3.2f, 34.0f, 2.75f, 0.30f };
+    waves[7] = { {-0.45f, -0.89f}, 1.6f, 16.0f, 3.40f, 0.24f };
 
 
     // 波紋シミュレーションの初期化
@@ -353,13 +362,13 @@ void Water_Simulation::update(ID3D11DeviceContext* dc, float elapsedTime,
 
     cb.gTime = time;
     cb.gGravity = 9.81f;
-    cb.gWaveCount = 4u;
+    cb.gWaveCount = 8u;
     cb._pad0 = 0.0f;
 
     const float waveAmpScale = this->waveAmpScale;
     const float waveSteepScale = this->waveSteepScale;
 
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 8; ++i)
     {
         cb.gWaves[i] = waves[i];
         cb.gWaves[i].amplitude *= waveAmpScale;
@@ -608,13 +617,22 @@ void Water_Simulation::InjectRippleWorld(ID3D11DeviceContext* dc,
 
 void Water_Simulation::debugGui()
 {
+    ImGui::TextUnformatted("Water appearance presets");
+    if (ImGui::Button("Clear Ocean")) ApplyPreset(Preset::ClearOcean);
+    ImGui::SameLine();
+    if (ImGui::Button("Tropical")) ApplyPreset(Preset::Tropical);
+    ImGui::SameLine();
+    if (ImGui::Button("Murky Harbor")) ApplyPreset(Preset::MurkyHarbor);
+    ImGui::SameLine();
+    if (ImGui::Button("Storm")) ApplyPreset(Preset::Storm);
+
     if (ImGui::TreeNode("Gerstner Waves"))
     {
         ImGui::DragFloat("World Offset Y", &worldOffsetY, 0.01f);
         ImGui::DragFloat("Global Amplitude", &waveAmpScale, 0.005f, 0.0f, 1.0f);
         ImGui::DragFloat("Global Steepness", &waveSteepScale, 0.01f, 0.0f, 2.0f);
 
-        for (int i = 0; i < 4; ++i)
+        for (int i = 0; i < 8; ++i)
         {
             char label[32];
             sprintf_s(label, "Wave %d", i);
@@ -642,14 +660,18 @@ void Water_Simulation::debugGui()
         ImGui::DragFloat("Reflection Scale", &psParams.iblParams.y, 0.01f, 0.0f, 2.0f);
         ImGui::DragFloat("Fresnel Power", &psParams.iblParams.z, 0.01f, 1.0f, 8.0f);
         ImGui::DragFloat("Reflection Min", &psParams.iblParams.x, 0.005f, 0.0f, 1.0f);
-        ImGui::DragFloat("Alpha Min", &psParams.alphaParam.x, 0.005f, 0.0f, 1.0f);
-        ImGui::DragFloat("Alpha Max", &psParams.alphaParam.y, 0.005f, 0.0f, 1.0f);
+        ImGui::DragFloat("SSR Presence", &psParams.iblParams.w, 0.01f, 0.0f, 3.0f);
+        ImGui::DragFloat("Subsurface Scattering", &psParams.alphaParam.x, 0.005f, 0.0f, 2.0f);
+        ImGui::DragFloat("Caustics Visibility", &psParams.alphaParam.y, 0.01f, 0.0f, 2.0f);
+        ImGui::DragFloat("Turbidity", &psParams.alphaParam.z, 0.01f, 0.0f, 1.0f);
+        ImGui::DragFloat("Foam Intensity", &psParams.alphaParam.w, 0.01f, 0.0f, 2.0f);
         ImGui::DragFloat("Thickness Scale", &psParams.shadingParams.x, 0.01f, 0.0f, 5.0f);
         // 水底までの実際の深さから光路長を求めるためのスケール。
         // 上げるほど浅瀬と深場の色差がはっきりする
         ImGui::DragFloat("Depth Absorption", &psParams.shadingParams.y, 0.001f, 0.0f, 1.0f, "%.4f");
         // この距離で高周波ノイズの寄与が0になり、遠景のちらつきが収まる
         ImGui::DragFloat("Detail Fade Distance", &psParams.shadingParams.z, 100.0f, 100.0f, 200000.0f);
+        ImGui::DragFloat("Shore Foam Depth", &psParams.shadingParams.w, 1.0f, 1.0f, 3000.0f);
 
         ImGui::TreePop();
     }
@@ -680,5 +702,56 @@ void Water_Simulation::debugGui()
         ImGui::DragFloat("Wave Speed", &rippleSim.getWaveSpeed(), 0.1f, 1.0f, 100.0f);
         ImGui::DragFloat("Damping", &rippleSim.getDamping(), 0.01f, 0.0f, 5.0f);
         ImGui::TreePop();
+    }
+}
+
+void Water_Simulation::ApplyPreset(Preset preset)
+{
+    switch (preset)
+    {
+    case Preset::ClearOcean:
+        psParams.waterTint = XMFLOAT4(0.018f, 0.18f, 0.24f, 0.065f);
+        psParams.alphaParam = XMFLOAT4(0.14f, 0.90f, 0.05f, 0.75f);
+        psParams.misc.y = 0.14f;
+        psParams.misc.z = 1.40f;
+        psParams.iblParams.x = 0.10f;
+        psParams.iblParams.y = 1.20f;
+        psParams.iblParams.w = 1.70f;
+        waveAmpScale = 0.02f;
+        waveSteepScale = 0.55f;
+        break;
+    case Preset::Tropical:
+        psParams.waterTint = XMFLOAT4(0.015f, 0.42f, 0.36f, 0.055f);
+        psParams.alphaParam = XMFLOAT4(0.22f, 1.15f, 0.08f, 1.05f);
+        psParams.misc.y = 0.16f;
+        psParams.misc.z = 1.55f;
+        psParams.iblParams.x = 0.12f;
+        psParams.iblParams.y = 1.25f;
+        psParams.iblParams.w = 1.60f;
+        waveAmpScale = 0.016f;
+        waveSteepScale = 0.45f;
+        break;
+    case Preset::MurkyHarbor:
+        psParams.waterTint = XMFLOAT4(0.16f, 0.20f, 0.10f, 0.12f);
+        psParams.alphaParam = XMFLOAT4(0.34f, 0.35f, 0.78f, 0.65f);
+        psParams.misc.y = 0.055f;
+        psParams.misc.z = 0.85f;
+        psParams.iblParams.x = 0.08f;
+        psParams.iblParams.y = 0.80f;
+        psParams.iblParams.w = 0.85f;
+        waveAmpScale = 0.012f;
+        waveSteepScale = 0.35f;
+        break;
+    case Preset::Storm:
+        psParams.waterTint = XMFLOAT4(0.018f, 0.07f, 0.09f, 0.15f);
+        psParams.alphaParam = XMFLOAT4(0.20f, 0.20f, 0.38f, 1.45f);
+        psParams.misc.y = 0.10f;
+        psParams.misc.z = 1.80f;
+        psParams.iblParams.x = 0.14f;
+        psParams.iblParams.y = 1.35f;
+        psParams.iblParams.w = 1.20f;
+        waveAmpScale = 0.042f;
+        waveSteepScale = 0.90f;
+        break;
     }
 }

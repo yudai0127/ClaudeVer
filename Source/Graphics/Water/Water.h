@@ -122,7 +122,7 @@ public:
         ID3D11PixelShader* pCausticsPS,
         ID3D11ShaderResourceView* pDepthSRV);
 
-    void SetPaused(bool paused) { paused = pauseds; }
+    void SetPaused(bool paused) { pauseds = paused; }
 
     // ImGui描画
     void debugGui();
@@ -190,7 +190,19 @@ public:
     // シェーダーパラメータと波の基本設定
     PSParams psParams{};
     CB_Water cb{};
-    CB_Wave waves[4]{};
+    enum class Preset
+    {
+        ClearOcean,
+        Tropical,
+        MurkyHarbor,
+        Storm
+    };
+
+    void ApplyPreset(Preset preset);
+
+    // Long swells through short wind chop. The GPU buffer already supported
+    // eight bands, so expose the complete spectrum on the CPU as well.
+    CB_Wave waves[8]{};
     float worldOffsetY = 50.0f;   
     float waveAmpScale = 0.02f;
     float waveSteepScale = 0.50f;

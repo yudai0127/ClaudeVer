@@ -80,13 +80,13 @@ static const float STEP_BIAS_RANGE = 2.5;
 static const float STEP_BIAS_SCALE = 1.5;
 static const float MAX_DENSITY_MIP = 4.0;
 
-static const float JITTER_HASH_SCALE = 10.0;
+static const float RAY_MARCH_MIDPOINT = 0.5;
 // 位相関数（二重ローブ Henyey-Greenstein）
 static const float PHASE_G_FORWARD = 0.65;         // 前方散乱ローブ（太陽側の輝き）
 static const float PHASE_G_BACKWARD = -0.25;       // 後方散乱ローブ（雲縁のシルバーライニング）
 static const float PHASE_LOBE_BLEND = 0.4;         // 後方ローブの混合比
 static const float ISOTROPIC_PHASE = 0.0795774715; // 1 / (4 * PI)
-static const float PHASE_MAX_GAIN = 8.0;           // 等方散乱に対する最大ゲイン
+static const float PHASE_MAX_GAIN = 3.5;           // 等方散乱に対する最大ゲイン
 static const float PHASE_MIN_GAIN = 0.75;          // 等方散乱に対する最小ゲイン
 static const float CONE_SPREAD_DIVISOR = 36.0;
 static const float SEGMENT_STEP_EPSILON = 1e-5;
@@ -98,8 +98,11 @@ static const float RAIN_ABSORPTION_RAININESS_SCALE = 2.0;
 static const float DIRECT_OCCLUSION_MIN = 0.18;
 static const float AMBIENT_OCCLUSION_OVERCAST_MIN = 0.45;
 static const float AMBIENT_OCCLUSION_RAIN_MIN = 0.70;
-static const float POWDERED_SUGAR_THICKNESS_SCALE = 2.0;
+static const float POWDERED_SUGAR_THICKNESS_SCALE = 1.15;
 static const float AMBIENT_SUNSET_BLEND = 0.6;
+static const float CLOUD_DIRECT_LUMINANCE_LIMIT = 1.6;
+static const float CLOUD_LUMINANCE_PER_OPACITY_LIMIT = 2.0;
+static const float3 LUMINANCE_WEIGHTS = float3(0.2126, 0.7152, 0.0722);
 
 static const float NIGHT_AMBIENT_MIN_FACTOR = 0.08;
 static const float DIRECT_VISIBILITY_POWER = 2.0;
@@ -240,6 +243,17 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
     float base_cloud_with_coverage = remap(base_cloud, 1.0 - cloud_coverage, 1.0, 0.0, 1.0);
     base_cloud_with_coverage *= cloud_coverage;
 
+    // 粗いLODで周囲にも雲の塊があるかを確認する。細かいLODだけで
+    // 偶然密度が高くなった孤立島を、大きな雲の輪郭を保ったまま除去する。
+    float support_mip = max(mip_level, 3.5);
+    float4 support_noises = sample_low_frequency_noises(low_freq_point, support_mip);
+    float support_fbm = support_noises.g * 0.625 + support_noises.b * 0.25 + support_noises.a * 0.125;
+    float support_cloud = remap(support_noises.r, -(1.0 - support_fbm), 1.0, 0.0, 1.0);
+    support_cloud *= density_height_gradient;
+    support_cloud = remap(support_cloud, 1.0 - cloud_coverage, 1.0, 0.0, 1.0) * cloud_coverage;
+    float spatial_coherence = smoothstep(0.015, 0.10, support_cloud);
+    base_cloud_with_coverage *= spatial_coherence;
+
     float final_cloud = base_cloud_with_coverage;
 
     if (!cheap_sample && base_cloud_with_coverage > 0.0)
@@ -264,7 +278,12 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
         final_cloud = remap(base_cloud_with_coverage, high_frequency_noise_modifier * 0.4 * height_fraction, 1.0, 0.0, 1.0);
     }
 
-    return pow(clamp(final_cloud, 0.0, 1.0), (1.0 - height_fraction) * 0.8 + 0.5);
+    float shaped_density = pow(clamp(final_cloud, 0.0, 1.0), (1.0 - height_fraction) * 0.8 + 0.5);
+
+    // 薄い孤立した密度島は、夕方の散乱で雲ではなく光点に見える。
+    // 滑らかなゲートで小片を除き、雲の大きな塊と輪郭は残す。
+    float coherent_cloud = smoothstep(0.06, 0.20, shaped_density);
+    return shaped_density * coherent_cloud;
 }
 
 
@@ -326,15 +345,22 @@ float intersect_sphere(float3 pos, float3 dir, float r)
 
 bool intersect_sphere_range(float3 pos, float3 dir, float r, out float t_near, out float t_far)
 {
+    // 全ての経路で有効な値を返し、水平線付近の視線で未定義値が光に化けるのを防ぐ。
+    t_near = 0.0;
+    t_far = 0.0;
+
     float a = dot(dir, dir);
+    if (a <= 1e-8 || isnan(a) || isinf(a))
+    {
+        return false;
+    }
+
     float b = 2.0 * dot(dir, pos);
     float c = dot(pos, pos) - (r * r);
     float disc = (b * b) - 4.0 * a * c;
 
-    if (disc < 0.0)
+    if (disc < 0.0 || isnan(disc) || isinf(disc))
     {
-        t_near = 0.0;
-        t_far = 0.0;
         return false;
     }
 
@@ -342,6 +368,13 @@ bool intersect_sphere_range(float3 pos, float3 dir, float r, out float t_near, o
     float inv_2a = 0.5 / a;
     t_near = (-b - d) * inv_2a;
     t_far = (-b + d) * inv_2a;
+
+    if (isnan(t_near) || isnan(t_far) || isinf(t_near) || isinf(t_far))
+    {
+        t_near = 0.0;
+        t_far = 0.0;
+        return false;
+    }
 
     if (t_near > t_far)
     {
@@ -461,15 +494,10 @@ float4 ray_march(float3 ray_origin, float3 ray_step, int steps)
 {
     float step_size = length(ray_step);
 
-    // ジッタリング(バンディング対策)
-#if 1
-    // 各ピクセルでサンプル開始位置を少しずらしてバンディングを減らす
-    float jitter = hash(ray_origin * JITTER_HASH_SCALE);
+    // ピクセルごとのハッシュジッターは、薄い雲を拾う画素と外す画素を作り、
+    // 夕方の強い前方散乱で光点に見える。安定した区間中点サンプリングを使う。
+    float jitter = RAY_MARCH_MIDPOINT;
     float3 sample_point = ray_origin;
-#else
-    float jitter = 0.0;
-    float3 sample_point = ray_origin;
-#endif
 
     // 太陽方向と位相関数(散乱の向き)を準備
     float3 sun_direction = normalize(sunDirection.xyz);
@@ -558,7 +586,12 @@ float4 ray_march(float3 ray_origin, float3 ray_step, int steps)
                     float direct_occlusion = lerp(1.0, DIRECT_OCCLUSION_MIN, max(overcast, raininess));
                     float ambient_occlusion = lerp(1.0, AMBIENT_OCCLUSION_OVERCAST_MIN, overcast) * lerp(1.0, AMBIENT_OCCLUSION_RAIN_MIN, raininess);
 
-                    float powdered_sugar = enable_powdered_sugar_efffect ? (1.0 - exp(-optical_thickness * POWDERED_SUGAR_THICKNESS_SCALE)) : 1.0;
+                    // Powdered Sugarは通常の直射光を置き換えるのではなく、厚い雲の縁に少し加える。
+                    // 従来の 0..1 乗算は薄い雲を青黒くし、中間密度だけを黄色い光点にしていた。
+                    float powder_response = 1.0 - exp(-optical_thickness * POWDERED_SUGAR_THICKNESS_SCALE);
+                    float powdered_sugar = enable_powdered_sugar_efffect
+                        ? lerp(1.0, 1.25, saturate(powder_response))
+                        : 1.0;
                     float3 sunset_tint = get_sunset_tint(sun_direction.y);
                     float sun_visibility = get_sun_visibility(sun_direction.y);
                     float direct_visibility = pow(sun_visibility, DIRECT_VISIBILITY_POWER);
@@ -576,6 +609,11 @@ float4 ray_march(float3 ray_origin, float3 ray_step, int steps)
                         * henyey_greenstein_phase
                         * sunset_tint
                         * direct_occlusion;
+
+                    // 一つのレイサンプルだけが極端に明るくなるファイアフライを抑制。
+                    // 色相は保ったまま輝度だけを制限する。
+                    float direct_luminance = dot(direct_light, LUMINANCE_WEIGHTS);
+                    direct_light *= min(1.0, CLOUD_DIRECT_LUMINANCE_LIMIT / max(direct_luminance, 1e-5));
 
                     
                     float3 step_light = direct_light + ambient_light;
@@ -608,5 +646,17 @@ float4 ray_march(float3 ray_origin, float3 ray_step, int steps)
     }
 
     float alpha = 1.0 - transmittence;
+
+    // レイ全体でも透過率が非常に低い雲片は、色と透明度を一緒にフェードする。
+    float opacity_gate = smoothstep(0.04, 0.16, alpha);
+    color *= opacity_gate;
+    alpha *= opacity_gate;
+
+    // 稀薄な雲の色が透明度に対して明るすぎると、Bloomで点状に広がる。
+    // プリマルチプライドカラーのエネルギーを不透明度に連動させる。
+    float integrated_luminance = dot(color, LUMINANCE_WEIGHTS);
+    float integrated_limit = max(alpha * CLOUD_LUMINANCE_PER_OPACITY_LIMIT, 1e-5);
+    color *= min(1.0, integrated_limit / max(integrated_luminance, 1e-5));
+
     return max(0.0, float4(color, alpha));
 }

@@ -49,17 +49,18 @@ float4 main(PSIn IN) : SV_TARGET
     float dist = length(newPos - oldPos);
     dist = min(dist, 3000.0f); // 距離による減衰のクランプ
 
-    // 面積比から集光の強さを計算し、水深による吸収減衰を掛ける
-    float col = (oldArea / newArea) * exp(-absorptionCoeff * dist);
+    // 面積比から集光の強さを計算し、水深による吸収減衰を掛ける。
+    // 従来の硬いしきい値は、小さな白い塗りを大量に作ってしまうため、
+    // 広い柔らかな光と、その中の明るい筋の2段階で合成する。
+    float focusRatio = (oldArea / newArea) * exp(-absorptionCoeff * dist);
+    float broadLight = smoothstep(0.90f, 1.20f, focusRatio);
+    float brightRidge = smoothstep(1.12f, 1.85f, focusRatio);
+    float col = broadLight * 0.24f + brightRidge * 0.76f;
 
- 
-    col = max(0.0f, col - 0.9f);
-    // 指数でシャープネスを調整し、最終的な強度を乗算
-    col = pow(max(col, 0.0f), max(params.z, 0.0001f));
+    // 強度を有界に保ち、白い塗りの飛び出しを防ぐ。
+    col = pow(saturate(col), max(params.z, 0.35f));
     col *= params.w;
-    
-  
-    col = min(col, 5.0f);
+    col = min(col, 1.5f);
 
     float fadeStart = 30000.0f; // フェードアウトが始まる距離
     float fadeEnd = 60000.0f; // 完全にコースティクスが消える距離

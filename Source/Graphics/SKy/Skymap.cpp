@@ -198,7 +198,9 @@ void SkyMap::render(ID3D11DeviceContext* dc, const DirectX::XMFLOAT4X4& view_pro
 
 
 	dc->VSSetShader(sky_map_vs.Get(), 0, 0);
-	dc->PSSetShader(sky_box_ps.Get(), 0, 0);
+	// initialize()で生成しているプロシージャル空用PSを使用する。
+	// 未初期化のsky_box_psを設定すると、雲OFF時は空が描画されずクリア色だけが残る。
+	dc->PSSetShader(sky_map_ps.Get(), 0, 0);
 
 	ID3D11SamplerState* samplers[8] = {};
 	samplers[0] = GraphicsManager::instance()->getSamplerState(SAMPLER_STATE::WRAP_POINT).Get();

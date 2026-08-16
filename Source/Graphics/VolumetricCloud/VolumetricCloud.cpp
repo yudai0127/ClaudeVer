@@ -125,16 +125,18 @@ void VolumetricCloud::initialize(ID3D11Device* device, const wchar_t* filename)
 	volumetric_cloud_constant_data.wind_direction = { 1.0f, 0.0f };
 	volumetric_cloud_constant_data.cloud_altitudes_min_max = { 66000.0f, 75300.0f };
 	volumetric_cloud_constant_data.wind_speed = 0.02f;
-	volumetric_cloud_constant_data.density_scale = 2.0f;
-	volumetric_cloud_constant_data.cloud_coverage_scale = 0.4f;
+	volumetric_cloud_constant_data.density_scale = 1.65f;
+	volumetric_cloud_constant_data.cloud_coverage_scale = 0.65f;
 	volumetric_cloud_constant_data.rain_cloud_absorption_scale = 0.5f;
 	volumetric_cloud_constant_data.cloud_type_scale = 1.0f;
 	volumetric_cloud_constant_data.horizon_distance_scale = 1.0f;
 	volumetric_cloud_constant_data.low_frequency_perlin_worley_sampling_scale = 0.00001f;
 	volumetric_cloud_constant_data.high_frequency_worley_sampling_scale = 0.001f;
 	volumetric_cloud_constant_data.cloud_density_long_distance_scale = 18.0f;
+	// 中間密度の雲片が光点化するのを避けるため、初期状態はOFF。
+	// 修正済みの穏やかな加光はImGuiから必要な場合だけ有効化できる。
 	volumetric_cloud_constant_data.enable_powdered_sugar_efffect = 0;
-	volumetric_cloud_constant_data.ray_marching_steps = 128;
+	volumetric_cloud_constant_data.ray_marching_steps = 160;
 	volumetric_cloud_constant_data.auto_ray_marching_steps = 0;
 	
 }
@@ -302,7 +304,7 @@ void VolumetricCloud::updateWeatherMap(ID3D11DeviceContext* dc, float weatherT)
 	cb.windDir = volumetric_cloud_constant_data.wind_direction;
 	cb.windSpeed = volumetric_cloud_constant_data.wind_speed;
 
-	cb.sunnyCoverage = 0.3f;
+	cb.sunnyCoverage = 0.48f;
 	cb.rainyCoverage = 1.0f;
 	cb.sunnyRain = 0.0f;
 	cb.rainyRain = 1.0f;

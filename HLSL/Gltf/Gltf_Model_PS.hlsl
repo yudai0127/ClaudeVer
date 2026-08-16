@@ -327,11 +327,19 @@ PS_OUTPUT main(VS_OUT pin, bool is_front_face : SV_IsFrontFace) : SV_TARGET
     float3 indirect_light_radiance = diffuse_ibl + specular_ibl + sheen_ibl;
     
     
-    float3 ambient_contribution = ambient_color.rgb * albedo * final_factor;
+    // The scene's ambient colour is already driven by the day/night cycle.
+    // Multiplying it by final_factor again made sunset and night fill light
+    // vanish twice. A gentle sky hemisphere term keeps downward-facing parts
+    // darker while preserving readable colour on hull and terrain side faces.
+    float skyHemisphere = saturate(N.y * 0.5f + 0.5f);
+    float3 ambient_contribution = ambient_color.rgb * albedo
+                                * lerp(0.72f, 1.0f, skyHemisphere);
     indirect_light_radiance += ambient_contribution;
 
-  
-    float3 ambient_radiance = indirect_light_radiance * occlusion;
+    // AO should reinforce creases, not turn broad surfaces black. Retain a
+    // physically plausible multi-bounce floor for exhibition readability.
+    float indirectOcclusion = lerp(0.42f, 1.0f, occlusion);
+    float3 ambient_radiance = indirect_light_radiance * indirectOcclusion;
 
  
     float3 final_color = direct_light_radiance + ambient_radiance + emissive;

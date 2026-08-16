@@ -110,6 +110,7 @@ float4 main(PSIn IN) : SV_TARGET
     float h_c = RippleDisplacementMap.SampleLevel(sampler_states[WrapAnisotropic], uv, 0).x;
     float h_u = RippleDisplacementMap.SampleLevel(sampler_states[WrapAnisotropic], uv + du, 0).x;
     float h_v = RippleDisplacementMap.SampleLevel(sampler_states[WrapAnisotropic], uv + dv, 0).x;
+    float rippleSlope = length(float2(h_u - h_c, h_v - h_c)) * rippleParams.w;
 
     
     // 波紋も遠景では解像できないので同様に減衰させる
@@ -229,6 +230,7 @@ float4 main(PSIn IN) : SV_TARGET
     
     float finalDepth = SceneDepth.Sample(sampler_states[ClampPoint], refrUV).r;
     float3 finalWorldPosBehind = GetWorldPosFromDepth(refrUV, finalDepth);
+    float hasUnderwaterSurface = (finalDepth < 0.9999f && finalWorldPosBehind.y < IN.WorldPos.y) ? 1.0f : 0.0f;
 
     float3 refr = SceneColor.Sample(sampler_states[ClampLinear], refrUV).rgb;
     float3 causticsColor = float3(0.0f, 0.0f, 0.0f);
@@ -255,7 +257,8 @@ float4 main(PSIn IN) : SV_TARGET
     float4 ssrSample = SSRColor.Sample(sampler_states[ClampLinear], ssrUV);
     float2 edgeFactor = saturate(abs(ndc) * 1.1f - 0.1f);
     float screenFade = saturate(1.0f - max(edgeFactor.x, edgeFactor.y));
-    float ssrWeight = saturate(ssrSample.a) * screenFade;
+    float ssrPresence = max(iblParams.w, 0.0f);
+    float ssrWeight = saturate(ssrSample.a * ssrPresence) * screenFade;
     
     
    
@@ -273,6 +276,11 @@ float4 main(PSIn IN) : SV_TARGET
 
     
     float reflWeight = saturate(max(f, iblParams.x));
+    // Real water has a low front-facing Fresnel response, but using that value
+    // unchanged made valid ship/terrain SSR hits visually indistinguishable
+    // from refraction. Give only confirmed SSR pixels a controlled floor.
+    float ssrReflectionFloor = 0.30f * saturate(ssrPresence / 1.6f) * ssrWeight;
+    float finalReflectionWeight = max(reflWeight, ssrReflectionFloor);
 
     //--------------------------------------------------------------------------
     // 水中での吸収（Beer-Lambert）
@@ -293,11 +301,17 @@ float4 main(PSIn IN) : SV_TARGET
     float3 absorptionRatio = lerp(float3(WaterAbsorptionMaxRatio, WaterAbsorptionMaxRatio, WaterAbsorptionMaxRatio),
                                   float3(1.0f, 1.0f, 1.0f),
                                   tintNormalized);
-    float3 extinction = waterTint.a * absorptionRatio;
+    // Turbidity raises extinction and changes the in-scattered color.  This
+    // gives the UI a physically understandable clear-to-murky control instead
+    // of merely painting an opaque color over the water.
+    float turbidity = saturate(alphaParam.z);
+    float3 extinction = waterTint.a * absorptionRatio * lerp(1.0f, 7.0f, turbidity);
     float3 att3 = exp(-extinction * pathLength);
 
     // 透過してきた背景色を減衰させ、失われた分を水自身の散乱色で補う
-    float3 refrTinted = refr * att3 + waterTint.rgb * (1.0f - att3);
+    float3 sedimentTint = float3(0.18f, 0.14f, 0.075f);
+    float3 scatteringColor = lerp(waterTint.rgb, sedimentTint, turbidity * 0.72f);
+    float3 refrTinted = refr * att3 + scatteringColor * (1.0f - att3);
 
     //--------------------------------------------------------------------------
     // 太陽の鏡面反射
@@ -331,8 +345,27 @@ float4 main(PSIn IN) : SV_TARGET
 
     // サブサーフェス散乱は吸収量に比例させる（輝度の平均で代表させる）
     float attLuma = dot(att3, float3(0.2126f, 0.7152f, 0.0722f));
-    float3 subsurface = waterTint.rgb * alphaParam.x * (1.0f - attLuma);
-    float3 color = lerp(baseColor, refl * iblParams.y, reflWeight) + spec + subsurface;
+    float3 subsurface = scatteringColor * alphaParam.x * (1.0f - attLuma);
+    float3 color = lerp(baseColor, refl * iblParams.y, finalReflectionWeight) + spec + subsurface;
+
+    // Depth-aware shoreline foam follows the actual terrain in the scene
+    // depth buffer. Ripple/crest foam adds smaller moving highlights, making
+    // impacts around rocks and hulls legible even when the base water is dark.
+    float foamDepth = max(shadingParams.w, 1.0f);
+    float shoreFoam = hasUnderwaterSurface * (1.0f - smoothstep(0.0f, foamDepth, bottomDepth));
+    float foamNoise = saturate(0.52f + n0.x * 0.35f + n1.y * 0.30f);
+    shoreFoam *= smoothstep(0.28f, 0.72f, foamNoise);
+
+    float crestFoam = saturate((1.0f - N.y) * 2.4f - 0.12f);
+    float impactFoam = saturate(rippleSlope * 0.075f - 0.04f);
+    float foamAmount = saturate((shoreFoam + crestFoam * 0.28f + impactFoam * 0.55f)
+                                * alphaParam.w * (1.0f - distFade * 0.70f));
+
+    float sunsetAmount = (1.0f - smoothstep(0.05f, 0.35f, abs(sunDirection.y)))
+                       * sunVisibility;
+    float3 foamColor = lerp(float3(0.88f, 0.96f, 1.0f),
+                            float3(1.0f, 0.68f, 0.42f), sunsetAmount * 0.35f);
+    color = lerp(color, foamColor, foamAmount);
  
     return float4(color, 1.0f);
 }

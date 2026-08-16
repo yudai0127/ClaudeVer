@@ -70,7 +70,9 @@ bool CascadeShadowMap::initialize(ID3D11Device* device)
 
     
     cascadeConstants.cascade_shadow_bias = 0.005f;
-    cascadeConstants.cascade_shadow_attenuation = 0.5f;
+    // Make contact and hull shadows readable from exhibition distance while
+    // retaining enough ambient fill to avoid crushed blacks.
+    cascadeConstants.cascade_shadow_attenuation = 0.28f;
     cascadeConstants.display_cascade_area = FALSE;
     cascadeConstants.cascade_shadow_pcf_radius = 1.5f;
     return true;

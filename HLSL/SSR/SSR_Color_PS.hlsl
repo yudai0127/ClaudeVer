@@ -32,12 +32,17 @@ float4 main(VS_OUT pin) : SV_TARGET
                     continue;
 
                 float2 delta = (float2(i, j) * separation) / texture_size;
-                accum_uv += ssr_uv_map.Sample(sampler_states[ClampLinear], pin.texcoord + delta);
-                count += 1.0f;
+                float4 neighbour = ssr_uv_map.Sample(sampler_states[ClampLinear], pin.texcoord + delta);
+                float valid = step(0.01f, neighbour.a);
+                accum_uv += neighbour * valid;
+                count += valid;
             }
         }
 
-        uv = accum_uv / max(count, 1.0f);
+        if (count > 0.0f)
+        {
+            uv = accum_uv / count;
+        }
     }
 
     // UV範囲外は無効
@@ -46,7 +51,10 @@ float4 main(VS_OUT pin) : SV_TARGET
 
     // 反射先カラーを取得して alpha に有効度を掛ける
     float4 color = ssr_scene_color.Sample(sampler_states[ClampLinear], uv.xy);
-    color.a *= saturate(uv.w);
+    // Hit confidence belongs to the ray, not to the alpha channel of the
+    // reflected material. Using scene alpha made sails and foliage reflections
+    // almost disappear even when the SSR ray hit correctly.
+    color.a = saturate(uv.w);
 
     return color;
 }
