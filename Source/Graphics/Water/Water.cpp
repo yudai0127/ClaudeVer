@@ -52,7 +52,9 @@ bool RippleSimulation::Initialize(ID3D11Device* device, uint32_t width, uint32_t
     }
 
     // ƒfƒtƒHƒ‹ƒgƒpƒ‰ƒ[ƒ^Ý’è
-    simParams.c = 30.0f;      // ”g‚Ì“`”d‘¬“x (texels/sec)
+    // The simulation is half the former resolution. Halving texel-space speed
+    // keeps approximately the same propagation speed in world space.
+    simParams.c = 15.0f;      // ”g‚Ì“`”d‘¬“x (texels/sec)
     simParams.damping = 1.5f; // Œ¸ŠŒW”
 
     return true;
@@ -247,7 +249,7 @@ bool Water_Simulation::Initialize(ID3D11Device* device, uint32_t gridWidth, uint
 
 
     // ”g–äƒVƒ~ƒ…ƒŒ[ƒVƒ‡ƒ“‚Ì‰Šú‰»
-    if (!rippleSim.Initialize(device, 2048, 2048))
+    if (!rippleSim.Initialize(device, 1024, 1024))
     {
         OutputDebugStringA("FATAL ERROR: Failed to initialize RippleSimulation.\n");
         return false;
@@ -346,7 +348,18 @@ void Water_Simulation::update(ID3D11DeviceContext* dc, float elapsedTime,
 {
     if (!pauseds) {
         time += elapsedTime;
-        rippleSim.update(dc, elapsedTime);
+
+        // Ripples do not need to run at the display refresh rate. A fixed
+        // 30 Hz step is smooth while avoiding redundant dispatches on
+        // high-refresh-rate displays.
+        constexpr float RIPPLE_FIXED_STEP = 1.0f / 30.0f;
+        rippleUpdateAccumulator += elapsedTime;
+        if (rippleUpdateAccumulator >= RIPPLE_FIXED_STEP)
+        {
+            rippleSim.update(dc, RIPPLE_FIXED_STEP);
+            rippleUpdateAccumulator -= RIPPLE_FIXED_STEP;
+            rippleUpdateAccumulator = min(rippleUpdateAccumulator, RIPPLE_FIXED_STEP);
+        }
     }
 
     

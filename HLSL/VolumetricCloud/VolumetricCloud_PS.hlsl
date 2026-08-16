@@ -5,9 +5,8 @@ static const float NDC_BIAS = 1.0;
 static const float RAYMARCH_DIRECTION_Y_THRESHOLD = 0.0;
 
 static const float AUTO_STEP_ATTENUATION = 0.5625;
-static const float TARGET_STEP_LENGTH = 1.5;
 static const float MIN_RAY_MARCH_STEPS = 32.0;
-static const float MAX_RAY_MARCH_STEPS = 256.0;
+static const float MAX_RAY_MARCH_STEPS = 160.0;
 
 static const float HORIZON_FADE_START = 0.6;
 static const float HORIZON_FADE_END = 1.0;
@@ -97,7 +96,8 @@ float4 main(VS_OUT pin) : SV_TARGET
             );
         }
 
-        steps = max(steps, ceil(shell_dist / TARGET_STEP_LENGTH));
+        // 距離からステップ数を強制すると、雲層の単位スケールではほぼ常に
+        // 256ステップへ張り付き、UIの設定値が機能しない。品質設定をそのまま使う。
         steps = clamp(steps, MIN_RAY_MARCH_STEPS, MAX_RAY_MARCH_STEPS);
 
         float3 ray_step = ray_dir * shell_dist / steps;

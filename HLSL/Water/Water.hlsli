@@ -4,7 +4,9 @@
 // 円周率
 static const float PI = 3.14159265359f;
 static const float WaterIOR = 1.33f;
-static const uint RefractionIterationCount = 4;
+// Two screen-space refinement iterations retain the visible distortion while
+// halving the depth/normal samples used by refraction on every water pixel.
+static const uint RefractionIterationCount = 2;
 static const float RefractionErrorPixels = 1.0f;
 
 // 1本ぶんの波パラメータ（ゲルストナー波用）

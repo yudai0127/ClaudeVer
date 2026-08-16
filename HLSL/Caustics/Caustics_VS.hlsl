@@ -129,10 +129,10 @@ CausticsVSOut main(VSInput IN)
 
     float3 hitPos = waterPos;
     float t = 0.0f;
-    // ステップ幅は maxDist/64 なので、maxDist に到達するのに必要な回数は64。
-    // 上限128は無駄なので半分に減らす（この探索は水面の頂点ごとに走るため効きが大きい）
-    float stepSize = max(maxDist / 64.0f, 1.0f);
-    const int maxSteps = 64;
+    // This runs once per water vertex. A coarse 32-step search followed by
+    // binary refinement is sufficient for the intentionally soft caustics.
+    float stepSize = max(maxDist / 32.0f, 1.0f);
+    const int maxSteps = 32;
     bool hit = false;
 
     // レイマーチングによる海底との交点探索
@@ -170,7 +170,7 @@ CausticsVSOut main(VSInput IN)
         float t1 = t;
         
         [unroll]
-        for (int j = 0; j < 5; ++j)
+        for (int j = 0; j < 4; ++j)
         {
             float tMid = (t0 + t1) * 0.5f;
             float3 pMid = waterPos + refractedDir * tMid;

@@ -249,6 +249,7 @@ private:
     // シミュレーションの進行時間と状態管理
     bool  pauseds = false;
     float time = 0.0f;
+    float rippleUpdateAccumulator = 0.0f;
 
     // 水面のワールド座標系サイズと中心位置
     float worldSizeX = 100000.0f;

@@ -54,7 +54,10 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11Texture2D>           sky_cubemap_texture;
 	Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> sky_cubemap_uav; // CSでの書き込み用
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>  sky_cubemap_srv; // 描画時・IBL時の読み込み用
-	UINT cubemap_resolution = 512;// キューブマップの解像度
+	// 256 is sufficient for the blurred atmospheric background and lets the
+	// visible sky update frequently enough for a smooth day/night cycle.
+	UINT cubemap_resolution = 256;// キューブマップの解像度
+	bool transmittanceDirty = true;
 
 	// 定数バッファ
 	

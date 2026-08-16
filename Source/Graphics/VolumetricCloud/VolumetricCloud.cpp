@@ -136,7 +136,7 @@ void VolumetricCloud::initialize(ID3D11Device* device, const wchar_t* filename)
 	// 中間密度の雲片が光点化するのを避けるため、初期状態はOFF。
 	// 修正済みの穏やかな加光はImGuiから必要な場合だけ有効化できる。
 	volumetric_cloud_constant_data.enable_powdered_sugar_efffect = 0;
-	volumetric_cloud_constant_data.ray_marching_steps = 160;
+	volumetric_cloud_constant_data.ray_marching_steps = 96;
 	volumetric_cloud_constant_data.auto_ray_marching_steps = 0;
 	
 }

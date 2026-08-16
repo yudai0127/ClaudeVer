@@ -66,7 +66,7 @@ static const float HIGH_FREQ_WIND_ANIM_SCALE = 900.0;
 static const float ANIMATION_UV_WRAP = 2.0;
 static const float CURL_NOISE_UV_SCALE = 0.00008;
 
-static const int CONE_SAMPLE_COUNT = 4;
+static const int CONE_SAMPLE_COUNT = 3;
 static const float CONE_LATERAL_SCALE = 0.35;
 static const float LONG_DISTANCE_DENSITY_MIP = 5.0;
 
@@ -242,17 +242,6 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
     float cloud_coverage = weather_data.r * cloud_coverage_scale;
     float base_cloud_with_coverage = remap(base_cloud, 1.0 - cloud_coverage, 1.0, 0.0, 1.0);
     base_cloud_with_coverage *= cloud_coverage;
-
-    // 粗いLODで周囲にも雲の塊があるかを確認する。細かいLODだけで
-    // 偶然密度が高くなった孤立島を、大きな雲の輪郭を保ったまま除去する。
-    float support_mip = max(mip_level, 3.5);
-    float4 support_noises = sample_low_frequency_noises(low_freq_point, support_mip);
-    float support_fbm = support_noises.g * 0.625 + support_noises.b * 0.25 + support_noises.a * 0.125;
-    float support_cloud = remap(support_noises.r, -(1.0 - support_fbm), 1.0, 0.0, 1.0);
-    support_cloud *= density_height_gradient;
-    support_cloud = remap(support_cloud, 1.0 - cloud_coverage, 1.0, 0.0, 1.0) * cloud_coverage;
-    float spatial_coherence = smoothstep(0.015, 0.10, support_cloud);
-    base_cloud_with_coverage *= spatial_coherence;
 
     float final_cloud = base_cloud_with_coverage;
 

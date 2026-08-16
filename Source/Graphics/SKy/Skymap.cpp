@@ -132,7 +132,14 @@ void SkyMap::update(ID3D11DeviceContext* dc, const DirectX::XMFLOAT3& camera_pos
 
 	DirectX::XMStoreFloat3(&this->atmosphere_constants_data.cameraPosition, camPlanetCenteredKm);
 
-	updateTransmittance(dc);
+	// This LUT depends on atmosphere composition and planet dimensions, not on
+	// the sun direction or camera. Rebuilding its 96-sample integration for
+	// every small sun movement caused periodic GPU spikes near sunset.
+	if (transmittanceDirty)
+	{
+		updateTransmittance(dc);
+		transmittanceDirty = false;
+	}
 
 	atmosphere_constant_buffer->UploadData<AtmosphereConstants>(dc, 3, atmosphere_constants_data, false, false, false, false, false, true);
 
@@ -311,17 +318,29 @@ bool SkyMap::debugGui(DirectX::XMFLOAT4* outLightDirection)
 	ImGui::Text("Sky Colors");
 
 	if (ImGui::ColorEdit3("Rayleigh Coefficient", &params.rayleighScatteringCoefficient.x))
+	{
 		anyChanged = true;
+		transmittanceDirty = true;
+	}
 
 	if (ImGui::DragFloat("Scale Height##Rayleigh", &params.rayleighScaleHeight, 0.01f, 0.1f, 20.0f))
+	{
 		anyChanged = true;
+		transmittanceDirty = true;
+	}
 
 	ImGui::Separator();
 	ImGui::Text("Mie (Haze, Sun Corona)");
 	if (ImGui::DragFloat("Scattering Coeff##Mie", &params.mieScatteringCoefficient, 0.000001f, 0.0f, 0.0001f, "%.6f"))
+	{
 		anyChanged = true;
+		transmittanceDirty = true;
+	}
 	if (ImGui::DragFloat("Scale Height##Mie", &params.mieScaleHeight, 0.01f, 0.1f, 5.0f))
+	{
 		anyChanged = true;
+		transmittanceDirty = true;
+	}
 	if (ImGui::DragFloat("Eccentricity", &params.mieEccentricity, 0.001f, 0.0f, 0.999f))
 		anyChanged = true;
 

@@ -204,7 +204,12 @@ void GameScene::initialize()
 	cascadeShadowMap = std::make_unique<CascadeShadowMap>(DeviceManager::instance()->getDevice());
 
 	water_simulation = std::make_unique<Water_Simulation>();
-	if (!water_simulation->Initialize(DeviceManager::instance()->getDevice(), 1280, 1280))
+	// Fine surface detail comes from the normal maps. A 1280x1280 geometry grid
+	// was spending most of its time evaluating waves on sub-pixel vertices in
+	// three water passes per frame without a visible benefit.
+	constexpr uint32_t WATER_GRID_RESOLUTION = 512;
+	if (!water_simulation->Initialize(DeviceManager::instance()->getDevice(),
+		WATER_GRID_RESOLUTION, WATER_GRID_RESOLUTION))
 	{
 		OutputDebugStringA("GameScene::initialize: Water_Simulation::Initialize failed\n");
 		water_simulation.reset();
@@ -221,10 +226,12 @@ void GameScene::initialize()
 		
 	}
 
+	// Caustics are broad and are bilinearly upsampled by the water shader, so
+	// half resolution removes 75% of this off-screen pixel work.
 	causticsBuffer = std::make_unique<FrameBuffer>(
 		devicmgr->getDevice(),
-		devicmgr->getScreenWidth(),
-		devicmgr->getScreenHeight());
+		static_cast<uint32_t>(devicmgr->getScreenWidth()) / 2u,
+		static_cast<uint32_t>(devicmgr->getScreenHeight()) / 2u);
 
 	ShaderManager::instance()->CreatePsFromCso(
 		devicmgr->getDevice(),
@@ -322,14 +329,19 @@ void GameScene::update(float elapsedTime)
 	}
 
 	// 雲シミュレーション時間と天候マップを更新
-	if (volumetricCloud)
+	static unsigned int weatherUpdateFrame = 0;
+	if (enableVolumetricCloud && volumetricCloud)
 	{
 		volumetricCloud->volumetric_cloud_constant_data.time += elapsedTime;
-		volumetricCloud->updateWeatherMap(DeviceManager::instance()->getDeviceContext(), volumetricCloud->getTargetWeather());
+		if ((weatherUpdateFrame++ % 4u) == 0u)
+		{
+			volumetricCloud->updateWeatherMap(DeviceManager::instance()->getDeviceContext(), volumetricCloud->getTargetWeather());
+		}
 	}
 
+	const bool rainActive = enableVolumetricCloud && volumetricCloud && volumetricCloud->getTargetWeather() > 0.55f;
 	// 雨粒システムを更新（天候テクスチャを参照）
-	if (rainSystem && volumetricCloud)
+	if (rainSystem && rainActive)
 	{
 		Camera* cam = Camera::instance();
 		rainSystem->update(
@@ -343,7 +355,8 @@ void GameScene::update(float elapsedTime)
 	}
 
 	// 雨の着弾位置を読み戻して水面波紋へ注入
-	if (rainSystem && water_simulation)
+	static unsigned int rainReadbackFrame = 0;
+	if (rainSystem && rainActive && water_simulation && (rainReadbackFrame++ % 3u) == 0u)
 	{
 		auto* dc = DeviceManager::instance()->getDeviceContext();
 
@@ -719,8 +732,8 @@ void GameScene::render()
 
 		cb.params = DirectX::XMFLOAT4(causticsScale, causticsWobble, causticsPower, causticsIntensity * causticsVisibility);
 		cb.invScreenSize = DirectX::XMFLOAT2(
-			1.0f / static_cast<float>(mgr->getScreenWidth()),
-			1.0f / static_cast<float>(mgr->getScreenHeight()));
+			2.0f / static_cast<float>(mgr->getScreenWidth()),
+			2.0f / static_cast<float>(mgr->getScreenHeight()));
 		cb.time = elapsedTime * causticsSpeed;
 		cb.waterPlaneY = water_simulation->worldOffsetY;
 		cb.lightDirection = LightDirection;
@@ -832,7 +845,7 @@ void GameScene::render()
 		});
 
 	// 雨の描画
-	if (rainSystem)
+	if (rainSystem && enableVolumetricCloud && volumetricCloud && volumetricCloud->getTargetWeather() > 0.55f)
 	{
 		ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
 		dc->PSSetShaderResources(1, 1, nullSRV);
@@ -1487,22 +1500,31 @@ void GameScene::updateFreeCamera(float elapsedTime)
 
 void GameScene::updateIBLMaps(ID3D11DeviceContext* dc, const DirectX::XMFLOAT3& cameraPos)
 {
-	static int s_skyUpdateCounter = 0;
-	const int SKY_UPDATE_INTERVAL = 4;
+	static int s_skyVisualUpdateCounter = 0;
+	static int s_iblUpdateCounter = 0;
+	// The visible sky needs a much finer cadence than the filtered reflection
+	// maps. Updating them together every 12 frames made the setting sun jump.
+	constexpr int SKY_VISUAL_UPDATE_INTERVAL = 2;
+	constexpr int IBL_UPDATE_INTERVAL = 12;
 	static DirectX::XMFLOAT3 s_lastCameraPos = cameraPos;
-	auto cameraMoved = [](const DirectX::XMFLOAT3& a, const DirectX::XMFLOAT3& b, float thresholdMeters) {
-		float dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
-		return (dx * dx + dy * dy + dz * dz) > (thresholdMeters * thresholdMeters);
+	auto cameraAltitudeChanged = [](const DirectX::XMFLOAT3& a, const DirectX::XMFLOAT3& b, float thresholdMeters) {
+		return fabsf(a.y - b.y) > thresholdMeters;
 		};
 
 	// 毎フレーム更新は重いので、間引き＋カメラ移動時のみ再生成
-	bool needIBLUpdate = false;
-	if ((s_skyUpdateCounter++ % SKY_UPDATE_INTERVAL) == 0 || cameraMoved(cameraPos, s_lastCameraPos, 10.0f))
+	const bool altitudeChanged = cameraAltitudeChanged(cameraPos, s_lastCameraPos, 100.0f);
+	const bool needSkyVisualUpdate =
+		(s_skyVisualUpdateCounter++ % SKY_VISUAL_UPDATE_INTERVAL) == 0 || altitudeChanged;
+	if (needSkyVisualUpdate)
 	{
 		skyMap->update(dc, cameraPos);
 		s_lastCameraPos = cameraPos;
-		needIBLUpdate = true;
 	}
+
+	// Irradiance and specular PMREM change slowly and remain expensive, so keep
+	// those on the lower-frequency schedule.
+	const bool needIBLUpdate =
+		(s_iblUpdateCounter++ % IBL_UPDATE_INTERVAL) == 0 || altitudeChanged;
 
 	ID3D11ShaderResourceView* sourceSkySRV = skyMap->getSkyCubemapSRV();
 	ID3D11UnorderedAccessView* pNullUAV[1] = { nullptr };
@@ -1540,8 +1562,8 @@ void GameScene::updateIBLMaps(ID3D11DeviceContext* dc, const DirectX::XMFLOAT3& 
 		
 		const UINT SPECULAR_MIP_LEVELS = static_cast<UINT>(specular_pmrem_uav_mips.size());
 		constexpr UINT THREAD_GROUP = 8;
-		const UINT MAX_SPECULAR_SAMPLES = 512;
-		const UINT MIN_SPECULAR_SAMPLES = 16;
+		const UINT MAX_SPECULAR_SAMPLES = 128;
+		const UINT MIN_SPECULAR_SAMPLES = 8;
 
 		for (UINT mip = 0; mip < SPECULAR_MIP_LEVELS; ++mip)
 		{
