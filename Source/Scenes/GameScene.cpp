@@ -422,15 +422,32 @@ void GameScene::update(float elapsedTime)
 	{
 		const float minCycleDuration = 0.1f;
 		float cycleDurationSeconds = (dayNightCycleDurationSeconds > minCycleDuration) ? dayNightCycleDurationSeconds : minCycleDuration;
-		const float cycleSpeed = 1.0f / cycleDurationSeconds;
+		const float angularSpeed = 2.0f * DirectX::XM_PI / cycleDurationSeconds;
+		dayNightPhaseRadians = fmodf(
+			dayNightPhaseRadians + elapsedTime * angularSpeed,
+			2.0f * DirectX::XM_PI);
 
-		float sunAngle = this->elapsedTime * 2.0f * DirectX::XM_PI * cycleSpeed;
-
-		DirectX::XMVECTOR sunDir = DirectX::XMVectorSet(sin(sunAngle), cos(sunAngle), 0.2f, 0.0f);
+		DirectX::XMVECTOR sunDir = DirectX::XMVectorSet(
+			sinf(dayNightPhaseRadians), cosf(dayNightPhaseRadians), 0.2f, 0.0f);
 		sunDir = DirectX::XMVector3Normalize(sunDir);
 
 		DirectX::XMStoreFloat3(&skyMap->atmosphere_constants_data.sunDirection, sunDir);
 	}
+	if (!isDayNightCycleEnabled)
+	{
+		// Capture once on the running -> paused transition, then explicitly keep
+		// that direction. This prevents any delayed sky/IBL update from advancing
+		// the visible sun while the checkbox says Paused.
+		if (wasDayNightCycleEnabled)
+			pausedSunDirection = skyMap->atmosphere_constants_data.sunDirection;
+		else
+			skyMap->atmosphere_constants_data.sunDirection = pausedSunDirection;
+
+		dayNightPhaseRadians = atan2f(pausedSunDirection.x, pausedSunDirection.y);
+		if (dayNightPhaseRadians < 0.0f)
+			dayNightPhaseRadians += 2.0f * DirectX::XM_PI;
+	}
+	wasDayNightCycleEnabled = isDayNightCycleEnabled;
 
 	// Keep ships, terrain, sky and water on one time-of-day palette even when
 	// the animation is paused or the sun direction is edited manually.
@@ -1950,10 +1967,9 @@ void GameScene::debugGui()
 	{
 
 		ImGui::Checkbox("Day/Night Cycle", &isDayNightCycleEnabled);
+		ImGui::SameLine();
+		ImGui::TextDisabled(isDayNightCycleEnabled ? "Running" : "Paused");
 		ImGui::DragFloat("Cycle Duration (sec)", &dayNightCycleDurationSeconds, 0.1f, 1.0f, 60.0f);
-
-
-		DirectX::XMFLOAT4 maybeNewLightDir = LightDirection;
 
 
 		ImGui::ColorEdit3("AmbientColor", &AmbientColor.x);
@@ -1971,18 +1987,18 @@ void GameScene::debugGui()
 
 		if (skyMap)
 		{
-			bool skyChanged = skyMap->debugGui(&maybeNewLightDir);
-
-
-			if (skyChanged)
+			// The sky owns the sun direction. LightDirection may represent the sun
+			// by day or the opposite moon direction by night, so copying it back to
+			// the sky made a paused night alternate between sun and moon each frame.
+			// GameScene::update derives the correct primary light on the next frame.
+			const bool skyChanged = skyMap->debugGui(nullptr);
+			if (skyChanged && !isDayNightCycleEnabled)
 			{
-				DirectX::XMStoreFloat4(&LightDirection, DirectX::XMLoadFloat4(&maybeNewLightDir));
-			}
-			else if (!isDayNightCycleEnabled)
-			{
-
-				DirectX::XMVECTOR lightDir = DirectX::XMLoadFloat4(&LightDirection);
-				DirectX::XMStoreFloat3(&skyMap->atmosphere_constants_data.sunDirection, DirectX::XMVector3Normalize(DirectX::XMVectorNegate(lightDir)));
+				// Manual edits while paused become the new fixed position.
+				pausedSunDirection = skyMap->atmosphere_constants_data.sunDirection;
+				dayNightPhaseRadians = atan2f(pausedSunDirection.x, pausedSunDirection.y);
+				if (dayNightPhaseRadians < 0.0f)
+					dayNightPhaseRadians += 2.0f * DirectX::XM_PI;
 			}
 		}
 

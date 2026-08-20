@@ -207,6 +207,8 @@ private:
 
 	float elapsedTime = 0.0f;
 	float dayNightCycleDurationSeconds = 50.0f;
+	float dayNightPhaseRadians = 0.0f;
+	DirectX::XMFLOAT3 pausedSunDirection{ 0.0f, 1.0f, 0.2f };
 
 	float freeCameraRange = 20.0f;
 
@@ -237,6 +239,7 @@ private:
 
 private:
 	bool isDayNightCycleEnabled = true;
+	bool wasDayNightCycleEnabled = true;
 	bool useSpaceDivision = true;
 	bool isFreeCameraMode = false;
 
