@@ -65,6 +65,8 @@ static const float LOW_FREQ_WIND_ANIM_SCALE = 600.0;
 static const float HIGH_FREQ_WIND_ANIM_SCALE = 900.0;
 static const float ANIMATION_UV_WRAP = 2.0;
 static const float CURL_NOISE_UV_SCALE = 0.00008;
+static const float CURL_DISTORTION_BASE = 520.0;
+static const float CURL_DISTORTION_TOP = 220.0;
 
 static const int CONE_SAMPLE_COUNT = 3;
 static const float CONE_LATERAL_SCALE = 0.35;
@@ -86,23 +88,32 @@ static const float PHASE_G_FORWARD = 0.65;         // 前方散乱ローブ（太陽側の輝
 static const float PHASE_G_BACKWARD = -0.25;       // 後方散乱ローブ（雲縁のシルバーライニング）
 static const float PHASE_LOBE_BLEND = 0.4;         // 後方ローブの混合比
 static const float ISOTROPIC_PHASE = 0.0795774715; // 1 / (4 * PI)
-static const float PHASE_MAX_GAIN = 3.5;           // 等方散乱に対する最大ゲイン
-static const float PHASE_MIN_GAIN = 0.75;          // 等方散乱に対する最小ゲイン
+static const float PHASE_MAX_GAIN = 2.2;           // 等方散乱に対する最大ゲイン
+static const float PHASE_MIN_GAIN = 0.85;          // 等方散乱に対する最小ゲイン
 static const float CONE_SPREAD_DIVISOR = 36.0;
 static const float SEGMENT_STEP_EPSILON = 1e-5;
 static const int ZERO_DENSITY_RESET_COUNT = 6;
 static const float TRANSMITTANCE_EARLY_OUT = 0.01;
 
-static const float RAIN_ABSORPTION_MIN = 0.05;
-static const float RAIN_ABSORPTION_RAININESS_SCALE = 2.0;
-static const float DIRECT_OCCLUSION_MIN = 0.18;
-static const float AMBIENT_OCCLUSION_OVERCAST_MIN = 0.45;
-static const float AMBIENT_OCCLUSION_RAIN_MIN = 0.70;
-static const float POWDERED_SUGAR_THICKNESS_SCALE = 1.15;
-static const float AMBIENT_SUNSET_BLEND = 0.6;
-static const float CLOUD_DIRECT_LUMINANCE_LIMIT = 1.6;
-static const float CLOUD_LUMINANCE_PER_OPACITY_LIMIT = 2.0;
+static const float RAIN_ABSORPTION_MIN = 0.10;
+static const float RAIN_ABSORPTION_RAININESS_SCALE = 1.35;
+static const float SUNNY_CLOUD_ABSORPTION = 0.16;
+static const float DIRECT_OCCLUSION_MIN = 0.42;
+static const float AMBIENT_OCCLUSION_STORM_MIN = 0.62;
+static const float POWDERED_SUGAR_THICKNESS_SCALE = 1.60;
+static const float AMBIENT_SUNSET_BLEND = 0.35;
+static const float CLOUD_DIRECT_LUMINANCE_LIMIT = 2.2;
+static const float CLOUD_LUMINANCE_PER_OPACITY_LIMIT = 2.4;
 static const float3 LUMINANCE_WEIGHTS = float3(0.2126, 0.7152, 0.0722);
+
+// Stable, low-energy multiple scattering. The previous large white/core fills
+// erased the optical-depth variation and made the clouds look like solid clay.
+static const float MULTI_SCATTER_EXTINCTION_SCALE = 0.28;
+static const float MULTI_SCATTER_CONTRIBUTION = 0.24;
+static const float CLOUD_AMBIENT_NEUTRALITY = 0.72;
+static const float CLOUD_BASE_AMBIENT_MIN = 0.58;
+static const float CLOUD_AMBIENT_SCALE = 0.68;
+static const float CLOUD_OPTICAL_AMBIENT_MIN = 0.42;
 
 static const float NIGHT_AMBIENT_MIN_FACTOR = 0.08;
 static const float DIRECT_VISIBILITY_POWER = 2.0;
@@ -116,11 +127,8 @@ float remap(float original_value, float original_min, float original_max, float 
 float2 normalize_safe(float2 v)
 {
     float len2 = dot(v, v);
-    if (len2 < 1e-8)
-    {
-        return float2(1.0, 0.0);
-    }
-    return v * rsqrt(len2);
+    float2 normalized = v * rsqrt(max(len2, 1e-8));
+    return lerp(float2(1.0, 0.0), normalized, step(1e-8, len2));
 }
 
 // 低周波ノイズ(Perlin-Worley)をサンプル
@@ -231,21 +239,38 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
 #endif
 
     float4 low_frequency_noises = sample_low_frequency_noises(low_freq_point, mip_level - 2.0);
-    float low_frequency_fbm = low_frequency_noises.g * 0.625 + low_frequency_noises.b * 0.25 + low_frequency_noises.a * 0.125;
+    float low_frequency_fbm = dot(low_frequency_noises.gba,
+                                  float3(0.625, 0.25, 0.125));
 
-    float base_cloud = remap(low_frequency_noises.r, -(1.0 - low_frequency_fbm), 1.0, 0.0, 1.0);
-    float cloud_type = clamp(weather_data.b * cloud_type_scale, 0.0, 1.0);
+    // The weather texture stores a continuous local coverage value. Keeping it
+    // continuous is essential: a binary mask forces every visible cell to the
+    // same maximum density and produces giant vertical columns.
+    float cloud_coverage = saturate(weather_data.r * cloud_coverage_scale);
+    float cloud_type = saturate(weather_data.b * cloud_type_scale);
 
-    float density_height_gradient = get_density_height_gradient(height_fraction, cloud_type);
-    base_cloud *= density_height_gradient;
+    // Horizon-style base signal: Perlin provides connected masses while the
+    // packed Worley octaves erode them into broad, rounded billows.
+    float shape_signal = remap(low_frequency_noises.r,
+                               -(1.0 - low_frequency_fbm),
+                               1.0,
+                               0.0,
+                               1.0);
+    // The three blended height profiles are the only vertical shape control.
+    // Removing the old local-top/tower-taper path prevents hanging pillars.
+    float density_height_gradient = get_density_height_gradient(height_fraction,
+                                                                 cloud_type);
+    float height_shaped_density = shape_signal * density_height_gradient;
 
-    float cloud_coverage = weather_data.r * cloud_coverage_scale;
-    float base_cloud_with_coverage = remap(base_cloud, 1.0 - cloud_coverage, 1.0, 0.0, 1.0);
-    base_cloud_with_coverage *= cloud_coverage;
+    // Coverage shifts the density threshold instead of multiplying a binary
+    // placement mask. This is the key relationship used by the HZD method.
+    float final_cloud = remap(height_shaped_density,
+                              1.0 - cloud_coverage,
+                              1.0,
+                              0.0,
+                              1.0);
+    final_cloud *= cloud_coverage;
 
-    float final_cloud = base_cloud_with_coverage;
-
-    if (!cheap_sample && base_cloud_with_coverage > 0.0)
+    if (!cheap_sample && final_cloud > 0.0)
     {
 #ifdef ENABLE_CLOUD_ANIMATION
         float3 detail_point = sample_point;
@@ -257,27 +282,46 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
         float3 detail_point = sample_point;
 #endif
 
-        float3 curl_noise = curl_noise_texture.SampleLevel(sampler_states[LINEAR_MIRROR], detail_point.xy * CURL_NOISE_UV_SCALE, 0);
-        detail_point.xy += curl_noise.xy * (1.0 - height_fraction);
+        // Decode the 2D curl texture as a signed vector and use it to distort
+        // only the detail noise. This adds turbulence without breaking the
+        // readable low-frequency cloud silhouette.
+        float2 curl_uv = detail_point.xz * CURL_NOISE_UV_SCALE;
+        float2 curl_vector = curl_noise_texture.SampleLevel(
+            sampler_states[LINEAR_MIRROR], curl_uv, 0).xy * 2.0 - 1.0;
+        float curl_strength = lerp(CURL_DISTORTION_BASE,
+                                   CURL_DISTORTION_TOP,
+                                   smoothstep(0.0, 0.85, height_fraction));
+        detail_point.xz += curl_vector * curl_strength;
 
         float3 high_frequency_noises = sample_high_frequency_noises(detail_point, mip_level);
-        float high_frequency_fbm = high_frequency_noises.r * 0.625 + high_frequency_noises.g * 0.25 + high_frequency_noises.b * 0.125;
+        float high_frequency_fbm = dot(high_frequency_noises,
+                                       float3(0.625, 0.25, 0.125));
 
-        float high_frequency_noise_modifier = lerp(high_frequency_fbm, 1.0 - high_frequency_fbm, clamp(height_fraction * 4.0, 0.0, 1.0));
-        final_cloud = remap(base_cloud_with_coverage, high_frequency_noise_modifier * 0.4 * height_fraction, 1.0, 0.0, 1.0);
+        // Invert detail near the base for wispy rising edges, then use it as a
+        // remap threshold. This erodes the perimeter without exposing Worley
+        // rings as circular craters across the whole cloud body.
+        float detail_height_blend = smoothstep(0.10, 0.32, height_fraction);
+        float erosion_noise = lerp(high_frequency_fbm,
+                                   1.0 - high_frequency_fbm,
+                                   detail_height_blend);
+        float erosion_threshold = erosion_noise
+                                * lerp(0.035, 0.11,
+                                       smoothstep(0.08, 0.90, height_fraction));
+        final_cloud = remap(final_cloud,
+                            erosion_threshold,
+                            1.0,
+                            0.0,
+                            1.0);
     }
 
-    float shaped_density = pow(clamp(final_cloud, 0.0, 1.0), (1.0 - height_fraction) * 0.8 + 0.5);
-
-    // 薄い孤立した密度島は、夕方の散乱で雲ではなく光点に見える。
-    // 滑らかなゲートで小片を除き、雲の大きな塊と輪郭は残す。
-    float coherent_cloud = smoothstep(0.06, 0.20, shaped_density);
-    return shaped_density * coherent_cloud;
+    final_cloud = saturate(final_cloud);
+    float coherent_cloud = smoothstep(0.003, 0.045, final_cloud);
+    return final_cloud * coherent_cloud;
 }
 
 
 // 雲の明るさ全体スケール
-static const float CLOUD_LIGHT_SCALE = 0.7;
+static const float CLOUD_LIGHT_SCALE = 0.90;
 
 
 // hash:ジッタリングに使う乱数
@@ -462,7 +506,7 @@ float3 get_sunset_tint(float sun_y)
     float sun_visibility = get_sun_visibility(sun_y);
     float sunset = horizon_band * sun_visibility;
 
-    const float3 warm_tint = float3(1.0, 0.58, 0.34);
+    const float3 warm_tint = float3(1.0, 0.68, 0.48);
     return lerp(1.0.xxx, warm_tint, sunset);
 }
 
@@ -491,7 +535,9 @@ float4 ray_march(float3 ray_origin, float3 ray_step, int steps)
     // 太陽方向と位相関数(散乱の向き)を準備
     float3 sun_direction = normalize(sunDirection.xyz);
     float3 view_dir = normalize(ray_step);
-    float cos_theta = dot(sun_direction, -view_dir);
+    // Incoming sunlight travels opposite to sun_direction and the scattered
+    // ray travels toward the camera. Their angle reduces to dot(sun, view).
+    float cos_theta = dot(sun_direction, view_dir);
 
     // 位相関数(Phase Function)の計算
     // 以前は g=0.1 のほぼ等方散乱だったため、どの向きから見ても明るさが変わらず
@@ -563,41 +609,78 @@ float4 ray_march(float3 ray_origin, float3 ray_step, int steps)
 
                     float optical_thickness = density_scale * density_along_light_ray * cone_spread_multplier;
                     float raininess = saturate(weather_data.g);
-                    float overcast = saturate(weather_data.r);
-                    float rain_cloud_absorption = max(RAIN_ABSORPTION_MIN, rain_cloud_absorption_scale) * (1.0 + raininess * RAIN_ABSORPTION_RAININESS_SCALE);
-                    //光レイ側の Beer-Lambert: 雲の中を通るほど太陽光が減る
-                #if 1
-                    float beers_law = exp(-optical_thickness * rain_cloud_absorption);
-                #else
-                    float beers_law = max(exp(-optical_thickness * rain_cloud_absorption), exp(-optical_thickness * 0.25 * rain_cloud_absorption) * 0.35);
-                #endif
-                    // 曇天/雨天で光量を抑える
-                    float direct_occlusion = lerp(1.0, DIRECT_OCCLUSION_MIN, max(overcast, raininess));
-                    float ambient_occlusion = lerp(1.0, AMBIENT_OCCLUSION_OVERCAST_MIN, overcast) * lerp(1.0, AMBIENT_OCCLUSION_RAIN_MIN, raininess);
+                    float local_coverage = saturate(weather_data.r);
+                    float storminess = max(raininess,
+                                           smoothstep(0.58, 0.82, local_coverage) * 0.65);
+                    // The GUI rain absorption value must not darken fair-weather
+                    // cumulus. Blend from a low sunny extinction into the much
+                    // stronger rain-cloud extinction only as precipitation rises.
+                    float rain_extinction = max(RAIN_ABSORPTION_MIN, rain_cloud_absorption_scale);
+                    float cloud_absorption = lerp(SUNNY_CLOUD_ABSORPTION,
+                                                  rain_extinction,
+                                                  raininess)
+                                           * (1.0 + raininess * RAIN_ABSORPTION_RAININESS_SCALE);
+                    // Beer-Lambert primary transmission plus one low-energy
+                    // multiple-scattering octave keeps dense cores readable.
+                    float primary_scattering = exp(-optical_thickness * cloud_absorption);
+                    float multiple_scattering = exp(-optical_thickness * cloud_absorption
+                                                   * MULTI_SCATTER_EXTINCTION_SCALE)
+                                              * MULTI_SCATTER_CONTRIBUTION;
+                    float beers_law = saturate(primary_scattering + multiple_scattering);
 
-                    // Powdered Sugarは通常の直射光を置き換えるのではなく、厚い雲の縁に少し加える。
-                    // 従来の 0..1 乗算は薄い雲を青黒くし、中間密度だけを黄色い光点にしていた。
+                    // Coverage describes where a cloud exists, not whether it is
+                    // automatically a rain cloud. Only dense overcast cells and
+                    // actual rain strongly suppress direct sunlight.
+                    float direct_occlusion = lerp(1.0, DIRECT_OCCLUSION_MIN, storminess);
+                    float ambient_occlusion = lerp(1.0, AMBIENT_OCCLUSION_STORM_MIN, storminess);
+
+                    // Beer-Powder is strongest toward the sun, producing a soft
+                    // silver lining instead of a uniform white outline.
                     float powder_response = 1.0 - exp(-optical_thickness * POWDERED_SUGAR_THICKNESS_SCALE);
+                    float powder_view = smoothstep(0.20, 0.88, cos_theta);
                     float powdered_sugar = enable_powdered_sugar_efffect
-                        ? lerp(1.0, 1.25, saturate(powder_response))
+                        ? 1.0 + powder_response * powder_view * 0.28
                         : 1.0;
                     float3 sunset_tint = get_sunset_tint(sun_direction.y);
                     float sun_visibility = get_sun_visibility(sun_direction.y);
                     float direct_visibility = pow(sun_visibility, DIRECT_VISIBILITY_POWER);
                     float ambient_visibility = lerp(NIGHT_AMBIENT_MIN_FACTOR, 1.0, sun_visibility);
 
-                    float3 ambient_light = sky_irradiance
-                               * lerp(1.0.xxx, sunset_tint, AMBIENT_SUNSET_BLEND * sun_visibility)
-                             * ambient_occlusion
-                             * ambient_visibility;
+                    float sky_luminance = dot(sky_irradiance, LUMINANCE_WEIGHTS);
+                    float3 neutral_sky_irradiance = lerp(sky_irradiance,
+                                                         sky_luminance.xxx,
+                                                         CLOUD_AMBIENT_NEUTRALITY);
+                    float height_fraction = get_height_fraction_for_point_radius(current_height);
+                    float base_light = lerp(CLOUD_BASE_AMBIENT_MIN, 1.0,
+                                            smoothstep(0.02, 0.72, height_fraction));
 
+                    // Optical depth now creates the broad shaded side and the
+                    // darker condensation base; no uniform white core fill.
+                    float optical_ambient = lerp(1.0,
+                                                 CLOUD_OPTICAL_AMBIENT_MIN,
+                                                 1.0 - exp(-optical_thickness * 0.10));
+                    float density_ambient = lerp(1.0, 0.78,
+                                                 smoothstep(0.18, 0.72, sampled_density));
+
+                    float3 ambient_light = neutral_sky_irradiance
+                               * lerp(1.0.xxx, sunset_tint, AMBIENT_SUNSET_BLEND * sun_visibility)
+                              * ambient_occlusion
+                              * base_light
+                              * optical_ambient
+                              * density_ambient
+                              * CLOUD_AMBIENT_SCALE
+                              * ambient_visibility;
+
+                    float vertical_direct = lerp(0.76, 1.04,
+                                                 smoothstep(0.04, 0.78, height_fraction));
                     float3 direct_light = incoming_sun_light
                          * direct_visibility
                          * beers_law
                         * powdered_sugar
                         * henyey_greenstein_phase
                         * sunset_tint
-                        * direct_occlusion;
+                        * direct_occlusion
+                        * vertical_direct;
 
                     // 一つのレイサンプルだけが極端に明るくなるファイアフライを抑制。
                     // 色相は保ったまま輝度だけを制限する。

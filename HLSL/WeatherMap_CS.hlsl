@@ -30,9 +30,12 @@ static const float FBM_LACUNARITY = 2.02;
 static const float FLOW_TIME_SCALE = 0.02;
 
 static const float PRECIP_START = 0.75;
-static const float PATCH_CENTER = 0.5;
-static const float PATCH_SCALE = 2.0;
-static const float RAIN_PATCH_SCALE = 0.8;
+static const float FBM_NORMALIZATION = 1.0 / 0.9375;
+static const float MACRO_DETAIL_BLEND = 0.18;
+static const float COVERAGE_THRESHOLD_HIGH = 0.76;
+static const float COVERAGE_THRESHOLD_LOW = 0.30;
+static const float COVERAGE_EDGE_MIN = 0.10;
+static const float COVERAGE_EDGE_MAX = 0.22;
 
 
 
@@ -78,19 +81,46 @@ void main(uint3 id : SV_DispatchThreadID)
     float2 uv = (float2(id.xy) + 0.5) / resolution;
 
     float2 flow = (windDir * windSpeed) * time * FLOW_TIME_SCALE;
-    float n = fbm((uv + flow) * noiseScale);
+
+    // Separate large weather cells from a weak secondary breakup. The old
+    // single FBM value was used directly as coverage and produced one broad,
+    // connected cloud sheet. A thresholded macro field creates distinct cloud
+    // groups with clear sky between them.
+    float macroNoise = saturate(fbm((uv + flow) * noiseScale) * FBM_NORMALIZATION);
+    float2 detailUv = uv * float2(1.37, 0.91) + flow * 1.31 + float2(0.19, 0.43);
+    float detailNoise = saturate(fbm(detailUv * noiseScale * 2.35) * FBM_NORMALIZATION);
+    float weatherSignal = lerp(macroNoise, detailNoise, MACRO_DETAIL_BLEND);
 
     float tCov = saturate(weatherT);
     float tType = saturate(weatherT);
 
     float tRain = saturate((weatherT - PRECIP_START) / (1.0 - PRECIP_START));
 
-    float coverage = lerp(sunnyCoverage, rainyCoverage, tCov);
+    float requestedCoverage = lerp(sunnyCoverage, rainyCoverage, tCov);
     float rain = lerp(sunnyRain, rainyRain, tRain);
     float ctype = lerp(sunnyType, rainyType, tType);
+    // The blue channel is a spatial cloud-type field, not one global height.
+    // Gentle variation mixes lower stratocumulus with taller cumulus groups.
+    float typeVariation = (macroNoise - 0.5) * 0.20
+                        + (detailNoise - 0.5) * 0.08;
+    ctype = saturate(ctype + typeVariation);
 
-    float patch = (n - PATCH_CENTER) * PATCH_SCALE;
-    coverage = saturate(coverage + patch * noiseAmp);
+    float threshold = lerp(COVERAGE_THRESHOLD_HIGH,
+                           COVERAGE_THRESHOLD_LOW,
+                           requestedCoverage);
+    float edgeWidth = lerp(COVERAGE_EDGE_MIN,
+                           COVERAGE_EDGE_MAX,
+                           requestedCoverage);
+    float placement = smoothstep(threshold, threshold + edgeWidth, weatherSignal);
+
+    // Preserve a small amount of irregularity without rejoining neighbouring
+    // cells. noiseAmp remains part of the existing CPU/UI data contract.
+    float boundaryDetail = (detailNoise - 0.5) * noiseAmp * 0.35;
+    placement = saturate(placement + boundaryDetail * placement * (1.0 - placement));
+
+    // Store actual local coverage rather than a binary placement mask. The
+    // volumetric shader uses this value to shift its density threshold.
+    float coverage = placement * requestedCoverage;
 
     if (tRain <= 0.0)
     {
@@ -98,8 +128,8 @@ void main(uint3 id : SV_DispatchThreadID)
     }
     else
     {
-        rain = saturate(rain + patch * noiseAmp * RAIN_PATCH_SCALE);
-        coverage = max(coverage, rain);
+        rain *= smoothstep(0.35, 0.72, placement);
+        coverage = max(coverage, rain * requestedCoverage);
     }
 
     WeatherMapUAV[id.xy] = float4(coverage, rain, ctype, 1.0);

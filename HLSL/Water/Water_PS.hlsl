@@ -262,7 +262,7 @@ float4 main(PSIn IN) : SV_TARGET
     float screenFade = saturate(1.0f - max(edgeFactor.x, edgeFactor.y));
     float ssrPresence = max(iblParams.w, 0.0f);
     float ssrConfidence = saturate(ssrSample.a * ssrPresence);
-    // 弱い空振りは抑え、中～高信頼度のヒットを展示でも判別できる強さへ。
+    // SSR のアルファは「反射の強さ」ではなく、画面内ヒットの信頼度として使う。
     float ssrWeight = smoothstep(0.02f, 0.70f, ssrConfidence) * screenFade;
     
     
@@ -271,25 +271,19 @@ float4 main(PSIn IN) : SV_TARGET
     
     float3 envRefl = SkyCube.Sample(sampler_states[WrapLinear], R).rgb;
 
-    // 空の反射との差を少し広げ、船体の暗いシルエットと帆の明部を読みやすくする。
-    // 有効な SSR ヒットだけに適用するため、水面全体が鏡のようにはならない。
-    float3 visibleSSR = max((float3) 0.0f,
-                            envRefl + (ssrSample.rgb - envRefl) * 1.35f);
-    float3 refl = lerp(envRefl, visibleSSR, ssrWeight);
+    // SSR は画面内の船・地形、キューブマップは画面外と空を補う。
+    // ここでコントラストや最低反射量を足すと、水面に白い板が貼られたように
+    // 見えるため、取得した放射輝度をそのままブレンドする。
+    float3 refl = lerp(envRefl, max(ssrSample.rgb, (float3) 0.0f), ssrWeight);
     // フレネルの計算
     float cosTheta = saturate(dot(N, V));
     float3 F0 = float3(misc.x, misc.x, misc.x);
     float3 F = SchlickFresnel(F0, cosTheta);
-    float fresPow = max(iblParams.z, 1.0f);
-    float f = saturate(pow(F.x, fresPow));
-
-    
-    float reflWeight = saturate(max(f, iblParams.x));
-    // Real water has a low front-facing Fresnel response, but using that value
-    // unchanged made valid ship/terrain SSR hits visually indistinguishable
-    // from refraction. Give only confirmed SSR pixels a controlled floor.
-    float ssrReflectionFloor = 0.50f * saturate(ssrPresence / 1.8f) * ssrWeight;
-    float finalReflectionWeight = max(reflWeight, ssrReflectionFloor);
+    // 水の正面反射率は約2%。ただしHDR圧縮後の明るい水面では、そのままだと
+    // 暗い船の反射が知覚できない。固定の最低反射は使わず、Fresnel曲線を
+    // 1-(1-F)^k で滑らかに広げる。F=0/1の端点と角度依存性は維持される。
+    float reflectionReadability = max(iblParams.x, 1.0f);
+    float finalReflectionWeight = saturate(1.0f - pow(saturate(1.0f - F.x), reflectionReadability));
 
     //--------------------------------------------------------------------------
     // 水中での吸収（Beer-Lambert）
@@ -365,9 +359,12 @@ float4 main(PSIn IN) : SV_TARGET
     float foamNoise = saturate(0.52f + n0.x * 0.35f + n1.y * 0.30f);
     shoreFoam *= smoothstep(0.28f, 0.72f, foamNoise);
 
-    float crestFoam = saturate((1.0f - N.y) * 2.4f - 0.12f);
+    // 細かいノーマルマップで泡を判定すると水面全体に白い斑点が出る。
+    // 実際に形状を変位させた大きな波の傾斜だけから波頭を判定する。
+    float macroSlope = 1.0f - saturate(normalize(IN.WorldNorm).y);
+    float crestFoam = smoothstep(0.08f, 0.22f, macroSlope) * foamNoise;
     float impactFoam = saturate(rippleSlope * 0.075f - 0.04f);
-    float foamAmount = saturate((shoreFoam + crestFoam * 0.28f + impactFoam * 0.55f)
+    float foamAmount = saturate((shoreFoam + crestFoam * 0.20f + impactFoam * 0.55f)
                                 * alphaParam.w * (1.0f - distFade * 0.70f));
 
     float sunsetAmount = (1.0f - smoothstep(0.05f, 0.35f, abs(sunDirection.y)))

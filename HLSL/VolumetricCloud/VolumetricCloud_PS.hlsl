@@ -8,8 +8,8 @@ static const float AUTO_STEP_ATTENUATION = 0.5625;
 static const float MIN_RAY_MARCH_STEPS = 32.0;
 static const float MAX_RAY_MARCH_STEPS = 160.0;
 
-static const float HORIZON_FADE_START = 0.6;
-static const float HORIZON_FADE_END = 1.0;
+static const float HORIZON_FADE_START = 0.76;
+static const float HORIZON_FADE_END = 0.99;
 
 float4 main(VS_OUT pin) : SV_TARGET
 {

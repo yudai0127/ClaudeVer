@@ -123,19 +123,19 @@ void VolumetricCloud::initialize(ID3D11Device* device, const wchar_t* filename)
 
 	volumetric_cloud_constant_data = {};
 	volumetric_cloud_constant_data.wind_direction = { 1.0f, 0.0f };
-	volumetric_cloud_constant_data.cloud_altitudes_min_max = { 66000.0f, 75300.0f };
+	volumetric_cloud_constant_data.cloud_altitudes_min_max = { 66000.0f, 75000.0f };
 	volumetric_cloud_constant_data.wind_speed = 0.02f;
-	volumetric_cloud_constant_data.density_scale = 1.65f;
-	volumetric_cloud_constant_data.cloud_coverage_scale = 0.65f;
+	volumetric_cloud_constant_data.density_scale = 1.10f;
+	volumetric_cloud_constant_data.cloud_coverage_scale = 0.95f;
 	volumetric_cloud_constant_data.rain_cloud_absorption_scale = 0.5f;
 	volumetric_cloud_constant_data.cloud_type_scale = 1.0f;
 	volumetric_cloud_constant_data.horizon_distance_scale = 1.0f;
-	volumetric_cloud_constant_data.low_frequency_perlin_worley_sampling_scale = 0.00001f;
-	volumetric_cloud_constant_data.high_frequency_worley_sampling_scale = 0.001f;
-	volumetric_cloud_constant_data.cloud_density_long_distance_scale = 18.0f;
-	// 中間密度の雲片が光点化するのを避けるため、初期状態はOFF。
-	// 修正済みの穏やかな加光はImGuiから必要な場合だけ有効化できる。
-	volumetric_cloud_constant_data.enable_powdered_sugar_efffect = 0;
+	volumetric_cloud_constant_data.low_frequency_perlin_worley_sampling_scale = 0.000050f;
+	volumetric_cloud_constant_data.high_frequency_worley_sampling_scale = 0.00032f;
+	volumetric_cloud_constant_data.cloud_density_long_distance_scale = 14.0f;
+	// Beer-Powder is now bounded and view dependent, so it can safely provide a
+	// subtle silver lining without turning every edge into a white outline.
+	volumetric_cloud_constant_data.enable_powdered_sugar_efffect = 1;
 	volumetric_cloud_constant_data.ray_marching_steps = 96;
 	volumetric_cloud_constant_data.auto_ray_marching_steps = 0;
 	
@@ -304,16 +304,16 @@ void VolumetricCloud::updateWeatherMap(ID3D11DeviceContext* dc, float weatherT)
 	cb.windDir = volumetric_cloud_constant_data.wind_direction;
 	cb.windSpeed = volumetric_cloud_constant_data.wind_speed;
 
-	cb.sunnyCoverage = 0.48f;
-	cb.rainyCoverage = 1.0f;
+	cb.sunnyCoverage = 0.46f;
+	cb.rainyCoverage = 0.84f;
 	cb.sunnyRain = 0.0f;
 	cb.rainyRain = 1.0f;
 
-	cb.sunnyType = 0.85f;
-	cb.rainyType = 0.10f;
+	cb.sunnyType = 0.72f;
+	cb.rainyType = 0.90f;
 
-	cb.noiseScale = 4.0f;
-	cb.noiseAmp = 0.15f;
+	cb.noiseScale = 4.2f;
+	cb.noiseAmp = 0.22f;
 
 	weather_gen_cb->UploadData<WEATHER_GEN_CB>(dc, 0, cb, /*VS*/ false, /*HS*/ false, /*DS*/ false, /*GS*/ false, /*PS*/ false, /*CS*/ true);
 
@@ -353,8 +353,8 @@ void VolumetricCloud::debugGui()
 	ImGui::DragFloat("Cloud Type Scale", &params.cloud_type_scale, 0.01f, 0.0f, 1.0f);
 	ImGui::DragFloat("Horizon Distance Scale", &params.horizon_distance_scale, 0.1f, 0.1f, 1000.0f);
 
-	ImGui::DragFloat("Low Freq Sampling Scale", &params.low_frequency_perlin_worley_sampling_scale, 0.001f, 0.0f, 1.0f, "%.10f");
-	ImGui::DragFloat("High Freq Sampling Scale", &params.high_frequency_worley_sampling_scale, 0.01f, 0.0f, 1.0f, "%.10f");
+	ImGui::DragFloat("Low Freq Sampling Scale", &params.low_frequency_perlin_worley_sampling_scale, 0.000001f, 0.000005f, 0.001f, "%.8f");
+	ImGui::DragFloat("High Freq Sampling Scale", &params.high_frequency_worley_sampling_scale, 0.00001f, 0.00002f, 0.01f, "%.8f");
 	ImGui::DragFloat("Long Distance Scale", &params.cloud_density_long_distance_scale, 1.0f, 1.0f, 100.0f);
 	ImGui::Checkbox("Powdered Sugar Effect", reinterpret_cast<bool*>(&params.enable_powdered_sugar_efffect));
 	ImGui::SliderInt("Ray Marching Steps", &params.ray_marching_steps, 32, 256);
