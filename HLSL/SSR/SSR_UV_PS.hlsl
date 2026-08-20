@@ -111,6 +111,10 @@ float4 main(VS_OUT pin) : SV_TARGET
         return outColor;
     }
 
+    // 長い反射レイが画面サイズに比例して数百～数千回走査されないようにする。
+    // ハーフ解像度 SSR では 96 ステップで十分な連続性を維持できる。
+    static const float max_primary_step_count = 96.0f;
+    axis_delta = clamp(ceil(axis_delta), 1.0f, max_primary_step_count);
     float2 texturespace_ray_step = texturespace_ray_delta.xy / axis_delta;
 
     int increment_count = 0;
@@ -122,7 +126,7 @@ float4 main(VS_OUT pin) : SV_TARGET
     float2 hit_uv = texturespace_current_ray_position * viewport_size.zw;
 
     // 必要なら補間探索の分割数を増やす
-    static const int subdivision_iteration = 10;
+    static const int subdivision_iteration = 4;
     int subdivision_step_count = 1;
     if (is_flag(screen_space_reflection_flags_z_check_subdivision))
     {
@@ -185,7 +189,7 @@ float4 main(VS_OUT pin) : SV_TARGET
     // 2次探索: ヒット区間を二分探索で詰める
     search_1 = search_0 + ((search_1 - search_0) / 2.0f);
 
-    static const int secondary_step_count = 10;
+    static const int secondary_step_count = 6;
     int secondary_steps = secondary_step_count * hit_flag0;
 
     [unroll(secondary_step_count)]

@@ -228,7 +228,7 @@ bool Water_Simulation::Initialize(ID3D11Device* device, uint32_t gridWidth, uint
     // 水全体が白っぽくなっていたので、水本来のF0に近い値まで下げる
     // w is an artistic SSR-presence control. It only affects valid SSR hits,
     // leaving the cubemap fallback and the Fresnel silhouette intact.
-    psParams.iblParams = XMFLOAT4(0.10f, 1.15f, 1.0f, 1.60f);
+    psParams.iblParams = XMFLOAT4(0.10f, 1.15f, 1.0f, 2.00f);
     psParams.waterTint = XMFLOAT4(0.018f, 0.18f, 0.24f, 0.075f);
     // x=scattering, y=caustics, z=turbidity, w=shore/crest foam
     psParams.alphaParam = XMFLOAT4(0.16f, 0.80f, 0.10f, 0.85f);
@@ -673,7 +673,7 @@ void Water_Simulation::debugGui()
         ImGui::DragFloat("Reflection Scale", &psParams.iblParams.y, 0.01f, 0.0f, 2.0f);
         ImGui::DragFloat("Fresnel Power", &psParams.iblParams.z, 0.01f, 1.0f, 8.0f);
         ImGui::DragFloat("Reflection Min", &psParams.iblParams.x, 0.005f, 0.0f, 1.0f);
-        ImGui::DragFloat("SSR Presence", &psParams.iblParams.w, 0.01f, 0.0f, 3.0f);
+        ImGui::DragFloat("SSR Visibility", &psParams.iblParams.w, 0.01f, 0.0f, 3.0f);
         ImGui::DragFloat("Subsurface Scattering", &psParams.alphaParam.x, 0.005f, 0.0f, 2.0f);
         ImGui::DragFloat("Caustics Visibility", &psParams.alphaParam.y, 0.01f, 0.0f, 2.0f);
         ImGui::DragFloat("Turbidity", &psParams.alphaParam.z, 0.01f, 0.0f, 1.0f);
@@ -729,7 +729,7 @@ void Water_Simulation::ApplyPreset(Preset preset)
         psParams.misc.z = 1.40f;
         psParams.iblParams.x = 0.10f;
         psParams.iblParams.y = 1.20f;
-        psParams.iblParams.w = 1.70f;
+        psParams.iblParams.w = 2.10f;
         waveAmpScale = 0.02f;
         waveSteepScale = 0.55f;
         break;
@@ -740,7 +740,7 @@ void Water_Simulation::ApplyPreset(Preset preset)
         psParams.misc.z = 1.55f;
         psParams.iblParams.x = 0.12f;
         psParams.iblParams.y = 1.25f;
-        psParams.iblParams.w = 1.60f;
+        psParams.iblParams.w = 2.00f;
         waveAmpScale = 0.016f;
         waveSteepScale = 0.45f;
         break;
@@ -751,7 +751,7 @@ void Water_Simulation::ApplyPreset(Preset preset)
         psParams.misc.z = 0.85f;
         psParams.iblParams.x = 0.08f;
         psParams.iblParams.y = 0.80f;
-        psParams.iblParams.w = 0.85f;
+        psParams.iblParams.w = 1.50f;
         waveAmpScale = 0.012f;
         waveSteepScale = 0.35f;
         break;
@@ -762,7 +762,7 @@ void Water_Simulation::ApplyPreset(Preset preset)
         psParams.misc.z = 1.80f;
         psParams.iblParams.x = 0.14f;
         psParams.iblParams.y = 1.35f;
-        psParams.iblParams.w = 1.20f;
+        psParams.iblParams.w = 1.60f;
         waveAmpScale = 0.042f;
         waveSteepScale = 0.90f;
         break;

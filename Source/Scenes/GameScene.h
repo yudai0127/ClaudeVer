@@ -50,7 +50,23 @@ private:
 	void updateFreeCamera(float elapsedTime);
 	void updatePerformanceMetrics(float elapsedTime);
 	void beginGpuQuery(ID3D11DeviceContext* dc);
-	void endGpuQuery(ID3D11DeviceContext* dc);  
+	void endGpuQuery(ID3D11DeviceContext* dc);
+
+	enum class GpuPass : uint32_t
+	{
+		Shadow,
+		AtmosphereIBL,
+		SceneGBuffer,
+		SSR,
+		Caustics,
+		Water,
+		DepthOfField,
+		DebugRain,
+		FinalComposite,
+		Count
+	};
+	void beginGpuPass(ID3D11DeviceContext* dc, GpuPass pass);
+	void endGpuPass(ID3D11DeviceContext* dc, GpuPass pass);
 	void updateIBLMaps(ID3D11DeviceContext* dc, const DirectX::XMFLOAT3& cameraPos);
 	void injectRippleFromCursor();
 	void injectAutoRipple(float elapsedTime);
@@ -143,6 +159,10 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11Query> queryDisjoint;
 	Microsoft::WRL::ComPtr<ID3D11Query> queryBeginFrame;
 	Microsoft::WRL::ComPtr<ID3D11Query> queryEndFrame;
+	static constexpr uint32_t GPU_PASS_COUNT = static_cast<uint32_t>(GpuPass::Count);
+	Microsoft::WRL::ComPtr<ID3D11Query> queryPassBegin[GPU_PASS_COUNT];
+	Microsoft::WRL::ComPtr<ID3D11Query> queryPassEnd[GPU_PASS_COUNT];
+	float gpuPassTimeMs[GPU_PASS_COUNT] = {};
 
 	ATMOSPHERE_BLUR_CB blurCB{};
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> atmoBlurHPS;
@@ -195,6 +215,8 @@ private:
 	float fps = 0.0f;
 	float cpuUsage = 0.0f;
 	float gpuUsage = 0.0f;
+	float gpuFrameTimeMs = 0.0f;
+	float gpuQueryFrameIntervalSeconds = 0.016f;
 	float performanceUpdateTimer = 0.0f;
 
 	float rippleTimer = 0.0f;
@@ -223,6 +245,7 @@ private:
 	bool enableAutoRipple = false;
 	bool enableShipInteractionRipples = true;
 	bool queryStarted = false;
+	bool gpuQueryRecording = false;
 
 	bool enableVolumetricCloud = true;                                                                                                                                                                                  
 	bool showSsrDebug = false;

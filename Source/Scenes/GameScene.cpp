@@ -52,6 +52,13 @@ void GameScene::initialize()
 	queryDesc.Query = D3D11_QUERY_TIMESTAMP;
 	DeviceManager::instance()->getDevice()->CreateQuery(&queryDesc, queryBeginFrame.GetAddressOf());
 	DeviceManager::instance()->getDevice()->CreateQuery(&queryDesc, queryEndFrame.GetAddressOf());
+	for (uint32_t passIndex = 0; passIndex < GPU_PASS_COUNT; ++passIndex)
+	{
+		DeviceManager::instance()->getDevice()->CreateQuery(
+			&queryDesc, queryPassBegin[passIndex].GetAddressOf());
+		DeviceManager::instance()->getDevice()->CreateQuery(
+			&queryDesc, queryPassEnd[passIndex].GetAddressOf());
+	}
 
 	StageManager* stageMgr = StageManager::instance();
 
@@ -137,7 +144,7 @@ void GameScene::initialize()
 	// Model lighting defaults. The BRDF contains the 1/PI diffuse
 	// normalization, so the previous 1.0-class sun and 0.1 diffuse IBL left
 	// ships and terrain several stops too dark.
-	iblDiffuseIntensity = 0.32f;
+	iblDiffuseIntensity = 0.50f;
 	iblSpecularIntensity = 0.55f;
 
 	skyMap = std::make_unique<SkyMap>();
@@ -408,7 +415,9 @@ void GameScene::update(float elapsedTime)
 	}
 	auto& cp = volumetricCloud->volumetric_cloud_constant_data;
 
-	// 昼夜サイクル有効時は太陽方向と平行光方向を自動更新
+	// 昼夜サイクルは太陽を動かすかどうかだけを制御する。
+	// 照明色の評価は停止中も行い、手動で夜へ動かしたときに
+	// 昼の環境光が残らないようにする。
 	if (isDayNightCycleEnabled)
 	{
 		const float minCycleDuration = 0.1f;
@@ -421,19 +430,28 @@ void GameScene::update(float elapsedTime)
 		sunDir = DirectX::XMVector3Normalize(sunDir);
 
 		DirectX::XMStoreFloat3(&skyMap->atmosphere_constants_data.sunDirection, sunDir);
+	}
 
+	// Keep ships, terrain, sky and water on one time-of-day palette even when
+	// the animation is paused or the sun direction is edited manually.
+	DirectX::XMVECTOR sunDir = DirectX::XMVector3Normalize(
+		DirectX::XMLoadFloat3(&skyMap->atmosphere_constants_data.sunDirection));
+	DirectX::XMStoreFloat3(&skyMap->atmosphere_constants_data.sunDirection, sunDir);
+
+	DirectX::XMFLOAT3 sunDirection{};
+	DirectX::XMStoreFloat3(&sunDirection, sunDir);
+	const float sunY = sunDirection.y;
+	const float dayVisibility = std::clamp((sunY + 0.06f) * 6.0f, 0.0f, 1.0f);
+	const float nightVisibility = std::clamp((-sunY - 0.04f) * 4.0f, 0.0f, 1.0f);
+	const float dayWhiteness = std::clamp((sunY - 0.04f) * 3.0f, 0.0f, 1.0f);
+	const float horizonGlow = (1.0f - std::clamp(fabsf(sunY) / 0.34f, 0.0f, 1.0f)) * dayVisibility;
+
+	if (sunY >= -0.08f)
+	{
+		// Sun direction is surface-to-light; the renderer stores the direction
+		// in which the directional light travels, hence the negation.
 		DirectX::XMVECTOR lightDir = DirectX::XMVectorNegate(sunDir);
-		lightDir = DirectX::XMVector3Normalize(lightDir);
 		DirectX::XMStoreFloat4(&LightDirection, DirectX::XMVectorSetW(lightDir, 0.0f));
-
-		// Keep ships, terrain, clouds and water on one time-of-day palette.
-		// Previously only the sky changed colour during sunset.
-		DirectX::XMFLOAT3 sunDirection{};
-		DirectX::XMStoreFloat3(&sunDirection, sunDir);
-		const float sunY = sunDirection.y;
-		const float dayVisibility = std::clamp((sunY + 0.06f) * 6.0f, 0.0f, 1.0f);
-		const float dayWhiteness = std::clamp((sunY - 0.04f) * 3.0f, 0.0f, 1.0f);
-		const float horizonGlow = (1.0f - std::clamp(fabsf(sunY) / 0.34f, 0.0f, 1.0f)) * dayVisibility;
 
 		const DirectX::XMFLOAT3 sunsetColor{ 1.0f, 0.30f, 0.075f };
 		const DirectX::XMFLOAT3 daylightColor{ 1.0f, 0.98f, 0.90f };
@@ -443,18 +461,34 @@ void GameScene::update(float elapsedTime)
 			lerp(sunsetColor.y, daylightColor.y, dayWhiteness) * directIntensity,
 			lerp(sunsetColor.z, daylightColor.z, dayWhiteness) * directIntensity,
 			1.0f };
-
-		const DirectX::XMFLOAT3 nightAmbient{ 0.024f, 0.034f, 0.075f };
-		const DirectX::XMFLOAT3 dayAmbient{ 0.16f, 0.18f, 0.20f };
-		DirectX::XMFLOAT3 ambient{
-			lerp(nightAmbient.x, dayAmbient.x, dayVisibility),
-			lerp(nightAmbient.y, dayAmbient.y, dayVisibility),
-			lerp(nightAmbient.z, dayAmbient.z, dayVisibility) };
-		ambient.x = lerp(ambient.x, 0.16f, horizonGlow * 0.60f);
-		ambient.y = lerp(ambient.y, 0.060f, horizonGlow * 0.60f);
-		ambient.z = lerp(ambient.z, 0.032f, horizonGlow * 0.60f);
-		AmbientColor = { ambient.x, ambient.y, ambient.z, 0.0f };
 	}
+	else
+	{
+		// The moon is placed opposite the sun. Its cool, weak light keeps the
+		// silhouette readable without making night look like a dim daytime scene.
+		DirectX::XMVECTOR moonDir = DirectX::XMVectorNegate(sunDir);
+		DirectX::XMVECTOR lightDir = DirectX::XMVectorNegate(moonDir);
+		DirectX::XMStoreFloat4(&LightDirection, DirectX::XMVectorSetW(lightDir, 0.0f));
+
+		const float moonIntensity = skyMap->atmosphere_constants_data.nightIntensity * nightVisibility;
+		const DirectX::XMFLOAT3 moonColor{ 0.45f, 0.60f, 1.0f };
+		LightColor = {
+			moonColor.x * moonIntensity,
+			moonColor.y * moonIntensity,
+			moonColor.z * moonIntensity,
+			1.0f };
+	}
+
+	const DirectX::XMFLOAT3 nightAmbient{ 0.018f, 0.028f, 0.065f };
+	const DirectX::XMFLOAT3 dayAmbient{ 0.22f, 0.24f, 0.26f };
+	DirectX::XMFLOAT3 ambient{
+		lerp(nightAmbient.x, dayAmbient.x, dayVisibility),
+		lerp(nightAmbient.y, dayAmbient.y, dayVisibility),
+		lerp(nightAmbient.z, dayAmbient.z, dayVisibility) };
+	ambient.x = lerp(ambient.x, 0.16f, horizonGlow * 0.60f);
+	ambient.y = lerp(ambient.y, 0.060f, horizonGlow * 0.60f);
+	ambient.z = lerp(ambient.z, 0.032f, horizonGlow * 0.60f);
+	AmbientColor = { ambient.x, ambient.y, ambient.z, 0.0f };
 
 	// マウス入力で自由カメラ更新
 	updateFreeCamera(elapsedTime);
@@ -501,7 +535,9 @@ void GameScene::render()
 	beginGpuQuery(dc);
 
 	// シャドウマップ先行パス
+	beginGpuPass(dc, GpuPass::Shadow);
 	renderShadow(dc);
+	endGpuPass(dc, GpuPass::Shadow);
 
 	FLOAT color[] = { 0.0f, 0.0f, 0.5f, 1.0f };
 	dc->ClearRenderTargetView(hdrRTV, color);
@@ -533,6 +569,7 @@ void GameScene::render()
 
 
 	// IBL更新と大気描画
+	beginGpuPass(dc, GpuPass::AtmosphereIBL);
 	{
 		DirectX::XMFLOAT4X4 viewProjection;
 		DirectX::XMStoreFloat4x4(&viewProjection, DirectX::XMLoadFloat4x4(view) * DirectX::XMLoadFloat4x4(proj));
@@ -540,7 +577,9 @@ void GameScene::render()
 		updateIBLMaps(dc, *cameraWorldPosMetersPtr);
 		renderAtmosphere(dc, hdrRTV, dsv, viewProjection);
 	}
+	endGpuPass(dc, GpuPass::AtmosphereIBL);
 
+	beginGpuPass(dc, GpuPass::SceneGBuffer);
 	buffer->UploadData<SceneConstants>(dc, 1, sc, true, false, false, false, true, false);
 
 
@@ -669,8 +708,10 @@ void GameScene::render()
 		// 後段ポストエフェクト用に現在のシーンカラーを退避
 		copySceneColor(dc, hdrRTV);
 	}
+	endGpuPass(dc, GpuPass::SceneGBuffer);
 
 	// SSR
+	beginGpuPass(dc, GpuPass::SSR);
 	if (useSSR && ssr && sceneColorCopySRV && gbuffer)
 	{
 		dc->OMSetRenderTargets(1, &hdrRTV, nullptr);
@@ -715,12 +756,14 @@ void GameScene::render()
 	{
 		ssrColorSRV.Reset();
 	}
+	endGpuPass(dc, GpuPass::SSR);
 
 	
 	DirectX::XMVECTOR lightDir = DirectX::XMLoadFloat4(&LightDirection);
 	float sunDirY = -DirectX::XMVectorGetY(lightDir);
 	float causticsVisibility = std::clamp((sunDirY - 0.02f) * 4.0f, 0.0f, 1.0f);
 
+	beginGpuPass(dc, GpuPass::Caustics);
 	if (causticsBuffer && causticsPS && water_simulation && causticsVisibility > 0.0f)
 	{
 		
@@ -763,10 +806,12 @@ void GameScene::render()
 
 		causticsBuffer->deactivate(dc);
 	}
+	endGpuPass(dc, GpuPass::Caustics);
 
 	
 
 	// 水面描画
+	beginGpuPass(dc, GpuPass::Water);
 	if (water_simulation)
 	{
 		ID3D11DepthStencilView* sceneDSV = (gbuffer) ? gbuffer->get_dsv_readonly() : dsv;
@@ -804,8 +849,10 @@ void GameScene::render()
 		auto depthOn = graphics->getDepthStencilStates(DEPTH_STENCIL_STATE::ON_ON).Get();
 		dc->OMSetDepthStencilState(depthOn, 0);
 	}
+	endGpuPass(dc, GpuPass::Water);
 
 	// DoF
+	beginGpuPass(dc, GpuPass::DepthOfField);
 	if (useDoF && depthOfField && sceneColorCopySRV)
 	{
 		copySceneColor(dc, hdrRTV);
@@ -821,9 +868,11 @@ void GameScene::render()
 			depthOfField->render(dc, sceneColorCopySRV.Get(), depthSRV, hdrRTV);
 		}
 	}
+	endGpuPass(dc, GpuPass::DepthOfField);
 
 	
 
+	beginGpuPass(dc, GpuPass::DebugRain);
 	graphics->getLineRenderer()->render(dc, *view, *proj);
 	graphics->getDebugRenderer()->render(dc, *view, *proj);
 
@@ -855,8 +904,10 @@ void GameScene::render()
 
 		rainSystem->render(dc, depthSRV, hdrRTV);
 	}
+	endGpuPass(dc, GpuPass::DebugRain);
 
 	// HDR -> バックバッファへ最終合成
+	beginGpuPass(dc, GpuPass::FinalComposite);
 	if (bit_block_transfer && finalPassPS && hdrSceneBuffer)
 	{
 		ID3D11RenderTargetView* nullRTV[1] = { nullptr };
@@ -886,6 +937,7 @@ void GameScene::render()
 		ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
 		dc->PSSetShaderResources(0, 1, nullSRV);
 	}
+	endGpuPass(dc, GpuPass::FinalComposite);
 
 	// GUI描画
 	dc->OMSetRenderTargets(1, &backbufferRTV, dsv);
@@ -1148,6 +1200,8 @@ void GameScene::updatePerformanceMetrics(float elapsedTime)
 
 void GameScene::beginGpuQuery(ID3D11DeviceContext* dc)
 {
+	gpuQueryRecording = false;
+	if (queryStarted)
 	// 前フレーム分のGPUタイムスタンプ結果を回収
 	if (queryStarted)
 	{
@@ -1155,17 +1209,48 @@ void GameScene::beginGpuQuery(ID3D11DeviceContext* dc)
 		UINT64 startTime = 0;
 		UINT64 endTime = 0;
 
-		if (dc->GetData(queryDisjoint.Get(), &disjointData, sizeof(disjointData), D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_OK &&
+		const bool frameDataReady =
+			dc->GetData(queryDisjoint.Get(), &disjointData, sizeof(disjointData), D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_OK &&
 			dc->GetData(queryBeginFrame.Get(), &startTime, sizeof(startTime), D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_OK &&
-			dc->GetData(queryEndFrame.Get(), &endTime, sizeof(endTime), D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_OK)
+			dc->GetData(queryEndFrame.Get(), &endTime, sizeof(endTime), D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_OK;
+
+		if (frameDataReady)
 		{
 			if (!disjointData.Disjoint)
 			{
 				UINT64 delta = endTime - startTime;
 				double frequency = static_cast<double>(disjointData.Frequency);
 				double gpuTimeSeconds = static_cast<double>(delta) / frequency;
+				for (uint32_t passIndex = 0; passIndex < GPU_PASS_COUNT; ++passIndex)
+				{
+					UINT64 passBeginTime = 0;
+					UINT64 passEndTime = 0;
+					const bool passReady =
+						dc->GetData(queryPassBegin[passIndex].Get(), &passBeginTime,
+							sizeof(UINT64), D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_OK &&
+						dc->GetData(queryPassEnd[passIndex].Get(), &passEndTime,
+							sizeof(UINT64), D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_OK;
+					if (!passReady || passEndTime < passBeginTime)
+						continue;
 
-				float frameTime = realDt;
+					const UINT64 passDelta = passEndTime - passBeginTime;
+					const float currentPassMs = static_cast<float>(
+						(static_cast<double>(passDelta) / frequency) * 1000.0);
+					if (gpuPassTimeMs[passIndex] <= 0.0f)
+						gpuPassTimeMs[passIndex] = currentPassMs;
+					else
+						gpuPassTimeMs[passIndex] = lerp(gpuPassTimeMs[passIndex], currentPassMs, 0.10f);
+				}
+				const float currentGpuFrameTimeMs = static_cast<float>(gpuTimeSeconds * 1000.0);
+				if (gpuFrameTimeMs <= 0.0f)
+					gpuFrameTimeMs = currentGpuFrameTimeMs;
+				else
+					gpuFrameTimeMs = lerp(gpuFrameTimeMs, currentGpuFrameTimeMs, 0.10f);
+
+				// This is an occupancy estimate for the measured scene frame, not the
+				// system-wide GPU utilization reported by Task Manager. Use the CPU
+				// interval captured when this exact timestamp query was started.
+				float frameTime = gpuQueryFrameIntervalSeconds;
 				if (frameTime <= 0.0f) frameTime = 0.016f;
 				float currentUsage = static_cast<float>(gpuTimeSeconds / frameTime) * 100.0f;
 
@@ -1177,7 +1262,7 @@ void GameScene::beginGpuQuery(ID3D11DeviceContext* dc)
 				{
 					gpuHistory[i] = gpuHistory[i + 1];
 				}
-				gpuHistory[GRAPH_HISTORY_COUNT - 1] = gpuUsage;
+				gpuHistory[GRAPH_HISTORY_COUNT - 1] = gpuFrameTimeMs;
 			}
 			queryStarted = false;
 		}
@@ -1186,20 +1271,43 @@ void GameScene::beginGpuQuery(ID3D11DeviceContext* dc)
 	// 今フレーム計測を開始
 	if (!queryStarted)
 	{
+		gpuQueryFrameIntervalSeconds = (realDt > 0.0f) ? realDt : 0.016f;
 		dc->Begin(queryDisjoint.Get());
 		dc->End(queryBeginFrame.Get());
+		gpuQueryRecording = true;
 	}
 }
 
 void GameScene::endGpuQuery(ID3D11DeviceContext* dc)
 {
 	// begin側で開始した計測を閉じる
-	if (!queryStarted)
+	if (gpuQueryRecording)
 	{
 		dc->End(queryEndFrame.Get());
 		dc->End(queryDisjoint.Get());
 		queryStarted = true;
+		gpuQueryRecording = false;
 	}
+}
+
+void GameScene::beginGpuPass(ID3D11DeviceContext* dc, GpuPass pass)
+{
+	if (!gpuQueryRecording)
+		return;
+
+	const uint32_t passIndex = static_cast<uint32_t>(pass);
+	if (passIndex < GPU_PASS_COUNT && queryPassBegin[passIndex])
+		dc->End(queryPassBegin[passIndex].Get());
+}
+
+void GameScene::endGpuPass(ID3D11DeviceContext* dc, GpuPass pass)
+{
+	if (!gpuQueryRecording)
+		return;
+
+	const uint32_t passIndex = static_cast<uint32_t>(pass);
+	if (passIndex < GPU_PASS_COUNT && queryPassEnd[passIndex])
+		dc->End(queryPassEnd[passIndex].Get());
 }
 
 void GameScene::injectRippleFromCursor()
@@ -1775,11 +1883,51 @@ void GameScene::debugGui()
 		ImGui::Text("FPS: %.1f", fps);
 		ImGui::PlotLines("##FPS", fpsHistory, GRAPH_HISTORY_COUNT, 0, nullptr, 0.0f, 144.0f, ImVec2(0, 40));
 
-		ImGui::Text("CPU: %.1f %%", cpuUsage);
+		ImGui::Text("Process CPU: %.1f %%", cpuUsage);
 		ImGui::PlotLines("##CPU", cpuHistory, GRAPH_HISTORY_COUNT, 0, nullptr, 0.0f, 100.0f, ImVec2(0, 40));
 
-		ImGui::Text("GPU: %.1f %%", gpuUsage);
-		ImGui::PlotLines("##GPU", gpuHistory, GRAPH_HISTORY_COUNT, 0, nullptr, 0.0f, 100.0f, ImVec2(0, 40));
+		ImGui::Text("GPU scene time: %.2f ms", gpuFrameTimeMs);
+		ImGui::SameLine();
+		ImGui::TextDisabled("(60 FPS budget: 16.67 ms)");
+		const float gpuGraphMax = (gpuFrameTimeMs > 33.33f) ? gpuFrameTimeMs * 1.25f : 33.33f;
+		ImGui::PlotLines("##GPUTime", gpuHistory, GRAPH_HISTORY_COUNT, 0, nullptr, 0.0f, gpuGraphMax, ImVec2(0, 40));
+		ImGui::Text("GPU frame occupancy: %.1f %% (estimate)", gpuUsage);
+		ImGui::TextDisabled("Timestamp ratio for this scene; not Windows GPU utilization");
+
+		ImGui::Separator();
+		ImGui::TextUnformatted("GPU pass breakdown");
+		static const char* GPU_PASS_NAMES[GPU_PASS_COUNT] = {
+			"Shadows",
+			"Atmosphere + IBL",
+			"Scene + GBuffer",
+			"SSR",
+			"Caustics",
+			"Water",
+			"Depth of Field",
+			"Debug + Rain",
+			"Final Composite"
+		};
+
+		float measuredPassSumMs = 0.0f;
+		for (uint32_t passIndex = 0; passIndex < GPU_PASS_COUNT; ++passIndex)
+		{
+			const float passMs = gpuPassTimeMs[passIndex];
+			measuredPassSumMs += passMs;
+			const float share = (gpuFrameTimeMs > 0.001f)
+				? std::clamp(passMs / gpuFrameTimeMs, 0.0f, 1.0f)
+				: 0.0f;
+
+			char overlay[96] = {};
+			sprintf_s(overlay, "%s  %.2f ms  (%.0f%%)",
+				GPU_PASS_NAMES[passIndex], passMs, share * 100.0f);
+			ImGui::ProgressBar(share, ImVec2(-1.0f, 0.0f), overlay);
+		}
+
+		const float unaccountedMs = (gpuFrameTimeMs > measuredPassSumMs)
+			? gpuFrameTimeMs - measuredPassSumMs
+			: 0.0f;
+		ImGui::TextDisabled("Pass sum: %.2f ms, setup/other: %.2f ms",
+			measuredPassSumMs, unaccountedMs);
 
 		ImGui::TreePop();
 	}

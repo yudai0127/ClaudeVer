@@ -253,20 +253,29 @@ float4 main(PSIn IN) : SV_TARGET
     refr += causticsColor;
    
    //反射の計算
-    float2 ssrUV = saturate(screenUV + distortionBase);
+    // SSR のレイ方向には GBuffer prepass の波法線が既に使われている。
+    // ここでも屈折用 distortion を加えると二重に歪み、船の反射が本体から
+    // ずれて薄く見えるため、同じ画面座標から結果を取得する。
+    float2 ssrUV = screenUV;
     float4 ssrSample = SSRColor.Sample(sampler_states[ClampLinear], ssrUV);
     float2 edgeFactor = saturate(abs(ndc) * 1.1f - 0.1f);
     float screenFade = saturate(1.0f - max(edgeFactor.x, edgeFactor.y));
     float ssrPresence = max(iblParams.w, 0.0f);
-    float ssrWeight = saturate(ssrSample.a * ssrPresence) * screenFade;
+    float ssrConfidence = saturate(ssrSample.a * ssrPresence);
+    // 弱い空振りは抑え、中～高信頼度のヒットを展示でも判別できる強さへ。
+    float ssrWeight = smoothstep(0.02f, 0.70f, ssrConfidence) * screenFade;
     
     
    
   
     
     float3 envRefl = SkyCube.Sample(sampler_states[WrapLinear], R).rgb;
-    
-    float3 refl = lerp(envRefl, ssrSample.rgb, ssrWeight);
+
+    // 空の反射との差を少し広げ、船体の暗いシルエットと帆の明部を読みやすくする。
+    // 有効な SSR ヒットだけに適用するため、水面全体が鏡のようにはならない。
+    float3 visibleSSR = max((float3) 0.0f,
+                            envRefl + (ssrSample.rgb - envRefl) * 1.35f);
+    float3 refl = lerp(envRefl, visibleSSR, ssrWeight);
     // フレネルの計算
     float cosTheta = saturate(dot(N, V));
     float3 F0 = float3(misc.x, misc.x, misc.x);
@@ -279,7 +288,7 @@ float4 main(PSIn IN) : SV_TARGET
     // Real water has a low front-facing Fresnel response, but using that value
     // unchanged made valid ship/terrain SSR hits visually indistinguishable
     // from refraction. Give only confirmed SSR pixels a controlled floor.
-    float ssrReflectionFloor = 0.30f * saturate(ssrPresence / 1.6f) * ssrWeight;
+    float ssrReflectionFloor = 0.50f * saturate(ssrPresence / 1.8f) * ssrWeight;
     float finalReflectionWeight = max(reflWeight, ssrReflectionFloor);
 
     //--------------------------------------------------------------------------

@@ -77,7 +77,9 @@ float4 main(VS_OUT pin) : SV_TARGET
 
     float luma = dot(ldr, float3(0.2126f, 0.7152f, 0.0722f));
     ldr = lerp(luma.xxx, ldr, 1.12f);
-    ldr = saturate((ldr - 0.5f) * 1.07f + 0.5f);
+    // Preserve exhibition readability in dark hull/terrain materials without
+    // raising the HDR exposure or clipping bright water and clouds.
+    ldr = saturate((ldr - 0.5f) * 1.04f + 0.5f);
 
     float2 centeredUv = pin.texcoord * 2.0f - 1.0f;
     float vignette = 1.0f - smoothstep(0.55f, 1.35f, dot(centeredUv, centeredUv)) * 0.12f;

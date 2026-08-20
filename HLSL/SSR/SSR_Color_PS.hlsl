@@ -16,7 +16,8 @@ float4 main(VS_OUT pin) : SV_TARGET
         float2 texture_size;
         ssr_scene_color.GetDimensions(texture_size.x, texture_size.y);
 
-        int size = 2;
+        // 5x5（最大24サンプル）は空振り画素で重いため、3x3 に抑える。
+        int size = 1;
         float separation = 1.0f;
 
         float4 accum_uv = (float4) 0;

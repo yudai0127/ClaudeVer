@@ -244,7 +244,9 @@ PS_OUTPUT main(VS_OUT pin, bool is_front_face : SV_IsFrontFace) : SV_TARGET
         float shadow_factor = 1.0f;
        
         // 太陽が地平線の下にある場合、影を出さない
-        float sun_shadow_fade = saturate(sunDirection.y * 10.0); // y=0付近で滑らかにフェード
+        // At night the primary directional light is the moon opposite the sun.
+        // abs() enables the same contact shadows for either celestial light.
+        float sun_shadow_fade = saturate(abs(sunDirection.y) * 10.0);
         
         
         for (int index = 0; index < ShadowBufferSize; ++index)
@@ -295,10 +297,10 @@ PS_OUTPUT main(VS_OUT pin, bool is_front_face : SV_IsFrontFace) : SV_TARGET
     float3 kS_ibl = F_ibl;
     float3 kD_ibl = (1.0 - kS_ibl) * (1.0 - metallic);
 
-    float day_night_factor = saturate((sunDirection.y - 0.1) / 0.1);
-    
-    float night_min_light = 0.5;
-    float final_factor = max(day_night_factor, night_min_light);
+    float day_night_factor = saturate((sunDirection.y + 0.06) * 6.0);
+    // A small amount of filtered night-sky IBL remains for readable silhouettes;
+    // the former 50% floor made night materials look sunlit.
+    float final_factor = lerp(0.20, 1.0, day_night_factor);
     
     
     
@@ -338,7 +340,7 @@ PS_OUTPUT main(VS_OUT pin, bool is_front_face : SV_IsFrontFace) : SV_TARGET
 
     // AO should reinforce creases, not turn broad surfaces black. Retain a
     // physically plausible multi-bounce floor for exhibition readability.
-    float indirectOcclusion = lerp(0.42f, 1.0f, occlusion);
+    float indirectOcclusion = lerp(0.58f, 1.0f, occlusion);
     float3 ambient_radiance = indirect_light_radiance * indirectOcclusion;
 
  

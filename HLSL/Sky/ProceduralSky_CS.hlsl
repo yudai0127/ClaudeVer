@@ -186,6 +186,25 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
     float3 finalColor = sunIntensity * (accumulatedRayleigh * rayleighScatteringCoefficient
                                       + accumulatedMie * mieScatteringCoefficient);
 
+    // Night sky and moon. The moon is opposite the sun, so its direction and
+    // the scene's night directional light always agree. Adding it to the
+    // cubemap also makes it available to IBL and water reflections.
+    float nightAmount = smoothstep(0.04f, 0.18f, -sunDirection.y);
+    float skyUp = saturate(worldPosKm.y * 0.5f + 0.5f);
+    float3 nightSkyColor = float3(0.010f, 0.025f, 0.080f)
+                         * nightIntensity * lerp(0.45f, 1.0f, skyUp);
+
+    float3 moonDirection = -sunDirection;
+    float moonDot = dot(worldPosKm, moonDirection);
+    const float DEG2RAD = 0.017453292519943295f;
+    float moonInner = cos(0.70f * DEG2RAD);
+    float moonOuter = cos(0.95f * DEG2RAD);
+    float moonDisc = smoothstep(moonOuter, moonInner, moonDot);
+    float3 moonColor = float3(0.55f, 0.70f, 1.0f)
+                     * (nightIntensity * 2.8f) * moonDisc;
+
+    finalColor += (nightSkyColor + moonColor) * nightAmount;
+
     
    
     

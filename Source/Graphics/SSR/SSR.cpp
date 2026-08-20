@@ -37,11 +37,6 @@ bool ScreenSpaceReflection::initialize(ID3D11Device* device)
         ssrColor.GetAddressOf());
     _ASSERT_EXPR(SUCCEEDED(hr), hrTrace(hr));
 
-    hr = ShaderManager::instance()->CreatePsFromCso(device, ".\\Shader\\SSR_Composite_PS.cso",
-        ssrComposite.GetAddressOf());
-    _ASSERT_EXPR(SUCCEEDED(hr), hrTrace(hr));
-
-    
     param.screen_space_reflection_max_distance = 1000.0f;
 
     param.screen_space_reflection_tickness = 1.0f;
@@ -92,8 +87,11 @@ void ScreenSpaceReflection::resize(ID3D11Device* dev, UINT width, UINT height)
     CreateRT(dev, halfW, halfH, DXGI_FORMAT_R16G16B16A16_FLOAT, uvTex, uvRTV, uvSRV);
     CreateRT(dev, halfW, halfH, DXGI_FORMAT_R16G16B16A16_FLOAT, colorTex, colorRTV, colorSRV);
 
-    // Pass3 (Composite) は最終画面用なのでフル解像度のまま
-    CreateRT(dev, width, height, DXGI_FORMAT_R16G16B16A16_FLOAT, compTex, compRTV, compSRV);
+    // 水面は Pass2 の反射テクスチャを直接使うため、未使用だった
+    // フル解像度 Composite RT は作成しない。
+    compTex.Reset();
+    compRTV.Reset();
+    compSRV.Reset();
 }
 
 void ScreenSpaceReflection::update(ID3D11DeviceContext* dc,
@@ -126,7 +124,7 @@ void ScreenSpaceReflection::render(ID3D11DeviceContext* dc,
     ID3D11ShaderResourceView* normalRoughnessSRV,
     ID3D11ShaderResourceView* depthSRV)
 {
-    if (!dc || !uvRTV || !colorRTV || !compRTV) return;
+    if (!dc || !uvRTV || !colorRTV) return;
 
     D3D11_VIEWPORT halfVp{};
     halfVp.Width = static_cast<float>(max(1u, width / 2));
@@ -139,8 +137,7 @@ void ScreenSpaceReflection::render(ID3D11DeviceContext* dc,
     fullVp.Height = static_cast<float>(height);
     fullVp.MinDepth = 0.0f;
     fullVp.MaxDepth = 1.0f;
-      
-   
+
     dc->IASetInputLayout(nullptr);
     dc->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
@@ -197,20 +194,8 @@ void ScreenSpaceReflection::render(ID3D11DeviceContext* dc,
         UnbindSRVs(dc, 20, 3);
     }
 
-    // Pass3: Composite
+    // 後続のコースティクス・水面描画へ半解像度 viewport を持ち越さない。
     dc->RSSetViewports(1, &fullVp);
-    dc->OMSetRenderTargets(1, compRTV.GetAddressOf(), nullptr);
-    dc->ClearRenderTargetView(compRTV.Get(), clear);
-
-    {
-        ID3D11ShaderResourceView* srvs[3] = { sceneColorSRV, colorSRV.Get(), nullptr };
-        dc->PSSetShaderResources(20, 3, srvs);
-
-        dc->PSSetShader(ssrComposite.Get(), nullptr, 0);
-        dc->Draw(4, 0);
-
-        UnbindSRVs(dc, 20, 3);
-    }
 
     ID3D11SamplerState* nullSamplers[8] = { nullptr };
     dc->PSSetSamplers(0, 8, nullSamplers);
@@ -245,11 +230,6 @@ void ScreenSpaceReflection::debugGui()
         {
             ImGui::Text("Color (Pass2)");
             ImGui::Image(reinterpret_cast<ImTextureID>(colorSRV.Get()), ImVec2(256, 144));
-        }
-        if (compSRV)
-        {
-            ImGui::Text("Composite (Pass3)");
-            ImGui::Image(reinterpret_cast<ImTextureID>(compSRV.Get()), ImVec2(256, 144));
         }
     }
 }

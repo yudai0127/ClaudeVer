@@ -105,7 +105,7 @@ void SkyMap::initialize(ID3D11Device* device)
 	atmosphere_constants_data.mieScaleHeight = 1.2f;
 	atmosphere_constants_data.mieScatteringCoefficient = 0.0003f;
 	atmosphere_constants_data.mieEccentricity = 0.99f;
-	atmosphere_constants_data.nightIntensity = 0.02f;
+	atmosphere_constants_data.nightIntensity = 0.35f;
 }
 
 void SkyMap::update(ID3D11DeviceContext* dc, const DirectX::XMFLOAT3& camera_position)
@@ -312,6 +312,8 @@ bool SkyMap::debugGui(DirectX::XMFLOAT4* outLightDirection)
 	}
 
 	if (ImGui::DragFloat("Sun Intensity", &params.sunIntensity, 0.1f, 0.0f, 20.0f))
+		anyChanged = true;
+	if (ImGui::DragFloat("Moon Intensity", &params.nightIntensity, 0.01f, 0.0f, 1.0f))
 		anyChanged = true;
 
 	ImGui::Separator();
