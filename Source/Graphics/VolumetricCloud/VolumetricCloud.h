@@ -65,6 +65,10 @@ public:
         int ray_marching_steps;
         int auto_ray_marching_steps;
         float time;
+        int debug_disable_self_shadow;
+        int debug_disable_height_lighting;
+        int debug_disable_horizon_fade;
+        int debug_show_density;
     };
 
     VOLUMETRIC_CLOUD_CONSTANT_BUFFER volumetric_cloud_constant_data;

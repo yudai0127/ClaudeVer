@@ -123,21 +123,27 @@ void VolumetricCloud::initialize(ID3D11Device* device, const wchar_t* filename)
 
 	volumetric_cloud_constant_data = {};
 	volumetric_cloud_constant_data.wind_direction = { 1.0f, 0.0f };
-	volumetric_cloud_constant_data.cloud_altitudes_min_max = { 66000.0f, 75000.0f };
+	// Scene/cloud distances are metres. Atmosphere radii stay in kilometres and
+	// are converted explicitly in the cloud shaders.
+	volumetric_cloud_constant_data.cloud_altitudes_min_max = { 3000.0f, 6500.0f };
 	volumetric_cloud_constant_data.wind_speed = 0.02f;
-	volumetric_cloud_constant_data.density_scale = 1.10f;
-	volumetric_cloud_constant_data.cloud_coverage_scale = 0.95f;
+	volumetric_cloud_constant_data.density_scale = 1.25f;
+	volumetric_cloud_constant_data.cloud_coverage_scale = 0.82f;
 	volumetric_cloud_constant_data.rain_cloud_absorption_scale = 0.5f;
 	volumetric_cloud_constant_data.cloud_type_scale = 1.0f;
 	volumetric_cloud_constant_data.horizon_distance_scale = 1.0f;
-	volumetric_cloud_constant_data.low_frequency_perlin_worley_sampling_scale = 0.000050f;
-	volumetric_cloud_constant_data.high_frequency_worley_sampling_scale = 0.00032f;
-	volumetric_cloud_constant_data.cloud_density_long_distance_scale = 14.0f;
+	volumetric_cloud_constant_data.low_frequency_perlin_worley_sampling_scale = 0.000120f;
+	volumetric_cloud_constant_data.high_frequency_worley_sampling_scale = 0.00078f;
+	volumetric_cloud_constant_data.cloud_density_long_distance_scale = 22.0f;
 	// Beer-Powder is now bounded and view dependent, so it can safely provide a
 	// subtle silver lining without turning every edge into a white outline.
 	volumetric_cloud_constant_data.enable_powdered_sugar_efffect = 1;
 	volumetric_cloud_constant_data.ray_marching_steps = 96;
-	volumetric_cloud_constant_data.auto_ray_marching_steps = 0;
+	volumetric_cloud_constant_data.auto_ray_marching_steps = 1;
+	volumetric_cloud_constant_data.debug_disable_self_shadow = 0;
+	volumetric_cloud_constant_data.debug_disable_height_lighting = 0;
+	volumetric_cloud_constant_data.debug_disable_horizon_fade = 0;
+	volumetric_cloud_constant_data.debug_show_density = 0;
 	
 }
 void VolumetricCloud::blit(ID3D11DeviceContext* dc, ID3D11ShaderResourceView* sky_cubemap_srv, ID3D11ShaderResourceView* transmittance_srv, ID3D11ShaderResourceView* irradiance_srv, const AtmosphereConstants& atmosphere_data)
@@ -304,16 +310,19 @@ void VolumetricCloud::updateWeatherMap(ID3D11DeviceContext* dc, float weatherT)
 	cb.windDir = volumetric_cloud_constant_data.wind_direction;
 	cb.windSpeed = volumetric_cloud_constant_data.wind_speed;
 
-	cb.sunnyCoverage = 0.46f;
+		// Keep clear gaps between cloud groups in the sunny preset.
+		cb.sunnyCoverage = 0.40f;
 	cb.rainyCoverage = 0.84f;
 	cb.sunnyRain = 0.0f;
 	cb.rainyRain = 1.0f;
 
-	cb.sunnyType = 0.72f;
-	cb.rainyType = 0.90f;
+	cb.sunnyType = 0.55f;
+	cb.rainyType = 0.78f;
 
-	cb.noiseScale = 4.2f;
-	cb.noiseAmp = 0.22f;
+		// The weather map spans hundreds of kilometres. A larger scale prevents
+		// one giant weather cell from covering the entire visible sky.
+		cb.noiseScale = 18.0f;
+		cb.noiseAmp = 0.28f;
 
 	weather_gen_cb->UploadData<WEATHER_GEN_CB>(dc, 0, cb, /*VS*/ false, /*HS*/ false, /*DS*/ false, /*GS*/ false, /*PS*/ false, /*CS*/ true);
 
@@ -345,7 +354,7 @@ void VolumetricCloud::debugGui()
 	auto& params = volumetric_cloud_constant_data;
 
 	ImGui::DragFloat2("Wind Direction", &params.wind_direction.x, 0.01f, -1.0f, 1.0f);
-	ImGui::DragFloatRange2("Cloud Altitudes", &params.cloud_altitudes_min_max.x, &params.cloud_altitudes_min_max.y, 0.1f, 62000.0f, 80000.0f);
+	ImGui::DragFloatRange2("Cloud Altitudes (m)", &params.cloud_altitudes_min_max.x, &params.cloud_altitudes_min_max.y, 10.0f, 500.0f, 12000.0f);
 	ImGui::DragFloat("Wind Speed", &params.wind_speed, 0.01f, 0.0f, 2.0f);
 	ImGui::DragFloat("Density Scale", &params.density_scale, 0.01f, 0.2f, 10.0f);
 	ImGui::DragFloat("Cloud Coverage Scale", &params.cloud_coverage_scale, 0.01f, 0.0f, 1.0f);
@@ -359,6 +368,21 @@ void VolumetricCloud::debugGui()
 	ImGui::Checkbox("Powdered Sugar Effect", reinterpret_cast<bool*>(&params.enable_powdered_sugar_efffect));
 	ImGui::SliderInt("Ray Marching Steps", &params.ray_marching_steps, 32, 256);
 	ImGui::Checkbox("Auto Ray Marching Steps", reinterpret_cast<bool*>(&params.auto_ray_marching_steps));
+
+	ImGui::SeparatorText("Cloud Artifact Isolation");
+	auto intCheckbox = [](const char* label, int& value)
+	{
+		bool checked = value != 0;
+		if (ImGui::Checkbox(label, &checked))
+		{
+			value = checked ? 1 : 0;
+		}
+	};
+	intCheckbox("Disable Self Shadow", params.debug_disable_self_shadow);
+	intCheckbox("Disable Height Lighting", params.debug_disable_height_lighting);
+	intCheckbox("Disable Horizon Fade", params.debug_disable_horizon_fade);
+	intCheckbox("Show Cloud Density", params.debug_show_density);
+	ImGui::TextDisabled("Toggle one item at a time from the same camera position.");
 
 
 	int weatherMode = (targetWeatherT < 0.25f) ? 0 : (targetWeatherT < 0.75f ? 1 : 2);

@@ -4,12 +4,13 @@ static const float NDC_SCALE = 2.0;
 static const float NDC_BIAS = 1.0;
 static const float RAYMARCH_DIRECTION_Y_THRESHOLD = 0.0;
 
-static const float AUTO_STEP_ATTENUATION = 0.5625;
+static const float AUTO_ZENITH_STEP_SCALE = 2.0 / 3.0;
+static const float AUTO_HORIZON_STEP_SCALE = 4.0 / 3.0;
 static const float MIN_RAY_MARCH_STEPS = 32.0;
 static const float MAX_RAY_MARCH_STEPS = 160.0;
 
-static const float HORIZON_FADE_START = 0.76;
-static const float HORIZON_FADE_END = 0.99;
+static const float HORIZON_VISIBILITY_START_Y = 0.003;
+static const float HORIZON_VISIBILITY_END_Y = 0.055;
 
 float4 main(VS_OUT pin) : SV_TARGET
 {
@@ -29,11 +30,12 @@ float4 main(VS_OUT pin) : SV_TARGET
     float3 background = skybox.SampleLevel(sampler_states[ClampLinear], ray_dir, 0).rgb;
     float3 color = background;
 
-    float3 eye_pos = float3(0.0, planetRadius, 0.0) + camera_position.xyz;
+    float cloud_planet_radius = get_cloud_planet_radius();
+    float3 eye_pos = float3(0.0, cloud_planet_radius, 0.0) + camera_position.xyz;
     float eye_radius = length(eye_pos);
 
-    float cloud_bottom_radius = planetRadius + cloud_altitudes_min_max.x;
-    float cloud_top_radius = planetRadius + cloud_altitudes_min_max.y;
+    float cloud_bottom_radius = cloud_planet_radius + cloud_altitudes_min_max.x;
+    float cloud_top_radius = cloud_planet_radius + cloud_altitudes_min_max.y;
     bool inside_cloud_layer = (eye_radius > cloud_bottom_radius) && (eye_radius < cloud_top_radius);
 
     if (!inside_cloud_layer && eye_radius >= cloud_top_radius && ray_dir.y <= 0.0)
@@ -89,11 +91,10 @@ float4 main(VS_OUT pin) : SV_TARGET
         float steps = ray_marching_steps;
         if (auto_ray_marching_steps)
         {
-            steps = lerp(
-                ray_marching_steps,
-                ray_marching_steps / AUTO_STEP_ATTENUATION,
-                1.0 - clamp(dot(ray_dir, float3(0.0, 1.0, 0.0)), 0.0, 1.0)
-            );
+            float horizon_weight = 1.0 - saturate(ray_dir.y);
+            steps = lerp(ray_marching_steps * AUTO_ZENITH_STEP_SCALE,
+                         ray_marching_steps * AUTO_HORIZON_STEP_SCALE,
+                         horizon_weight);
         }
 
         // 距離からステップ数を強制すると、雲層の単位スケールではほぼ常に
@@ -104,6 +105,22 @@ float4 main(VS_OUT pin) : SV_TARGET
 
         float4 volume = ray_march(ray_origin, ray_step, int(steps));
 
+        // Horizon renders its low clouds in a spherical shell; no screen-space
+        // horizon cut is required. Apply only smooth atmospheric depth
+        // occlusion to the premultiplied cloud color, never to opacity.
+        float layer_thickness = max(cloud_altitudes_min_max.y
+                                  - cloud_altitudes_min_max.x,
+                                    1.0);
+        float depth_scale = layer_thickness
+                          * max(cloud_density_long_distance_scale, 1.0);
+        if (!debug_disable_horizon_fade)
+        {
+            float atmosphere_occlusion = 1.0 - exp(-start_t / depth_scale);
+            volume.rgb = lerp(volume.rgb,
+                              background * volume.a,
+                              saturate(atmosphere_occlusion * 0.35));
+        }
+
         // volume.xyz is already premultiplied by the integrated opacity.
         // Applying another lerp multiplied opacity twice and made the clouds
         // look like faint grey smudges instead of white, shadowed masses.
@@ -111,15 +128,6 @@ float4 main(VS_OUT pin) : SV_TARGET
         // 小さな雲片が丸い光点・色むらとして浮き出る。元の空色で合成する。
         float3 blended = background * (1.0 - volume.a) + volume.xyz;
         color = blended;
-        
-        if (!inside_cloud_layer)
-        {
-            color = lerp(
-                max(color, 0.0),
-                max(background, 0.0),
-                smoothstep(HORIZON_FADE_START, HORIZON_FADE_END, 1.0 - ray_dir.y)
-            );
-        }
     }
 
     return float4(color, 1);

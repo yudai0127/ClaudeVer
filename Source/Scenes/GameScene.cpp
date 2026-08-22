@@ -111,26 +111,26 @@ void GameScene::initialize()
 		200000.0f);
 
 
-	DirectX::XMFLOAT3 startEye(-3122.40f, 867.93f, 11342.66f); // åˆæœŸã‚«ãƒ¡ãƒ©ä½ç½®
-	DirectX::XMFLOAT3 startFocus(600.0f, 350.0f, 15000.0f);     // ã‚«ãƒ¡ãƒ©ãŒå‘ãã‚¿ãƒ¼ã‚²ãƒƒãƒˆ
+	DirectX::XMFLOAT3 startEye(-3122.40f, 867.93f, 11342.66f); // ‰ŠúƒJƒƒ‰ˆÊ’u
+	DirectX::XMFLOAT3 startFocus(600.0f, 350.0f, 15000.0f);     // ƒJƒƒ‰‚ªŒü‚­ƒ^[ƒQƒbƒg
 	
 	cameraCtrl->setMovementBounds(DirectX::XMFLOAT3(-70000.0f, -10.0f, -70000.0f), DirectX::XMFLOAT3(70000.0f, 80000.0f, 70000.0f));
 
-	//ã‚«ãƒ¡ãƒ©ã«ã‚»ãƒƒãƒˆ
+	//ƒJƒƒ‰‚ÉƒZƒbƒg
 	camera->setLookAt(startEye, startFocus, DirectX::XMFLOAT3(0, 1, 0));
 
-	//ãƒ•ãƒªãƒ¼ã‚«ãƒ¡ãƒ©ã«ä¸Šæ›¸ãã•ã‚Œãªã„ã‚ˆã†ã€å¤‰æ•°ã‚’é€†ç®—ã—ã¦åˆæœŸåŒ–
+	//ƒtƒŠ[ƒJƒƒ‰‚Éã‘‚«‚³‚ê‚È‚¢‚æ‚¤A•Ï”‚ğ‹tZ‚µ‚Ä‰Šú‰»
 	freeCameraTarget = startFocus;
 
 	DirectX::XMVECTOR vEye = DirectX::XMLoadFloat3(&startEye);
 	DirectX::XMVECTOR vFocus = DirectX::XMLoadFloat3(&startFocus);
 	DirectX::XMVECTOR vDir = DirectX::XMVectorSubtract(vFocus, vEye);
 
-	// è·é›¢ã®è¨ˆç®—
+	// ‹——£‚ÌŒvZ
 	DirectX::XMVECTOR vLength = DirectX::XMVector3Length(vDir);
 	DirectX::XMStoreFloat(&freeCameraRange, vLength);
 
-	// è§’åº¦ã®è¨ˆç®—
+	// Šp“x‚ÌŒvZ
 	DirectX::XMVECTOR vDirNorm = DirectX::XMVector3Normalize(vDir);
 	DirectX::XMFLOAT3 dir;
 	DirectX::XMStoreFloat3(&dir, vDirNorm);
@@ -314,8 +314,8 @@ void GameScene::initialize()
 		_ASSERT_EXPR(SUCCEEDED(hr), hrTrace(hr));
 
 		atmoBlurInvRes = DirectX::XMFLOAT2(
-			0.001302f,
-			0.001340f);
+			1.0f / static_cast<float>(atmoLowResWidth),
+			1.0f / static_cast<float>(atmoLowResHeight));
 	}
 }
 
@@ -325,7 +325,7 @@ void GameScene::finalize()
 
 void GameScene::update(float elapsedTime)
 {
-	// FPS/CPU/GPUè¡¨ç¤ºç”¨ã®è¨ˆæ¸¬å€¤ã‚’æ›´æ–°
+	// FPS/CPU/GPU•\¦—p‚ÌŒv‘ª’l‚ğXV
 	updatePerformanceMetrics(elapsedTime);
 
 	this->elapsedTime += elapsedTime;
@@ -335,7 +335,7 @@ void GameScene::update(float elapsedTime)
 		ship->update(elapsedTime);
 	}
 
-	// é›²ã‚·ãƒŸãƒ¥ãƒ¬ãƒ¼ã‚·ãƒ§ãƒ³æ™‚é–“ã¨å¤©å€™ãƒãƒƒãƒ—ã‚’æ›´æ–°
+	// ‰_ƒVƒ~ƒ…ƒŒ[ƒVƒ‡ƒ“ŠÔ‚Æ“VŒóƒ}ƒbƒv‚ğXV
 	static unsigned int weatherUpdateFrame = 0;
 	if (enableVolumetricCloud && volumetricCloud)
 	{
@@ -347,7 +347,7 @@ void GameScene::update(float elapsedTime)
 	}
 
 	const bool rainActive = enableVolumetricCloud && volumetricCloud && volumetricCloud->getTargetWeather() > 0.55f;
-	// é›¨ç²’ã‚·ã‚¹ãƒ†ãƒ ã‚’æ›´æ–°ï¼ˆå¤©å€™ãƒ†ã‚¯ã‚¹ãƒãƒ£ã‚’å‚ç…§ï¼‰
+	// ‰J—±ƒVƒXƒeƒ€‚ğXVi“VŒóƒeƒNƒXƒ`ƒƒ‚ğQÆj
 	if (rainSystem && rainActive)
 	{
 		Camera* cam = Camera::instance();
@@ -361,7 +361,7 @@ void GameScene::update(float elapsedTime)
 		);
 	}
 
-	// é›¨ã®ç€å¼¾ä½ç½®ã‚’èª­ã¿æˆ»ã—ã¦æ°´é¢æ³¢ç´‹ã¸æ³¨å…¥
+	// ‰J‚Ì’…’eˆÊ’u‚ğ“Ç‚İ–ß‚µ‚Ä…–Ê”g–ä‚Ö’“ü
 	static unsigned int rainReadbackFrame = 0;
 	if (rainSystem && rainActive && water_simulation && (rainReadbackFrame++ % 3u) == 0u)
 	{
@@ -415,9 +415,9 @@ void GameScene::update(float elapsedTime)
 	}
 	auto& cp = volumetricCloud->volumetric_cloud_constant_data;
 
-	// æ˜¼å¤œã‚µã‚¤ã‚¯ãƒ«ã¯å¤ªé™½ã‚’å‹•ã‹ã™ã‹ã©ã†ã‹ã ã‘ã‚’åˆ¶å¾¡ã™ã‚‹ã€‚
-	// ç…§æ˜è‰²ã®è©•ä¾¡ã¯åœæ­¢ä¸­ã‚‚è¡Œã„ã€æ‰‹å‹•ã§å¤œã¸å‹•ã‹ã—ãŸã¨ãã«
-	// æ˜¼ã®ç’°å¢ƒå…‰ãŒæ®‹ã‚‰ãªã„ã‚ˆã†ã«ã™ã‚‹ã€‚
+	// ’‹–éƒTƒCƒNƒ‹‚Í‘¾—z‚ğ“®‚©‚·‚©‚Ç‚¤‚©‚¾‚¯‚ğ§Œä‚·‚éB
+	// Æ–¾F‚Ì•]‰¿‚Í’â~’†‚às‚¢Aè“®‚Å–é‚Ö“®‚©‚µ‚½‚Æ‚«‚É
+	// ’‹‚ÌŠÂ‹«Œõ‚ªc‚ç‚È‚¢‚æ‚¤‚É‚·‚éB
 	if (isDayNightCycleEnabled)
 	{
 		const float minCycleDuration = 0.1f;
@@ -507,12 +507,12 @@ void GameScene::update(float elapsedTime)
 	ambient.z = lerp(ambient.z, 0.032f, horizonGlow * 0.60f);
 	AmbientColor = { ambient.x, ambient.y, ambient.z, 0.0f };
 
-	// ãƒã‚¦ã‚¹å…¥åŠ›ã§è‡ªç”±ã‚«ãƒ¡ãƒ©æ›´æ–°
+	// ƒ}ƒEƒX“ü—Í‚Å©—RƒJƒƒ‰XV
 	updateFreeCamera(elapsedTime);
 
 	if (water_simulation)
 	{
-		// æ³¢ç´‹ç”Ÿæˆï¼ˆã‚¯ãƒªãƒƒã‚¯æ³¨å…¥ + è‡ªå‹•æ³¨å…¥ï¼‰
+		// ”g–ä¶¬iƒNƒŠƒbƒN’“ü + ©“®’“üj
 		injectRippleFromCursor();
 		injectAutoRipple(elapsedTime);
 		injectShipInteractionRipples(elapsedTime);
@@ -546,12 +546,12 @@ void GameScene::render()
 	ID3D11RenderTargetView* backbufferRTV = mgr->getRenderTargetView();
 	ID3D11DepthStencilView* dsv = mgr->getDepthStencilView();
 
-	// HDRãƒãƒƒãƒ•ã‚¡æœ‰åŠ¹æ™‚ã¯ä¸€æ—¦ãã¡ã‚‰ã¸æç”»
+	// HDRƒoƒbƒtƒ@—LŒø‚Íˆê’U‚»‚¿‚ç‚Ö•`‰æ
 	ID3D11RenderTargetView* hdrRTV = hdrSceneBuffer ? hdrSceneBuffer->render_target_view.Get() : backbufferRTV;
 
 	beginGpuQuery(dc);
 
-	// ã‚·ãƒ£ãƒ‰ã‚¦ãƒãƒƒãƒ—å…ˆè¡Œãƒ‘ã‚¹
+	// ƒVƒƒƒhƒEƒ}ƒbƒvæsƒpƒX
 	beginGpuPass(dc, GpuPass::Shadow);
 	renderShadow(dc);
 	endGpuPass(dc, GpuPass::Shadow);
@@ -566,7 +566,7 @@ void GameScene::render()
 	const DirectX::XMFLOAT4X4* proj = camera->getProjection();
 	const DirectX::XMFLOAT3* cameraWorldPosMetersPtr = camera->getPosition();
 
-	// ã‚·ãƒ¼ãƒ³å…±é€šå®šæ•°ï¼ˆViewProj/é€†è¡Œåˆ—/ã‚«ãƒ¡ãƒ©ä½ç½®ï¼‰ã‚’æ›´æ–°
+	// ƒV[ƒ“‹¤’Ê’è”iViewProj/‹ts—ñ/ƒJƒƒ‰ˆÊ’uj‚ğXV
 	SceneConstants sc;
 	{
 		DirectX::XMMATRIX View = DirectX::XMLoadFloat4x4(camera->getView());
@@ -585,7 +585,7 @@ void GameScene::render()
 	buffer->UploadData<SceneConstants>(dc, 1, sc, true, false, false, false, true, false);
 
 
-	// IBLæ›´æ–°ã¨å¤§æ°—æç”»
+	// IBLXV‚Æ‘å‹C•`‰æ
 	beginGpuPass(dc, GpuPass::AtmosphereIBL);
 	{
 		DirectX::XMFLOAT4X4 viewProjection;
@@ -600,7 +600,7 @@ void GameScene::render()
 	buffer->UploadData<SceneConstants>(dc, 1, sc, true, false, false, false, true, false);
 
 
-	// PBRå‚ç…§ãƒ†ã‚¯ã‚¹ãƒãƒ£ç¾¤
+	// PBRQÆƒeƒNƒXƒ`ƒƒŒQ
 	dc->PSSetShaderResources(7, 1, lut_charrlie_srv.GetAddressOf());
 	dc->PSSetShaderResources(8, 1, diffuse_iem_srv.GetAddressOf());
 	dc->PSSetShaderResources(9, 1, specular_pmrem_srv.GetAddressOf());
@@ -632,7 +632,7 @@ void GameScene::render()
 	}
 
 	{
-		// ãƒ©ã‚¤ãƒˆå®šæ•°ã¨ãƒãƒ†ãƒªã‚¢ãƒ«ç²—ã•ä¿‚æ•°ã‚’æ›´æ–°
+		// ƒ‰ƒCƒg’è”‚Æƒ}ƒeƒŠƒAƒ‹‘e‚³ŒW”‚ğXV
 		lightBuffer->UploadData<LIGHT_CONSTANT>(dc, 2, lc, true, false, false, false, true, false);
 
 
@@ -650,7 +650,7 @@ void GameScene::render()
 		ID3D11DepthStencilView* sceneDSV = dsv;
 		if (gbuffer)
 		{
-			// GBufferã‚’ã‚¯ãƒªã‚¢ã—ã¦MRTã¸æç”»
+			// GBuffer‚ğƒNƒŠƒA‚µ‚ÄMRT‚Ö•`‰æ
 			const float clear[4] = { 0, 0, 0, 0 };
 			dc->ClearRenderTargetView(gbuffer->get_rtv(1), clear);
 			dc->ClearRenderTargetView(gbuffer->get_rtv(2), clear);
@@ -681,7 +681,7 @@ void GameScene::render()
 
 			copySceneDepth(dc);
 
-			// æ°´é¢ã®GBufferå‰å‡¦ç†ï¼ˆæ³•ç·š/ç²—ã•ãªã©ï¼‰
+			// …–Ê‚ÌGBuffer‘Oˆ—i–@ü/‘e‚³‚È‚Çj
 			if (water_simulation)
 			{
 				GraphicsManager* graphicsLocal = GraphicsManager::instance();
@@ -722,7 +722,7 @@ void GameScene::render()
 			}
 		}
 
-		// å¾Œæ®µãƒã‚¹ãƒˆã‚¨ãƒ•ã‚§ã‚¯ãƒˆç”¨ã«ç¾åœ¨ã®ã‚·ãƒ¼ãƒ³ã‚«ãƒ©ãƒ¼ã‚’é€€é¿
+		// Œã’iƒ|ƒXƒgƒGƒtƒFƒNƒg—p‚ÉŒ»İ‚ÌƒV[ƒ“ƒJƒ‰[‚ğ‘Ş”ğ
 		copySceneColor(dc, hdrRTV);
 	}
 	endGpuPass(dc, GpuPass::SceneGBuffer);
@@ -740,10 +740,10 @@ void GameScene::render()
 		
 		const float camFar = cam->getFar();
 
-		// ã‚·ãƒ¼ãƒ³è¦æ¨¡ã«å¿œã˜ã¦SSRã®æ¢ç´¢è·é›¢ã‚’æ‹¡å¼µ
+		// ƒV[ƒ“‹K–Í‚É‰‚¶‚ÄSSR‚Ì’Tõ‹——£‚ğŠg’£
 		ssrParams.screen_space_reflection_max_distance = min(camFar * 0.2f, 200000.0f);
 
-		// æ·±åº¦èª¤å·®å¯¾ç­–ã§åšã¿ã‚‚å°‘ã—å¢—ã‚„ã™
+		// [“xŒë·‘Îô‚ÅŒú‚İ‚à­‚µ‘‚â‚·
 		ssrParams.screen_space_reflection_tickness = max(1.0f, camFar * 0.00002f);
 
 		ssr->update(
@@ -827,7 +827,7 @@ void GameScene::render()
 
 	
 
-	// æ°´é¢æç”»
+	// …–Ê•`‰æ
 	beginGpuPass(dc, GpuPass::Water);
 	if (water_simulation)
 	{
@@ -910,7 +910,7 @@ void GameScene::render()
 		dc->RSSetState(rc->rasterizerStates[static_cast<uint32_t>(RASTERIZER_STATE::SOLID_CULLNONE)].Get());
 		});
 
-	// é›¨ã®æç”»
+	// ‰J‚Ì•`‰æ
 	if (rainSystem && enableVolumetricCloud && volumetricCloud && volumetricCloud->getTargetWeather() > 0.55f)
 	{
 		ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
@@ -923,7 +923,7 @@ void GameScene::render()
 	}
 	endGpuPass(dc, GpuPass::DebugRain);
 
-	// HDR -> ãƒãƒƒã‚¯ãƒãƒƒãƒ•ã‚¡ã¸æœ€çµ‚åˆæˆ
+	// HDR -> ƒoƒbƒNƒoƒbƒtƒ@‚ÖÅI‡¬
 	beginGpuPass(dc, GpuPass::FinalComposite);
 	if (bit_block_transfer && finalPassPS && hdrSceneBuffer)
 	{
@@ -956,7 +956,7 @@ void GameScene::render()
 	}
 	endGpuPass(dc, GpuPass::FinalComposite);
 
-	// GUIæç”»
+	// GUI•`‰æ
 	dc->OMSetRenderTargets(1, &backbufferRTV, dsv);
 	debugGui();
 
@@ -965,21 +965,21 @@ void GameScene::render()
 
 void GameScene::renderShadow(ID3D11DeviceContext* dc)
 {
-	// æ©Ÿèƒ½ç„¡åŠ¹ã¾ãŸã¯æœªåˆæœŸåŒ–æ™‚ã¯ã‚¹ã‚­ãƒƒãƒ—
+	// ‹@”\–³Œø‚Ü‚½‚Í–¢‰Šú‰»‚ÍƒXƒLƒbƒv
 	if (!useCascadeShadowMap || !cascadeShadowMap)
 		return;
 
-	// ã‚·ãƒ£ãƒ‰ã‚¦ãƒ†ã‚¯ã‚¹ãƒãƒ£ãŒPSã«æ®‹ã£ã¦ã„ã‚‹ã¨ç«¶åˆã™ã‚‹ãŸã‚å…ˆã«è§£é™¤
+	// ƒVƒƒƒhƒEƒeƒNƒXƒ`ƒƒ‚ªPS‚Éc‚Á‚Ä‚¢‚é‚Æ‹£‡‚·‚é‚½‚ßæ‚É‰ğœ
 	cascadeShadowMap->UnbindShaderResources(dc, 12);
 
-	// å½±ãƒ‘ã‚¹å¾Œã«æˆ»ã™ãŸã‚ç¾åœ¨ã®ãƒ“ãƒ¥ãƒ¼ãƒãƒ¼ãƒˆã‚’é€€é¿
+	// ‰eƒpƒXŒã‚É–ß‚·‚½‚ßŒ»İ‚Ìƒrƒ…[ƒ|[ƒg‚ğ‘Ş”ğ
 	D3D11_VIEWPORT originalViewport;
 	UINT numViewports = 1;
 	dc->RSGetViewports(&numViewports, &originalViewport);
 
 	Camera* camera = Camera::instance();
 
-	// ã‚«ã‚¹ã‚±ãƒ¼ãƒ‰åˆ†å‰²ã¨å„ãƒ©ã‚¤ãƒˆè¡Œåˆ—ã‚’è¨ˆç®—
+	// ƒJƒXƒP[ƒh•ªŠ„‚ÆŠeƒ‰ƒCƒgs—ñ‚ğŒvZ
 	cascadeShadowMap->CalculateCascades(
 		dc,
 		*camera->getView(),
@@ -992,7 +992,7 @@ void GameScene::renderShadow(ID3D11DeviceContext* dc)
 
 	auto shouldRenderCascade = [this](int cascadeIndex)->bool {
 		if (!staggerShadowUpdates) return true;
-		// ã‚·ãƒ³ãƒ—ãƒ«ã« 1 ã¤ã ã‘æ›´æ–°ã™ã‚‹å ´åˆ
+		// ƒVƒ“ƒvƒ‹‚É 1 ‚Â‚¾‚¯XV‚·‚éê‡
 		for (int k = 0; k < shadowUpdatesPerFrame; ++k)
 		{
 			int idx = (shadowUpdateIndex + k) % CASCADE_COUNT;
@@ -1006,15 +1006,15 @@ void GameScene::renderShadow(ID3D11DeviceContext* dc)
 		if (!shouldRenderCascade(i))
 			continue;
 
-		// iç•ªç›®ã‚«ã‚¹ã‚±ãƒ¼ãƒ‰ã®æ·±åº¦æç”»é–‹å§‹
+		// i”Ô–ÚƒJƒXƒP[ƒh‚Ì[“x•`‰æŠJn
 		cascadeShadowMap->beginShadowRender(dc, i);
 
-		// å½±ç”Ÿæˆç”¨ã®å›ºå®šã‚¹ãƒ†ãƒ¼ãƒˆ
+		// ‰e¶¬—p‚ÌŒÅ’èƒXƒe[ƒg
 		dc->OMSetDepthStencilState(GraphicsManager::instance()->getDepthStencilStates(DEPTH_STENCIL_STATE::ON_ON).Get(), 0);
 		dc->RSSetState(GraphicsManager::instance()->getRasterizerStates(RASTERIZER_STATE::SOLID_CULLNONE).Get());
 		dc->OMSetBlendState(GraphicsManager::instance()->getBlendStates(BLEND_STATE::NONE).Get(), nullptr, 0xFFFFFFFF);
 
-		// ã“ã®ã‚«ã‚¹ã‚±ãƒ¼ãƒ‰å°‚ç”¨ã®ViewProjectionã‚’VSã¸è¨­å®š
+		// ‚±‚ÌƒJƒXƒP[ƒhê—p‚ÌViewProjection‚ğVS‚Öİ’è
 		SceneConstants shadowPassConstants;
 		DirectX::XMStoreFloat4x4(
 			&shadowPassConstants.view_projection,
@@ -1044,7 +1044,7 @@ void GameScene::renderShadow(ID3D11DeviceContext* dc)
 		shadowUpdateIndex = (shadowUpdateIndex + shadowUpdatesPerFrame) % CASCADE_COUNT;
 	}
 
-	// æœ¬æ¥ã®ãƒ“ãƒ¥ãƒ¼ãƒãƒ¼ãƒˆã¨RTã¸å¾©å¸°
+	// –{—ˆ‚Ìƒrƒ…[ƒ|[ƒg‚ÆRT‚Ö•œ‹A
 	dc->RSSetViewports(1, &originalViewport);
 
 	ID3D11RenderTargetView* rtv = DeviceManager::instance()->getRenderTargetView();
@@ -1056,7 +1056,7 @@ void GameScene::renderAtmosphere(ID3D11DeviceContext* dc, ID3D11RenderTargetView
 {
 	const AtmosphereConstants& atmosphereData = skyMap->getAtmosphereConstants();
 
-	// ä½è§£åƒåº¦æç”» + 2passãƒ–ãƒ©ãƒ¼çµŒç”±
+	// ’á‰ğ‘œ“x•`‰æ + 2passƒuƒ‰[Œo—R
 	if (enableLowResAtmosphere &&
 		bit_block_transfer &&
 		atmoLowResBuffer &&
@@ -1065,7 +1065,7 @@ void GameScene::renderAtmosphere(ID3D11DeviceContext* dc, ID3D11RenderTargetView
 		atmoBlurHPS &&
 		atmoBlurVPS)
 	{
-		//ä½è§£åƒåº¦ãƒãƒƒãƒ•ã‚¡ã«ç©º/é›²ã‚’æã
+		//’á‰ğ‘œ“xƒoƒbƒtƒ@‚É‹ó/‰_‚ğ•`‚­
 		atmoLowResBuffer->activate(dc);
 		atmoLowResBuffer->clear(dc, 0, 0, 0, 1);
 
@@ -1082,7 +1082,7 @@ void GameScene::renderAtmosphere(ID3D11DeviceContext* dc, ID3D11RenderTargetView
 
 		atmoLowResBuffer->deactivate(dc);
 
-		//ãƒ–ãƒ©ãƒ¼å®šæ•°ã‚’è¨­å®š
+		//ƒuƒ‰[’è”‚ğİ’è
 		
 		blurCB.gInvHalfRes = atmoBlurInvRes;
 		atmoBlurCB->UploadData<ATMOSPHERE_BLUR_CB>(dc, 1, blurCB, false, false, false, false, true, false);
@@ -1096,7 +1096,7 @@ void GameScene::renderAtmosphere(ID3D11DeviceContext* dc, ID3D11RenderTargetView
 			dc->PSSetSamplers(1, 1, &linearSamplerPtr);
 		}
 
-		//æ¨ªãƒ–ãƒ©ãƒ¼
+		//‰¡ƒuƒ‰[
 		atmoBlurTempBuffer->activate(dc);
 		atmoBlurTempBuffer->clear(dc, 0, 0, 0, 1);
 		{
@@ -1107,7 +1107,7 @@ void GameScene::renderAtmosphere(ID3D11DeviceContext* dc, ID3D11RenderTargetView
 		}
 		atmoBlurTempBuffer->deactivate(dc);
 
-		//ç¸¦ãƒ–ãƒ©ãƒ¼
+		//cƒuƒ‰[
 		atmoBlurBuffer->activate(dc);
 		atmoBlurBuffer->clear(dc, 0, 0, 0, 1);
 		{
@@ -1118,7 +1118,7 @@ void GameScene::renderAtmosphere(ID3D11DeviceContext* dc, ID3D11RenderTargetView
 		}
 		atmoBlurBuffer->deactivate(dc);
 
-		//HDRã‚¿ãƒ¼ã‚²ãƒƒãƒˆã¸åˆæˆ
+		//HDRƒ^[ƒQƒbƒg‚Ö‡¬
 		{
 			ID3D11DepthStencilView* nullDSV = nullptr;
 			dc->OMSetRenderTargets(1, &hdrRTV, nullDSV);
@@ -1139,7 +1139,7 @@ void GameScene::renderAtmosphere(ID3D11DeviceContext* dc, ID3D11RenderTargetView
 	}
 	else
 	{
-		// é€šå¸¸è§£åƒåº¦ã§ç›´æ¥æç”»
+		// ’Êí‰ğ‘œ“x‚Å’¼Ú•`‰æ
 		skyMap->render(dc, viewProjection);
 
 		if (enableVolumetricCloud && volumetricCloud && skyMap)
@@ -1158,17 +1158,17 @@ void GameScene::updatePerformanceMetrics(float elapsedTime)
 	LARGE_INTEGER now;
 	QueryPerformanceCounter(&now);
 
-	// å®Ÿæ™‚é–“ãƒ™ãƒ¼ã‚¹ã®deltaã‚’è¨ˆç®—ï¼ˆãƒ•ãƒ¬ãƒ¼ãƒ ä¾å­˜ã‚’é¿ã‘ã‚‹ï¼‰
+	// ÀŠÔƒx[ƒX‚Ìdelta‚ğŒvZiƒtƒŒ[ƒ€ˆË‘¶‚ğ”ğ‚¯‚éj
 	double dt = double(now.QuadPart - prevQpc.QuadPart) / double(qpcFreq.QuadPart);
 	prevQpc = now;
 
-	// ç•°å¸¸å€¤ã‚¬ãƒ¼ãƒ‰
+	// ˆÙí’lƒK[ƒh
 	if (dt < 0.000001) dt = 0.000001;
 	if (dt > 0.25)     dt = 0.25;
 
 	realDt = static_cast<float>(dt);
 
-	// FPSã¯0.5ç§’ã”ã¨ã«æ›´æ–°ã—ã¦è¡¨ç¤ºã®æºã‚Œã‚’æŠ‘ãˆã‚‹
+	// FPS‚Í0.5•b‚²‚Æ‚ÉXV‚µ‚Ä•\¦‚Ì—h‚ê‚ğ—}‚¦‚é
 	fpsAccum += realDt;
 	fpsFrames++;
 
@@ -1179,7 +1179,7 @@ void GameScene::updatePerformanceMetrics(float elapsedTime)
 		fpsAccum = 0.0f;
 	}
 
-	// CPUä½¿ç”¨ç‡ã¯1ç§’å‘¨æœŸã§æ›´æ–°
+	// CPUg—p—¦‚Í1•büŠú‚ÅXV
 	performanceUpdateTimer += elapsedTime;
 	if (performanceUpdateTimer >= 1.0f)
 	{
@@ -1205,7 +1205,7 @@ void GameScene::updatePerformanceMetrics(float elapsedTime)
 		cpuUsage = static_cast<float>(percent * 100);
 	}
 
-	// ã‚°ãƒ©ãƒ•ç”¨ãƒªãƒ³ã‚°ãƒãƒƒãƒ•ã‚¡
+	// ƒOƒ‰ƒt—pƒŠƒ“ƒOƒoƒbƒtƒ@
 	for (int i = 0; i < GRAPH_HISTORY_COUNT - 1; ++i)
 	{
 		fpsHistory[i] = fpsHistory[i + 1];
@@ -1219,7 +1219,7 @@ void GameScene::beginGpuQuery(ID3D11DeviceContext* dc)
 {
 	gpuQueryRecording = false;
 	if (queryStarted)
-	// å‰ãƒ•ãƒ¬ãƒ¼ãƒ åˆ†ã®GPUã‚¿ã‚¤ãƒ ã‚¹ã‚¿ãƒ³ãƒ—çµæœã‚’å›å
+	// ‘OƒtƒŒ[ƒ€•ª‚ÌGPUƒ^ƒCƒ€ƒXƒ^ƒ“ƒvŒ‹‰Ê‚ğ‰ñû
 	if (queryStarted)
 	{
 		D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjointData;
@@ -1285,7 +1285,7 @@ void GameScene::beginGpuQuery(ID3D11DeviceContext* dc)
 		}
 	}
 
-	// ä»Šãƒ•ãƒ¬ãƒ¼ãƒ è¨ˆæ¸¬ã‚’é–‹å§‹
+	// ¡ƒtƒŒ[ƒ€Œv‘ª‚ğŠJn
 	if (!queryStarted)
 	{
 		gpuQueryFrameIntervalSeconds = (realDt > 0.0f) ? realDt : 0.016f;
@@ -1297,7 +1297,7 @@ void GameScene::beginGpuQuery(ID3D11DeviceContext* dc)
 
 void GameScene::endGpuQuery(ID3D11DeviceContext* dc)
 {
-	// beginå´ã§é–‹å§‹ã—ãŸè¨ˆæ¸¬ã‚’é–‰ã˜ã‚‹
+	// begin‘¤‚ÅŠJn‚µ‚½Œv‘ª‚ğ•Â‚¶‚é
 	if (gpuQueryRecording)
 	{
 		dc->End(queryEndFrame.Get());
@@ -1332,7 +1332,7 @@ void GameScene::injectRippleFromCursor()
 	if (!water_simulation)
 		return;
 
-	// UIæ“ä½œä¸­ã¯ãƒ¯ãƒ¼ãƒ«ãƒ‰å´ã®å…¥åŠ›ã‚’ç„¡åŠ¹åŒ–
+	// UI‘€ì’†‚Íƒ[ƒ‹ƒh‘¤‚Ì“ü—Í‚ğ–³Œø‰»
 	if (ImGui::GetIO().WantCaptureMouse)
 		return;
 
@@ -1344,7 +1344,7 @@ void GameScene::injectRippleFromCursor()
 	const float screenW = static_cast<float>(devicmgr->getScreenWidth());
 	const float screenH = static_cast<float>(devicmgr->getScreenHeight());
 
-	// ç”»é¢åº§æ¨™ -> NDC
+	// ‰æ–ÊÀ•W -> NDC
 	float ndcX = (static_cast<float>(mouse->getPositionX()) / screenW) * 2.0f - 1.0f;
 	float ndcY = (static_cast<float>(mouse->getPositionY()) / screenH) * 2.0f - 1.0f;
 	ndcY = -ndcY;
@@ -1354,7 +1354,7 @@ void GameScene::injectRippleFromCursor()
 	DirectX::XMMATRIX proj = DirectX::XMLoadFloat4x4(cam->getProjection());
 	DirectX::XMMATRIX invViewProj = DirectX::XMMatrixInverse(nullptr, view * proj);
 
-	// NDCã®near/farã‚’ãƒ¯ãƒ¼ãƒ«ãƒ‰ã¸æˆ»ã—ã¦ãƒ¬ã‚¤ã‚’ä½œã‚‹
+	// NDC‚Ìnear/far‚ğƒ[ƒ‹ƒh‚Ö–ß‚µ‚ÄƒŒƒC‚ğì‚é
 	DirectX::XMVECTOR nearPoint = DirectX::XMVectorSet(ndcX, ndcY, 0.0f, 1.0f);
 	DirectX::XMVECTOR farPoint = DirectX::XMVectorSet(ndcX, ndcY, 1.0f, 1.0f);
 
@@ -1367,7 +1367,7 @@ void GameScene::injectRippleFromCursor()
 	DirectX::XMVECTOR dir = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(farPoint, nearPoint));
 	DirectX::XMVECTOR origin = nearPoint;
 
-	// æ°´é¢å¹³é¢ã¨ã®äº¤ç‚¹ã‚’è¨ˆç®—
+	// …–Ê•½–Ê‚Æ‚ÌŒğ“_‚ğŒvZ
 	const float dirY = DirectX::XMVectorGetY(dir);
 	if (fabsf(dirY) < 1e-5f)
 		return;
@@ -1390,7 +1390,7 @@ void GameScene::injectRippleFromCursor()
 	const float halfX = waterSize.x * 0.5f;
 	const float halfZ = waterSize.y * 0.5f;
 
-	// ãƒ¯ãƒ¼ãƒ«ãƒ‰åº§æ¨™ -> æ°´é¢UV
+	// ƒ[ƒ‹ƒhÀ•W -> …–ÊUV
 	const float u = (hitPos.x - waterCenter.x + halfX) / waterSize.x;
 	const float v = (hitPos.z - waterCenter.z + halfZ) / waterSize.y;
 
@@ -1401,7 +1401,7 @@ void GameScene::injectRippleFromCursor()
 	const float rippleResY = static_cast<float>(rippleSim->getHeight());
 	DirectX::XMFLOAT2 rippleCenter = { u * rippleResX, v * rippleResY };
 
-	// ã‚¯ãƒªãƒƒã‚¯ä½ç½®ã¸æ³¢ç´‹ã‚’æ³¨å…¥
+	// ƒNƒŠƒbƒNˆÊ’u‚Ö”g–ä‚ğ’“ü
 	water_simulation->GetRippleSimulation()->InjectRipple(
 		DeviceManager::instance()->getDeviceContext(),
 		rippleCenter,
@@ -1415,7 +1415,7 @@ void GameScene::injectAutoRipple(float elapsedTime)
 	if (!water_simulation || !enableAutoRipple)
 		return;
 
-	// æŒ‡å®šé–“éš”ã”ã¨ã«ä¸­å¿ƒã¸æ³¢ç´‹ã‚’æ³¨å…¥
+	// w’èŠÔŠu‚²‚Æ‚É’†S‚Ö”g–ä‚ğ’“ü
 	rippleTimer += elapsedTime;
 	if (rippleTimer < autoRippleInterval)
 		return;
@@ -1492,7 +1492,7 @@ void GameScene::updateFreeCamera(float elapsedTime)
 	float moveX = static_cast<float>(mouse->getDeltaX());
 	float moveY = static_cast<float>(mouse->getDeltaY());
 
-	// å³ãƒ‰ãƒ©ãƒƒã‚°: ã‚ªãƒ¼ãƒ“ãƒƒãƒˆå›è»¢ï¼ˆYaw/Pitchï¼‰
+	// ‰Eƒhƒ‰ƒbƒO: ƒI[ƒrƒbƒg‰ñ“]iYaw/Pitchj
 	if (mouse->getButton() & Mouse::BTN_RIGHT)
 	{
 		freeCameraAngle.y += moveX * 0.005f;
@@ -1509,7 +1509,7 @@ void GameScene::updateFreeCamera(float elapsedTime)
 		else if (freeCameraAngle.x < minPitch)
 			freeCameraAngle.x = minPitch;
 	}
-	// ä¸­ãƒ‰ãƒ©ãƒƒã‚°: ã‚¿ãƒ¼ã‚²ãƒƒãƒˆå¹³è¡Œç§»å‹•
+	// ’†ƒhƒ‰ƒbƒO: ƒ^[ƒQƒbƒg•½sˆÚ“®
 	else if (mouse->getButton() & Mouse::BTN_MIDDLE)
 	{
 		DirectX::XMMATRIX viewMatrix = DirectX::XMLoadFloat4x4(camera->getView());
@@ -1530,7 +1530,7 @@ void GameScene::updateFreeCamera(float elapsedTime)
 		freeCameraTarget.z += W._23 * panY;
 	}
 
-	// ãƒ›ã‚¤ãƒ¼ãƒ«: è·é›¢ã‚ºãƒ¼ãƒ 
+	// ƒzƒC[ƒ‹: ‹——£ƒY[ƒ€
 	int wheel = mouse->getWheel();
 	if (wheel != 0)
 	{
@@ -1538,7 +1538,7 @@ void GameScene::updateFreeCamera(float elapsedTime)
 		if (freeCameraRange < 0.1f) freeCameraRange = 0.1f;
 	}
 
-	// çƒé¢åº§æ¨™ã‹ã‚‰ã‚«ãƒ¡ãƒ©ä½ç½®ã‚’å†è¨ˆç®—
+	// ‹…–ÊÀ•W‚©‚çƒJƒƒ‰ˆÊ’u‚ğÄŒvZ
 	float sx = ::sinf(freeCameraAngle.x);
 	float cx = ::cosf(freeCameraAngle.x);
 	float sy = ::sinf(freeCameraAngle.y);
@@ -1636,7 +1636,7 @@ void GameScene::updateIBLMaps(ID3D11DeviceContext* dc, const DirectX::XMFLOAT3& 
 		return fabsf(a.y - b.y) > thresholdMeters;
 		};
 
-	// æ¯ãƒ•ãƒ¬ãƒ¼ãƒ æ›´æ–°ã¯é‡ã„ã®ã§ã€é–“å¼•ãï¼‹ã‚«ãƒ¡ãƒ©ç§»å‹•æ™‚ã®ã¿å†ç”Ÿæˆ
+	// –ˆƒtƒŒ[ƒ€XV‚Íd‚¢‚Ì‚ÅAŠÔˆø‚«{ƒJƒƒ‰ˆÚ“®‚Ì‚İÄ¶¬
 	const bool altitudeChanged = cameraAltitudeChanged(cameraPos, s_lastCameraPos, 100.0f);
 	const bool needSkyVisualUpdate =
 		(s_skyVisualUpdateCounter++ % SKY_VISUAL_UPDATE_INTERVAL) == 0 || altitudeChanged;
@@ -1655,7 +1655,7 @@ void GameScene::updateIBLMaps(ID3D11DeviceContext* dc, const DirectX::XMFLOAT3& 
 	ID3D11UnorderedAccessView* pNullUAV[1] = { nullptr };
 	ID3D11ShaderResourceView* pNullSRV[1] = { nullptr };
 
-	// SRV/UAVç«¶åˆã‚’é¿ã‘ã‚‹ãŸã‚å…ˆã«ä½¿ç”¨ã‚¹ãƒ­ãƒƒãƒˆã‚’è§£é™¤
+	// SRV/UAV‹£‡‚ğ”ğ‚¯‚é‚½‚ßæ‚Ég—pƒXƒƒbƒg‚ğ‰ğœ
 	{
 		ID3D11ShaderResourceView* nullSRVs[2] = { nullptr, nullptr };
 		dc->PSSetShaderResources(8, 2, nullSRVs);
@@ -1670,7 +1670,7 @@ void GameScene::updateIBLMaps(ID3D11DeviceContext* dc, const DirectX::XMFLOAT3& 
 
 	if (needIBLUpdate)
 	{
-		// Diffuse IBLï¼ˆIrradianceï¼‰
+		// Diffuse IBLiIrradiancej
 		dc->CSSetShader(irradiance_cs.Get(), nullptr, 0);
 		dc->CSSetShaderResources(0, 1, &sourceSkySRV);
 
@@ -1681,7 +1681,7 @@ void GameScene::updateIBLMaps(ID3D11DeviceContext* dc, const DirectX::XMFLOAT3& 
 
 		dc->CSSetUnorderedAccessViews(0, 1, pNullUAV, nullptr);
 
-		// Specular IBLï¼ˆPMREMï¼‰ã‚’mipã”ã¨ã«ç”Ÿæˆ
+		// Specular IBLiPMREMj‚ğmip‚²‚Æ‚É¶¬
 		dc->CSSetShader(specular_filter_cs.Get(), nullptr, 0);
 		dc->CSSetShaderResources(0, 1, &sourceSkySRV);
 		
@@ -1731,18 +1731,18 @@ void GameScene::setWeatherTarget(float weatherT)
 
 void GameScene::copySceneColor(ID3D11DeviceContext* dc, ID3D11RenderTargetView* rtv)
 {
-	// ç¾åœ¨ã®æç”»å…ˆRTVãŒæŒ‡ã™å®Ÿä½“ãƒªã‚½ãƒ¼ã‚¹ã‚’å–å¾—
+	// Œ»İ‚Ì•`‰ææRTV‚ªw‚·À‘ÌƒŠƒ\[ƒX‚ğæ“¾
 	Microsoft::WRL::ComPtr<ID3D11Resource> rtvRes;
 	rtv->GetResource(rtvRes.GetAddressOf());
 
-	// RTVã®å®Ÿä½“ã‚’2Dãƒ†ã‚¯ã‚¹ãƒãƒ£ã¨ã—ã¦æ‰±ã†
+	// RTV‚ÌÀ‘Ì‚ğ2DƒeƒNƒXƒ`ƒƒ‚Æ‚µ‚Äˆµ‚¤
 	Microsoft::WRL::ComPtr<ID3D11Texture2D> backbufferTex;
 	rtvRes.As(&backbufferTex);
 
 	D3D11_TEXTURE2D_DESC bbDesc{};
 	backbufferTex->GetDesc(&bbDesc);
 
-	// ã‚³ãƒ”ãƒ¼å…ˆãƒ†ã‚¯ã‚¹ãƒãƒ£ãŒæœªä½œæˆã€ã¾ãŸã¯ã‚µã‚¤ã‚º/ãƒ•ã‚©ãƒ¼ãƒãƒƒãƒˆä¸ä¸€è‡´ãªã‚‰ä½œã‚Šç›´ã™
+	// ƒRƒs[æƒeƒNƒXƒ`ƒƒ‚ª–¢ì¬A‚Ü‚½‚ÍƒTƒCƒY/ƒtƒH[ƒ}ƒbƒg•sˆê’v‚È‚çì‚è’¼‚·
 	const bool needCreateSceneColor =
 		!sceneColorCopyTex ||
 		[this, &bbDesc]() {
@@ -1774,7 +1774,7 @@ void GameScene::copySceneColor(ID3D11DeviceContext* dc, ID3D11RenderTargetView* 
 		HRESULT hr = DeviceManager::instance()->getDevice()->CreateTexture2D(&copyDesc, nullptr, sceneColorCopyTex.GetAddressOf());
 		_ASSERT_EXPR(SUCCEEDED(hr), hrTrace(hr));
 
-		// å¾Œæ®µã®ãƒã‚¹ãƒˆã‚¨ãƒ•ã‚§ã‚¯ãƒˆã§å‚ç…§ã§ãã‚‹ã‚ˆã†ã«SRVã‚’ä½œæˆ
+		// Œã’i‚Ìƒ|ƒXƒgƒGƒtƒFƒNƒg‚ÅQÆ‚Å‚«‚é‚æ‚¤‚ÉSRV‚ğì¬
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
 		srvDesc.Format = copyDesc.Format;
 		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
@@ -1785,7 +1785,7 @@ void GameScene::copySceneColor(ID3D11DeviceContext* dc, ID3D11RenderTargetView* 
 		_ASSERT_EXPR(SUCCEEDED(hr), hrTrace(hr));
 	}
 
-	// MSAAæ™‚ã¯Resolveã€éMSAAæ™‚ã¯ãã®ã¾ã¾Copy
+	// MSAA‚ÍResolveA”ñMSAA‚Í‚»‚Ì‚Ü‚ÜCopy
 	if (bbDesc.SampleDesc.Count > 1)
 	{
 		dc->ResolveSubresource(sceneColorCopyTex.Get(), 0, backbufferTex.Get(), 0, bbDesc.Format);
@@ -1800,7 +1800,7 @@ void GameScene::copySceneColor(ID3D11DeviceContext* dc, ID3D11RenderTargetView* 
 
 void GameScene::copySceneDepth(ID3D11DeviceContext* dc)
 {
-	// GBufferã‹ã‚‰ç¾åœ¨ã®æ·±åº¦ãƒãƒƒãƒ•ã‚¡(SRV)ã®å®Ÿä½“ãƒªã‚½ãƒ¼ã‚¹ã‚’å–å¾—
+	// GBuffer‚©‚çŒ»İ‚Ì[“xƒoƒbƒtƒ@(SRV)‚ÌÀ‘ÌƒŠƒ\[ƒX‚ğæ“¾
 	ID3D11ShaderResourceView* depthSRV = gbuffer->get_depth_srv();
 	if (!depthSRV) return;
 
@@ -1813,7 +1813,7 @@ void GameScene::copySceneDepth(ID3D11DeviceContext* dc)
 	D3D11_TEXTURE2D_DESC desc{};
 	depthTex->GetDesc(&desc);
 
-	// ã‚³ãƒ”ãƒ¼ç”¨ãƒ†ã‚¯ã‚¹ãƒãƒ£ã®ä½œæˆãƒ»ã‚µã‚¤ã‚ºå¤‰æ›´ãƒã‚§ãƒƒã‚¯
+	// ƒRƒs[—pƒeƒNƒXƒ`ƒƒ‚Ìì¬EƒTƒCƒY•ÏXƒ`ƒFƒbƒN
 	const bool needCreate = !sceneDepthCopyTex || [&]() {
 		D3D11_TEXTURE2D_DESC cur{};
 		sceneDepthCopyTex->GetDesc(&cur);
@@ -1828,8 +1828,8 @@ void GameScene::copySceneDepth(ID3D11DeviceContext* dc)
 		copyDesc.CPUAccessFlags = 0;
 		copyDesc.MiscFlags = 0;
 
-		// æ·±åº¦ãƒãƒƒãƒ•ã‚¡ãŒç‰¹æ®Šãªãƒ•ã‚©ãƒ¼ãƒãƒƒãƒˆ(Typeless)ã®å ´åˆã€SRVã§èª­ã‚ã‚‹å½¢å¼ã«åˆã‚ã›ã‚‹
-		// ä¸€èˆ¬çš„ãª D32_FLOAT ã‚„ D24_S8 ã®å ´åˆã€R32_FLOAT ã‚„ R24_UNORM_X8 ã¨ã—ã¦èª­ã¿å‡ºã™å¿…è¦ãŒã‚ã‚‹
+		// [“xƒoƒbƒtƒ@‚ª“Áê‚ÈƒtƒH[ƒ}ƒbƒg(Typeless)‚Ìê‡ASRV‚Å“Ç‚ß‚éŒ`®‚É‡‚í‚¹‚é
+		// ˆê”Ê“I‚È D32_FLOAT ‚â D24_S8 ‚Ìê‡AR32_FLOAT ‚â R24_UNORM_X8 ‚Æ‚µ‚Ä“Ç‚İo‚·•K—v‚ª‚ ‚é
 		DXGI_FORMAT srvFormat = desc.Format;
 		if (desc.Format == DXGI_FORMAT_R32_TYPELESS || desc.Format == DXGI_FORMAT_D32_FLOAT) {
 			copyDesc.Format = DXGI_FORMAT_R32_TYPELESS;
@@ -1856,7 +1856,7 @@ void GameScene::copySceneDepth(ID3D11DeviceContext* dc)
 		_ASSERT_EXPR(SUCCEEDED(hr), hrTrace(hr));
 	}
 
-	// ãƒãƒ«ãƒã‚µãƒ³ãƒ—ãƒªãƒ³ã‚°(MSAA)ãªã‚‰ Resolveã€ãã†ã§ãªã‘ã‚Œã° Copy
+	// ƒ}ƒ‹ƒ`ƒTƒ“ƒvƒŠƒ“ƒO(MSAA)‚È‚ç ResolveA‚»‚¤‚Å‚È‚¯‚ê‚Î Copy
 	if (desc.SampleDesc.Count > 1)
 	{
 		dc->ResolveSubresource(sceneDepthCopyTex.Get(), 0, depthTex.Get(), 0, desc.Format);
@@ -1872,7 +1872,7 @@ void GameScene::debugGui()
 
 	ImGui::Begin("Imgui");
 
-	// ç¾åœ¨ã®ã‚«ãƒ¡ãƒ©ä½ç½®ã‚’è¡¨ç¤º
+	// Œ»İ‚ÌƒJƒƒ‰ˆÊ’u‚ğ•\¦
 	{
 		Camera* cam = Camera::instance();
 		if (cam)
@@ -1979,10 +1979,9 @@ void GameScene::debugGui()
 		ImGui::Text("Atmosphere Blur");
 		ImGui::Checkbox("Low Resolution Atmosphere", &enableLowResAtmosphere);
 		ImGui::TextDisabled("ON = 640x360 atmosphere pass (recommended for performance)");
-		if (ImGui::DragFloat2("gInvHalfRes", &atmoBlurInvRes.x, 1e-5f, 0.0f, 1.0f, "%.6f"))
-		{
-
-		}
+		ImGui::TextDisabled("Blur texel size: %.6f, %.6f",
+			atmoBlurInvRes.x,
+			atmoBlurInvRes.y);
 
 
 		if (skyMap)
