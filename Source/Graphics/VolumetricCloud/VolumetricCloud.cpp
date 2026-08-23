@@ -130,7 +130,7 @@ void VolumetricCloud::initialize(ID3D11Device* device, const wchar_t* filename)
 	volumetric_cloud_constant_data.wind_speed = 0.02f;
 	volumetric_cloud_constant_data.density_scale = 1.05f;
 	volumetric_cloud_constant_data.cloud_coverage_scale = 0.82f;
-	volumetric_cloud_constant_data.rain_cloud_absorption_scale = 0.5f;
+	volumetric_cloud_constant_data.rain_cloud_absorption_scale = 0.2f;
 	volumetric_cloud_constant_data.cloud_type_scale = 1.0f;
 	volumetric_cloud_constant_data.horizon_distance_scale = 1.0f;
 	volumetric_cloud_constant_data.low_frequency_perlin_worley_sampling_scale = 0.00020f;

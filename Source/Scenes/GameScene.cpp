@@ -505,7 +505,7 @@ void GameScene::update(float elapsedTime)
 	}
 
 	const float directWeatherScale =
-		lerp(1.0f, 0.58f, weatherOvercast * dayVisibility);
+		lerp(1.0f, 0.24f, weatherOvercast * dayVisibility);
 	LightColor.x *= directWeatherScale;
 	LightColor.y *= directWeatherScale;
 	LightColor.z *= directWeatherScale;
@@ -519,8 +519,8 @@ void GameScene::update(float elapsedTime)
 	ambient.x = lerp(ambient.x, 0.16f, horizonGlow * 0.60f);
 	ambient.y = lerp(ambient.y, 0.060f, horizonGlow * 0.60f);
 	ambient.z = lerp(ambient.z, 0.032f, horizonGlow * 0.60f);
-	const DirectX::XMFLOAT3 overcastAmbient{ 0.10f, 0.12f, 0.15f };
-	const float weatherAmbientBlend = weatherOvercast * dayVisibility * 0.82f;
+	const DirectX::XMFLOAT3 overcastAmbient{ 0.070f, 0.085f, 0.110f };
+	const float weatherAmbientBlend = weatherOvercast * dayVisibility * 0.92f;
 	ambient.x = lerp(ambient.x, overcastAmbient.x, weatherAmbientBlend);
 	ambient.y = lerp(ambient.y, overcastAmbient.y, weatherAmbientBlend);
 	ambient.z = lerp(ambient.z, overcastAmbient.z, weatherAmbientBlend);

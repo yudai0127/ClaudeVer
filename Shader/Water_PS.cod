@@ -63,7 +63,7 @@
 //   float3 rayleighScatteringCoefficient;// Offset:   48 Size:    12 [unused]
 //   float mieScatteringCoefficient;    // Offset:   60 Size:     4 [unused]
 //   float mieEccentricity;             // Offset:   64 Size:     4 [unused]
-//   float3 _padding2;                  // Offset:   68 Size:    12 [unused]
+//   float3 _padding2;                  // Offset:   68 Size:    12
 //
 // }
 //
@@ -115,7 +115,7 @@ ps_5_0
 dcl_globalFlags refactoringAllowed
 dcl_constantbuffer CB6[10], immediateIndexed
 dcl_constantbuffer CB7[18], immediateIndexed
-dcl_constantbuffer CB3[1], immediateIndexed
+dcl_constantbuffer CB3[5], immediateIndexed
 dcl_sampler s1, mode_default
 dcl_sampler s2, mode_default
 dcl_sampler s3, mode_default
@@ -443,6 +443,11 @@ mul r2.x, r2.x, r2.w
 mul r1.x, r1.x, r2.x
 add r2.x, cb3[0].y, l(0.020000)
 mul_sat r2.x, r2.x, l(8.000000)
+mov_sat r2.z, cb3[4].y
+add r2.z, -r2.z, l(1.000000)
+mul r2.w, r2.z, r2.z
+mul r2.z, r2.w, r2.z
+mul r2.x, r2.z, r2.x
 mul_sat r2.z, cb3[0].y, l(4.000000)
 mad r3.xyw, r2.zzzz, l(0.000000, 0.430000, 0.000000, 0.670000), l(1.000000, 0.550000, 0.000000, 0.250000)
 lt r2.zw, l(0.000000, 0.000000, 0.000000, 0.500000), cb7[3].zzzw
@@ -501,4 +506,4 @@ add r1.xyz, -r0.xyzx, r1.xyzx
 mad o0.xyz, r0.wwww, r1.xyzx, r0.xyzx
 mov o0.w, l(1.000000)
 ret 
-// Approximately 363 instruction slots used
+// Approximately 368 instruction slots used

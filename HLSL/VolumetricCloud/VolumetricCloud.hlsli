@@ -143,6 +143,7 @@ static const float CLOUD_BASE_AMBIENT_MIN = 0.34;
 static const float CLOUD_AMBIENT_SCALE = 0.58;
 static const float CLOUD_OPTICAL_AMBIENT_MIN = 0.38;
 static const float CLOUD_AMBIENT_LUMINANCE_LIMIT = 0.78;
+static const float3 OVERCAST_CLOUD_FILL = float3(0.14, 0.16, 0.19);
 static const float CLOUD_DAY_MULTISCATTER_FILL = 0.14;
 static const float CLOUD_NIGHT_MULTISCATTER_FILL = 0.015;
 static const float DAYLIGHT_SUN_NEUTRAL_START = 0.18;
@@ -711,12 +712,24 @@ float4 ray_march(float3 ray_origin,
                              neutral_sun_level.xxx,
                              daylight_neutrality);
 
+    // A rainy overcast blocks the warm horizon beam before it reaches the
+    // cloud layer. Keep only a weak neutral component for readable volume.
+    float weather_overcast = saturate(_padding2.x);
+    float storm_sun_level = max(dot(sun_transmittance,
+                                    LUMINANCE_WEIGHTS), 0.08);
+    sun_transmittance = lerp(sun_transmittance,
+                             storm_sun_level.xxx,
+                             weather_overcast);
+
     float sun_visibility = get_sun_visibility(sun_direction.y);
     float direct_visibility = pow(sun_visibility, DIRECT_VISIBILITY_POWER);
+    direct_visibility *= lerp(1.0, 0.12, weather_overcast);
     float ambient_visibility = lerp(NIGHT_AMBIENT_MIN_FACTOR,
                                     1.0,
                                     sun_visibility);
-    float3 sunset_tint = get_sunset_tint(sun_direction.y);
+    float3 sunset_tint = lerp(get_sunset_tint(sun_direction.y),
+                              1.0.xxx,
+                              weather_overcast);
     float3 incoming_sun_light = sunIntensity
                               * sun_transmittance
                               * CLOUD_LIGHT_SCALE;
@@ -886,6 +899,15 @@ float4 ray_march(float3 ray_origin,
                                  * ambient_depth_occlusion
                                  * CLOUD_AMBIENT_SCALE
                                  * ambient_visibility;
+            float overcast_fill_visibility = smoothstep(-0.12,
+                                                         0.02,
+                                                         sun_direction.y);
+            float3 overcast_fill = OVERCAST_CLOUD_FILL
+                                 * weather_overcast
+                                 * overcast_fill_visibility
+                                 * lerp(0.45, 1.0, height_fraction)
+                                 * lerp(0.70, 1.0, ambient_depth_occlusion);
+            ambient_light = max(ambient_light, overcast_fill);
             float3 direct_light = incoming_sun_light
                                 * direct_visibility
                                 * directional_energy
@@ -1014,6 +1036,12 @@ float4 ray_march_legacy(float3 ray_origin, float3 ray_step, int steps)
                     sun_transmittance = lerp(sun_transmittance,
                                              neutral_sun_transmittance,
                                              daylight_neutrality);
+                    float weather_overcast = saturate(_padding2.x);
+                    float storm_sun_level = max(dot(sun_transmittance,
+                                                    LUMINANCE_WEIGHTS), 0.08);
+                    sun_transmittance = lerp(sun_transmittance,
+                                             storm_sun_level.xxx,
+                                             weather_overcast);
                     float3 incoming_sun_light = sunIntensity * sun_transmittance * CLOUD_LIGHT_SCALE;
 
                     float3 sky_irradiance = irradiance_texture.SampleLevel(sampler_states[ClampLinear], up_vector, 0).rgb;
@@ -1072,9 +1100,12 @@ float4 ray_march_legacy(float3 ray_origin, float3 ray_step, int steps)
                     float powdered_sugar = enable_powdered_sugar_efffect
                         ? 1.0 + powder_response * powder_view * 0.12
                         : 1.0;
-                    float3 sunset_tint = get_sunset_tint(sun_direction.y);
+                    float3 sunset_tint = lerp(get_sunset_tint(sun_direction.y),
+                                              1.0.xxx,
+                                              weather_overcast);
                     float sun_visibility = get_sun_visibility(sun_direction.y);
                     float direct_visibility = pow(sun_visibility, DIRECT_VISIBILITY_POWER);
+                    direct_visibility *= lerp(1.0, 0.12, weather_overcast);
                     float ambient_visibility = lerp(NIGHT_AMBIENT_MIN_FACTOR, 1.0, sun_visibility);
 
                     float sky_luminance = dot(sky_irradiance, LUMINANCE_WEIGHTS);
@@ -1097,10 +1128,19 @@ float4 ray_march_legacy(float3 ray_origin, float3 ray_step, int steps)
                     float3 ambient_light = neutral_sky_irradiance
                                * lerp(1.0.xxx, sunset_tint, AMBIENT_SUNSET_BLEND * sun_visibility)
                               * ambient_occlusion
-                              * base_light
+                               * base_light
                               * optical_ambient
                               * CLOUD_AMBIENT_SCALE
                               * ambient_visibility;
+                    float overcast_fill_visibility = smoothstep(-0.12,
+                                                                 0.02,
+                                                                 sun_direction.y);
+                    float3 overcast_fill = OVERCAST_CLOUD_FILL
+                                         * weather_overcast
+                                         * overcast_fill_visibility
+                                         * lerp(0.45, 1.0, height_fraction)
+                                         * lerp(0.70, 1.0, optical_ambient);
+                    ambient_light = max(ambient_light, overcast_fill);
 
                     float vertical_direct = lerp(0.76, 1.04,
                                                  smoothstep(0.04, 0.78, height_fraction));

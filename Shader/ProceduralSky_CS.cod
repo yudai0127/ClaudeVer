@@ -243,25 +243,30 @@ mad r2.y, r2.y, l(0.550000), l(0.450000)
 dp3 r1.x, r1.xyzx, -cb3[0].xyzx
 add r1.x, r1.x, l(-0.999863)
 mul_sat r1.x, r1.x, l(15917.662109)
-mad r1.y, r1.x, l(-2.000000), l(3.000000)
+mad r1.z, r1.x, l(-2.000000), l(3.000000)
 mul r1.x, r1.x, r1.x
-mul r1.x, r1.x, r1.y
+mul r1.x, r1.x, r1.z
 mul r1.x, r1.x, cb3[1].w
-mul r1.xyz, r1.xxxx, l(1.540000, 1.960000, 2.800000, 0.000000)
-mad r1.xyz, r3.xyzx, r2.yyyy, r1.xyzx
-mul r1.xyz, r2.xxxx, r1.xyzx
-mad r0.xyz, cb3[0].wwww, r0.xyzx, r1.xyzx
+mul r4.xyz, r1.xxxx, l(1.540000, 1.960000, 2.800000, 0.000000)
+mad r2.yzw, r3.xxyz, r2.yyyy, r4.xxyz
+mul r2.xyz, r2.xxxx, r2.yzwy
+mad r0.xyz, cb3[0].wwww, r0.xyzx, r2.xyzx
 mov_sat r1.x, cb3[4].y
 mad r0.w, -r1.w, r0.w, l(1.000000)
 mul r0.w, r0.w, r1.x
 dp3 r1.x, r0.xyzx, l(0.212600, 0.715200, 0.072200, 0.000000)
-add r1.xyz, -r0.xyzx, r1.xxxx
-mad r1.xyz, r1.xyzx, l(0.580000, 0.580000, 0.580000, 0.000000), r0.xyzx
-mad r1.xyz, r1.xyzx, l(0.620000, 0.670000, 0.730000, 0.000000), -r0.xyzx
-mul r0.w, r0.w, l(0.780000)
-add r1.xyz, r1.xyzx, l(0.006000, 0.009000, 0.014000, 0.000000)
+min r1.y, |r1.y|, l(1.000000)
+add r1.y, -r1.y, l(1.000000)
+log r1.y, r1.y
+mul r1.y, r1.y, l(1.600000)
+exp r1.y, r1.y
+min r1.x, r1.x, l(0.160000)
+mul r1.yzw, r1.yyyy, l(0.000000, 0.085000, 0.085000, 0.080000)
+mad r1.xyz, r1.xxxx, l(0.250000, 0.250000, 0.250000, 0.000000), r1.yzwy
+add r1.xyz, r1.xyzx, l(0.055000, 0.070000, 0.092000, 0.000000)
+add r1.xyz, -r0.xyzx, r1.xyzx
 mad r0.xyz, r0.wwww, r1.xyzx, r0.xyzx
 mov r0.w, l(1.000000)
 store_uav_typed u0.xyzw, vThreadID.xyzz, r0.xyzw
 ret 
-// Approximately 210 instruction slots used
+// Approximately 215 instruction slots used

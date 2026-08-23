@@ -334,6 +334,7 @@ float4 main(PSIn IN) : SV_TARGET
 
     // 太陽が地平線より下にあるときはハイライトを消す
     float sunVisibility = saturate((sunDirection.y + 0.02f) * 8.0f);
+    sunVisibility *= pow(1.0f - saturate(_padding2.x), 3.0f);
     // 低い太陽ほど暖色に寄せる
     float3 sunColor = lerp(float3(1.0f, 0.55f, 0.25f), float3(1.0f, 0.98f, 0.92f),
                            saturate(sunDirection.y * 4.0f));

@@ -211,10 +211,13 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
     float weatherOvercast = saturate(_padding2.x);
     float dayWeather = weatherOvercast * (1.0f - nightAmount);
     float skyLuminance = dot(finalColor, float3(0.2126f, 0.7152f, 0.0722f));
-    float3 stormSky = lerp(finalColor, skyLuminance.xxx, 0.58f)
-                    * float3(0.62f, 0.67f, 0.73f)
-                    + float3(0.006f, 0.009f, 0.014f);
-    finalColor = lerp(finalColor, stormSky, dayWeather * 0.78f);
+    float horizonAmount = pow(1.0f - saturate(abs(worldPosKm.y)), 1.6f);
+    float3 overcastZenith = float3(0.055f, 0.070f, 0.092f);
+    float3 overcastHorizon = float3(0.140f, 0.155f, 0.172f);
+    float boundedWeatherLight = min(skyLuminance, 0.16f) * 0.25f;
+    float3 stormSky = lerp(overcastZenith, overcastHorizon, horizonAmount)
+                    + boundedWeatherLight.xxx;
+    finalColor = lerp(finalColor, stormSky, dayWeather);
  
     
    

@@ -42,7 +42,9 @@ float4 main(VS_OUT pin) : SV_TARGET
             sunHighlight = pow(saturate(mask), 2.0f);
         }
 
-        sunColor = sunHighlight * sunIntensity;
+        // Keep the visible sun in the same weather state as the procedural sky.
+        float sunWeatherVisibility = pow(1.0f - saturate(_padding2.x), 3.0f);
+        sunColor = sunHighlight * sunIntensity * sunWeatherVisibility;
     }
 
     float3 finalColor = skyColor + sunColor;

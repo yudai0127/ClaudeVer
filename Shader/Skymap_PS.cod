@@ -18,7 +18,7 @@
 //   float3 rayleighScatteringCoefficient;// Offset:   48 Size:    12 [unused]
 //   float mieScatteringCoefficient;    // Offset:   60 Size:     4 [unused]
 //   float mieEccentricity;             // Offset:   64 Size:     4 [unused]
-//   float3 _padding2;                  // Offset:   68 Size:    12 [unused]
+//   float3 _padding2;                  // Offset:   68 Size:    12
 //
 // }
 //
@@ -59,46 +59,51 @@
 //
 ps_5_0
 dcl_globalFlags refactoringAllowed
-dcl_constantbuffer CB3[3], immediateIndexed
+dcl_constantbuffer CB3[5], immediateIndexed
 dcl_constantbuffer CB4[5], immediateIndexed
 dcl_sampler s4, mode_default
 dcl_resource_texturecube (float,float,float,float) t0
 dcl_input_ps linear v1.xy
 dcl_output o0.xyzw
 dcl_temps 2
-dp3 r0.x, cb3[1].xyzx, cb3[1].xyzx
-mad r0.x, -cb3[2].x, cb3[2].x, r0.x
-dp3 r0.y, cb3[1].xyzx, cb3[0].xyzx
-mad r0.x, r0.y, r0.y, -r0.x
-sqrt r0.z, r0.x
-ge r0.x, r0.x, l(0.000000)
-add r0.y, -r0.z, -r0.y
-lt r0.y, l(0.000000), r0.y
-and r0.x, r0.y, r0.x
-mad r0.y, -v1.y, l(2.000000), l(1.000000)
-mul r1.xyzw, r0.yyyy, cb4[1].xyzw
-mad r0.y, v1.x, l(2.000000), l(-1.000000)
-mad r1.xyzw, r0.yyyy, cb4[0].xyzw, r1.xyzw
-add r1.xyzw, r1.xyzw, cb4[2].xyzw
-add r1.xyzw, r1.xyzw, cb4[3].xyzw
-div r0.yzw, r1.xxyz, r1.wwww
-dp3 r1.x, r0.yzwy, r0.yzwy
-rsq r1.x, r1.x
-mul r0.yzw, r0.yyzw, r1.xxxx
-dp3 r1.x, r0.yzwy, cb3[0].xyzx
-sample_l_indexable(texturecube)(float,float,float,float) r0.yzw, r0.yzwy, t0.wxyz, s4, l(0.000000)
-add r1.x, r1.x, l(-0.999701)
-mul_sat r1.x, r1.x, l(6839.468262)
-mad r1.y, r1.x, l(-2.000000), l(3.000000)
-mul r1.x, r1.x, r1.x
-mul r1.x, r1.x, r1.y
-min r1.x, r1.x, l(1.000000)
-mul r1.x, r1.x, r1.x
-mul r1.x, r1.x, cb3[0].w
-movc r0.x, r0.x, l(0), r1.x
+mad r0.x, -v1.y, l(2.000000), l(1.000000)
+mul r0.xyzw, r0.xxxx, cb4[1].xyzw
+mad r1.x, v1.x, l(2.000000), l(-1.000000)
+mad r0.xyzw, r1.xxxx, cb4[0].xyzw, r0.xyzw
+add r0.xyzw, r0.xyzw, cb4[2].xyzw
+add r0.xyzw, r0.xyzw, cb4[3].xyzw
+div r0.xyz, r0.xyzx, r0.wwww
+dp3 r0.w, r0.xyzx, r0.xyzx
+rsq r0.w, r0.w
+mul r0.xyz, r0.wwww, r0.xyzx
+dp3 r0.w, r0.xyzx, cb3[0].xyzx
+sample_l_indexable(texturecube)(float,float,float,float) r0.xyz, r0.xyzx, t0.xyzw, s4, l(0.000000)
+add r0.w, r0.w, l(-0.999701)
+mul_sat r0.w, r0.w, l(6839.468262)
+mad r1.x, r0.w, l(-2.000000), l(3.000000)
+mul r0.w, r0.w, r0.w
+mul r0.w, r0.w, r1.x
+min r0.w, r0.w, l(1.000000)
+mul r0.w, r0.w, r0.w
+mul r0.w, r0.w, cb3[0].w
+mov_sat r1.x, cb3[4].y
+add r1.x, -r1.x, l(1.000000)
+mul r1.y, r1.x, r1.x
+mul r1.x, r1.y, r1.x
+mul r0.w, r0.w, r1.x
+dp3 r1.x, cb3[1].xyzx, cb3[1].xyzx
+mad r1.x, -cb3[2].x, cb3[2].x, r1.x
+dp3 r1.y, cb3[1].xyzx, cb3[0].xyzx
+mad r1.x, r1.y, r1.y, -r1.x
+sqrt r1.z, r1.x
+ge r1.x, r1.x, l(0.000000)
+add r1.y, -r1.z, -r1.y
+lt r1.y, l(0.000000), r1.y
+and r1.x, r1.y, r1.x
+movc r0.w, r1.x, l(0), r0.w
 ine r1.x, cb4[4].x, l(2)
-and r0.x, r0.x, r1.x
-add o0.xyz, r0.xxxx, r0.yzwy
+and r0.w, r0.w, r1.x
+add o0.xyz, r0.wwww, r0.xyzx
 mov o0.w, l(1.000000)
 ret 
-// Approximately 35 instruction slots used
+// Approximately 40 instruction slots used
