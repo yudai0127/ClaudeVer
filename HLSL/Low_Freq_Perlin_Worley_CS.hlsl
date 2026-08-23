@@ -5,9 +5,7 @@ RWTexture3D<float4> low_freq_perlin_worley : register(u0);
 #define LOW_FREQ_PERLIN_WORLEY_DIMENSIONS 128
 #define LOW_FREQ_PERLIN_WORLEY_NUMTHREADS 8
 
-// Sum of the seven octave amplitudes used by perlin_fbm (gain = 2^-0.85).
-// Normalize the signed gradient noise before storing it. The old abs() made
-// every zero crossing into a hard ridge and gave clouds a carved-rock surface.
+
 static const float PERLIN_FBM_AMPLITUDE_SUM = 2.20977146;
 
 [numthreads(LOW_FREQ_PERLIN_WORLEY_NUMTHREADS, LOW_FREQ_PERLIN_WORLEY_NUMTHREADS, LOW_FREQ_PERLIN_WORLEY_NUMTHREADS)]

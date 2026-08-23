@@ -10,18 +10,18 @@ static const float MIN_RAY_MARCH_STEPS = 64.0;
 static const float MAX_RAY_MARCH_STEPS = 128.0;
 static const float TARGET_RAY_STEP_LENGTH = 250.0;
 
-// Match Horizon's 35 km volumetric field and fade only its outer rim. Keeping
-// the weather footprint and view distance aligned prevents a single weather
-// cell from spanning most of the visible sky.
+
+
+
 static const float MAX_CLOUD_VIEW_DISTANCE = 35000.0;
 static const float CLOUD_DISTANCE_FADE_START = 30000.0;
 
 static const float HORIZON_VISIBILITY_START_Y = 0.003;
 static const float HORIZON_VISIBILITY_END_Y = 0.055;
 
-// The renderer has no temporal cloud reprojection yet. A per-pixel ray jitter
-// therefore remains visible as grain and crawling instead of converging over
-// several frames. Sample every segment at its stable midpoint for now.
+
+
+
 static const float CLOUD_RAY_MIDPOINT = 0.5;
 
 float4 main(VS_OUT pin) : SV_TARGET
@@ -33,7 +33,7 @@ float4 main(VS_OUT pin) : SV_TARGET
         1.0
     );
 
-    // NDC -> ワールド座標
+
     float4 pos = mul(ndc, inverse_view_projection);
     pos /= pos.w;
 
@@ -111,15 +111,15 @@ float4 main(VS_OUT pin) : SV_TARGET
                          horizon_weight);
         }
 
-        // Short overhead and top-down segments do not need the same sample
-        // count as a long horizon ray. Preserve a bounded world-space step
-        // size while never increasing the user's quality setting.
+
+
+
         float distance_limited_steps = max(MIN_RAY_MARCH_STEPS,
                                            shell_dist / TARGET_RAY_STEP_LENGTH);
         steps = min(steps, distance_limited_steps);
 
         // 距離からステップ数を強制すると、雲層の単位スケールではほぼ常に
-        // 256ステップへ張り付き、UIの設定値が機能しない。品質設定をそのまま使う。
+
         steps = clamp(steps, MIN_RAY_MARCH_STEPS, MAX_RAY_MARCH_STEPS);
 
         float3 ray_step = ray_dir * shell_dist / steps;
@@ -133,26 +133,23 @@ float4 main(VS_OUT pin) : SV_TARGET
                                   MAX_CLOUD_VIEW_DISTANCE,
                                   ray_jitter);
 
-        // Horizon renders its low clouds in a spherical shell; no screen-space
-        // horizon cut is required. Apply only smooth atmospheric depth
-        // occlusion to the premultiplied cloud color, never to opacity.
+
+
+
         float layer_thickness = max(cloud_altitudes_min_max.y
                                   - cloud_altitudes_min_max.x,
                                     1.0);
         float depth_scale = layer_thickness
                           * max(cloud_density_long_distance_scale, 1.0);
-        if (!debug_disable_horizon_fade)
-        {
-            float atmosphere_occlusion = 1.0 - exp(-start_t / depth_scale);
-            volume.rgb = lerp(volume.rgb,
-                              background * volume.a,
-                              saturate(atmosphere_occlusion * 0.35));
-        }
+        float atmosphere_occlusion = 1.0 - exp(-start_t / depth_scale);
+        volume.rgb = lerp(volume.rgb,
+                          background * volume.a,
+                          saturate(atmosphere_occlusion * 0.35));
 
-        // volume.xyz is already premultiplied by the integrated opacity.
-        // Applying another lerp multiplied opacity twice and made the clouds
-        // look like faint grey smudges instead of white, shadowed masses.
-        // 薄い雲の背景だけを高LODのぼかし色に置き換えると、
+
+
+
+
         // 小さな雲片が丸い光点・色むらとして浮き出る。元の空色で合成する。
         float3 blended = background * (1.0 - volume.a) + volume.xyz;
         color = blended;

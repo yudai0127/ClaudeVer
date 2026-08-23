@@ -200,8 +200,7 @@ public:
 
     void ApplyPreset(Preset preset);
 
-    // Long swells through short wind chop. The GPU buffer already supported
-    // eight bands, so expose the complete spectrum on the CPU as well.
+   
     CB_Wave waves[8]{};
     float worldOffsetY = 50.0f;   
     float waveAmpScale = 0.02f;

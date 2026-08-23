@@ -25,7 +25,7 @@ public:
         float	screen_space_reflection_max_distance = 1000.0f;
         float	screen_space_reflection_ray_resolution = 0.65f;
         float	screen_space_reflection_tickness = 0.5f;
-        // Direction correction, UV-hole fill, roughness and sub-step search.
+      
         int		screen_space_reflection_flags = 30;
     };
     ParamCB params;
@@ -61,8 +61,7 @@ private:
 
     ParamCB param{};
     // 定数バッファ
-   /* Microsoft::WRL::ComPtr<ID3D11Buffer> cbCamera;
-    Microsoft::WRL::ComPtr<ID3D11Buffer> cbParam;*/
+   
     std::unique_ptr<GPUConstantBuffer> cbCamera;
     std::unique_ptr<GPUConstantBuffer> cbParam;
 

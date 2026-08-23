@@ -45,8 +45,7 @@ float4 main(VS_OUT pin) : SV_TARGET
             sunHighlight = pow(saturate(mask), 2.0f);
         }
 
-        // Thick overcast hides the direct solar disc even though the sun still
-        // drives cloud scattering and the day/night cycle.
+       
         float sunWeatherVisibility = pow(1.0f - saturate(_padding2.x), 3.0f);
         sunColor = sunHighlight * sunIntensity * sunWeatherVisibility;
     }

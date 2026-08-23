@@ -16,7 +16,7 @@ float4 main(VS_OUT pin) : SV_TARGET
         float2 texture_size;
         ssr_scene_color.GetDimensions(texture_size.x, texture_size.y);
 
-        // 5x5（最大24サンプル）は空振り画素で重いため、3x3 に抑える。
+       
         int size = 1;
         float separation = 1.0f;
 
@@ -52,9 +52,7 @@ float4 main(VS_OUT pin) : SV_TARGET
 
     // 反射先カラーを取得して alpha に有効度を掛ける
     float4 color = ssr_scene_color.Sample(sampler_states[ClampLinear], uv.xy);
-    // Hit confidence belongs to the ray, not to the alpha channel of the
-    // reflected material. Using scene alpha made sails and foliage reflections
-    // almost disappear even when the SSR ray hit correctly.
+   
     color.a = saturate(uv.w);
 
     return color;

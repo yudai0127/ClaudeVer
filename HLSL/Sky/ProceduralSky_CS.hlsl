@@ -186,9 +186,7 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
     float3 finalColor = sunIntensity * (accumulatedRayleigh * rayleighScatteringCoefficient
                                       + accumulatedMie * mieScatteringCoefficient);
 
-    // Night sky and moon. The moon is opposite the sun, so its direction and
-    // the scene's night directional light always agree. Adding it to the
-    // cubemap also makes it available to IBL and water reflections.
+   
     float nightAmount = smoothstep(0.04f, 0.18f, -sunDirection.y);
     float skyUp = saturate(worldPosKm.y * 0.5f + 0.5f);
     float3 nightSkyColor = float3(0.010f, 0.025f, 0.080f)
@@ -205,9 +203,7 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
 
     finalColor += (nightSkyColor + moonColor) * nightAmount;
 
-    // Keep the procedural sky, IBL, and water reflections in the same
-    // weather state as the volumetric clouds. The weather value is passed
-    // through spare atmosphere constant-buffer padding.
+  
     float weatherOvercast = saturate(_padding2.x);
     float dayWeather = weatherOvercast * (1.0f - nightAmount);
     float skyLuminance = dot(finalColor, float3(0.2126f, 0.7152f, 0.0722f));

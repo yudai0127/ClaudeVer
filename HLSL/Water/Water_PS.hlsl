@@ -304,9 +304,7 @@ float4 main(PSIn IN) : SV_TARGET
     float3 absorptionRatio = lerp(float3(WaterAbsorptionMaxRatio, WaterAbsorptionMaxRatio, WaterAbsorptionMaxRatio),
                                   float3(1.0f, 1.0f, 1.0f),
                                   tintNormalized);
-    // Turbidity raises extinction and changes the in-scattered color.  This
-    // gives the UI a physically understandable clear-to-murky control instead
-    // of merely painting an opaque color over the water.
+  
     float turbidity = saturate(alphaParam.z);
     float3 extinction = waterTint.a * absorptionRatio * lerp(1.0f, 7.0f, turbidity);
     float3 att3 = exp(-extinction * pathLength);
@@ -352,9 +350,7 @@ float4 main(PSIn IN) : SV_TARGET
     float3 subsurface = scatteringColor * alphaParam.x * (1.0f - attLuma);
     float3 color = lerp(baseColor, refl * iblParams.y, finalReflectionWeight) + spec + subsurface;
 
-    // Depth-aware shoreline foam follows the actual terrain in the scene
-    // depth buffer. Ripple/crest foam adds smaller moving highlights, making
-    // impacts around rocks and hulls legible even when the base water is dark.
+   
     float foamDepth = max(shadingParams.w, 1.0f);
     float shoreFoam = hasUnderwaterSurface * (1.0f - smoothstep(0.0f, foamDepth, bottomDepth));
     float foamNoise = saturate(0.52f + n0.x * 0.35f + n1.y * 0.30f);

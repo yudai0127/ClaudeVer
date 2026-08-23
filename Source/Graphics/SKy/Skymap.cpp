@@ -132,9 +132,7 @@ void SkyMap::update(ID3D11DeviceContext* dc, const DirectX::XMFLOAT3& camera_pos
 
 	DirectX::XMStoreFloat3(&this->atmosphere_constants_data.cameraPosition, camPlanetCenteredKm);
 
-	// This LUT depends on atmosphere composition and planet dimensions, not on
-	// the sun direction or camera. Rebuilding its 96-sample integration for
-	// every small sun movement caused periodic GPU spikes near sunset.
+	
 	if (transmittanceDirty)
 	{
 		updateTransmittance(dc);

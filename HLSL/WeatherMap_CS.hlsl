@@ -28,9 +28,9 @@ static const float FBM_GAIN = 0.5;
 static const float FBM_LACUNARITY = 2.02;
 
 static const float FLOW_TIME_SCALE = 0.02;
-// The weather map spans roughly 200 km. These relative scales create a
-// hierarchy of broad weather fronts, cloud groups and irregular boundaries
-// instead of distributing equal-sized FBM cells uniformly across the sky.
+
+
+
 static const float2 WEATHER_PATTERN_OFFSET = float2(0.07, 0.37);
 static const float WEATHER_FRONT_SCALE = 0.18;
 static const float WEATHER_CLUSTER_SCALE = 1.15;
@@ -96,8 +96,8 @@ void main(uint3 id : SV_DispatchThreadID)
     float2 flow = (windDir * windSpeed) * time * FLOW_TIME_SCALE;
     float2 weatherUv = uv + WEATHER_PATTERN_OFFSET;
 
-    // Domain-warp a low-frequency front so large cloud banks do not follow
-    // obvious circular FBM contours.
+
+
     float2 baseWeatherUv = weatherUv + flow;
     float2 warpNoise = float2(
         fbm((baseWeatherUv + float2(0.17, 0.31))
@@ -108,8 +108,8 @@ void main(uint3 id : SV_DispatchThreadID)
     float2 warpedWeatherUv = baseWeatherUv
                            + (warpNoise - 0.5) * WEATHER_WARP_STRENGTH;
 
-    // HZD-style hierarchy: broad fronts govern placement, medium cells form
-    // distinct cloud groups, and the smallest field only breaks their edges.
+
+
     float macroNoise = saturate(
         fbm(warpedWeatherUv * noiseScale * WEATHER_FRONT_SCALE)
         * FBM_NORMALIZATION);
@@ -127,9 +127,9 @@ void main(uint3 id : SV_DispatchThreadID)
                         + clusterNoise * WEATHER_CLUSTER_WEIGHT
                         + detailNoise * WEATHER_BOUNDARY_WEIGHT;
 
-    // Coverage grows more slowly than the preset blend. At Cloudy=0.5 a
-    // linear interpolation was already close to a rain-deck coverage and
-    // joined every cloud group into one horizontal band.
+
+
+
     float tCov = saturate(weatherT * weatherT);
     float tType = saturate(weatherT);
 
@@ -147,63 +147,63 @@ float requestedType = saturate(lerp(sunnyType, rainyType, tType)
     float edgeWidth = lerp(COVERAGE_EDGE_MIN,
                            COVERAGE_EDGE_MAX,
                            requestedCoverage);
-    // Close broad clear-sky holes only after precipitation begins. The 3D
-    // Perlin-Worley field still erodes the rain layer, so it does not become a
-    // featureless slab; this only prevents weather-map-sized blue openings.
+
+
+
     float placementThreshold = threshold
                              - tRain * RAIN_COVERAGE_THRESHOLD_BIAS;
     float placement = smoothstep(placementThreshold,
                                  placementThreshold + edgeWidth,
                                  weatherSignal);
 
-    // Fair weather is made of separated cloud groups rather than one connected
-    // synoptic deck. Preserve the broad front as a placement guide, then let
-    // the medium-scale field open clear corridors between sunny cumulus cells.
-    // Precipitation progressively removes this separation for a rain deck.
+
+
+
+
     float fairWeatherCell = smoothstep(0.50, 0.68, clusterNoise);
     float fairWeatherSeparation = lerp(0.01, 1.0, fairWeatherCell);
     placement *= lerp(fairWeatherSeparation, 1.0, tRain);
 
-    // Preserve a small amount of irregularity without rejoining neighbouring
-    // cells. noiseAmp remains part of the existing CPU/UI data contract.
+
+
     float boundaryDetail = (detailNoise - 0.5) * noiseAmp * 0.35;
     placement = saturate(placement + boundaryDetail * placement * (1.0 - placement));
 
-    // HZD stores cloud type independently from coverage. Use the clustered
-    // weather hierarchy to mix low stratus, intermediate stratocumulus and
-    // isolated cumulus cores inside the same front. Driving type mostly from
-    // placement made every occupied texel use nearly the same tall profile.
+
+
+
+
     float cellCore = smoothstep(0.16, 0.82, placement);
     float typeField = clusterNoise * 0.68
                     + macroNoise * 0.20
                     + detailNoise * 0.12;
 
-    // Keep the three HZD profiles in deliberately separated ranges. A broad
-    // interpolation around requestedType kept almost every visible sample in
-    // the same stratocumulus/cumulus blend and produced no visible height
-    // variation even though the weather map changed.
-    float middleCloud = smoothstep(0.42, 0.64, typeField);
-    float towerCore = smoothstep(0.62, 0.80, typeField) * cellCore;
 
-    // Fair-weather clouds in the reference are dominated by vertically
-    // developed cumulus. Keep occupied cells above the stratus range, then
-    // raise only their clustered thermal cores toward the full cumulus profile.
-    // Coverage still fades independently at the perimeter, so this does not
-    // create blocky full-height columns.
-    float lowCloudType = lerp(0.38, 0.50, macroNoise);
-    float middleCloudType = lerp(0.50, 0.68, clusterNoise);
-    float highCloudType = saturate(requestedType + 0.12);
+
+
+
+    float middleCloud = smoothstep(0.40, 0.62, typeField);
+    float towerCore = smoothstep(0.54, 0.76, typeField) * cellCore;
+
+
+
+
+
+
+    float lowCloudType = lerp(0.48, 0.58, macroNoise);
+    float middleCloudType = lerp(0.58, 0.78, clusterNoise);
+    float highCloudType = saturate(requestedType + 0.18);
 
     float ctype = lerp(lowCloudType, middleCloudType, middleCloud);
     ctype = lerp(ctype, highCloudType, towerCore);
-    ctype = lerp(0.38, ctype, cellCore);
+    ctype = lerp(0.48, ctype, cellCore);
 
     float typeVariation = (detailNoise - 0.5) * 0.04;
     ctype = saturate(ctype + typeVariation * cellCore);
     ctype = lerp(ctype, max(ctype, requestedType), tRain);
 
-    // Store actual local coverage rather than a binary placement mask. The
-    // volumetric shader uses this value to shift its density threshold.
+
+
     float coverage = placement * requestedCoverage;
 
     if (tRain <= 0.0)
@@ -213,9 +213,9 @@ float requestedType = saturate(lerp(sunnyType, rainyType, tType)
     else
     {
         float rainMask = smoothstep(0.35, 0.72, placement);
-        // At full Rainy, precipitation represents a connected storm system.
-        // Keep spatial variation, but do not let weak placement cells disable
-        // the rain-only density floor and reopen large blue-sky holes.
+
+
+
         rainMask = lerp(rainMask,
                         max(rainMask, RAIN_FIELD_FLOOR),
                         tRain);

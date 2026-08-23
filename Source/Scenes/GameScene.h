@@ -207,8 +207,7 @@ private:
 
 	float elapsedTime = 0.0f;
 	float dayNightCycleDurationSeconds = 300.0f;
-	// Start near golden hour and advance slowly enough that the low-angle light
-	// remains visible after loading, exposing both warm rims and shaded volume.
+	
 	float dayNightPhaseRadians = 1.2f;
 	DirectX::XMFLOAT3 pausedSunDirection{ 0.0f, 1.0f, 0.2f };
 
@@ -236,8 +235,7 @@ private:
 	int fpsFrames = 0;
 	int numProcessors = 0;
 
-	// Half-resolution cloud rendering follows the Horizon presentation's
-	// performance target while retaining substantially more edge detail than 640x360.
+	
 	UINT atmoLowResWidth = 800;
 	UINT atmoLowResHeight = 450;
 
@@ -281,8 +279,8 @@ private:
 	float cpuHistory[GRAPH_HISTORY_COUNT] = {};
 	float gpuHistory[GRAPH_HISTORY_COUNT] = {};
 private:
-	int   shadowUpdateIndex = 0;           // Cascade to update next.
-	int   shadowUpdatesPerFrame = 4;       // Cascades updated per frame.
+	int   shadowUpdateIndex = 0;           
+	int   shadowUpdatesPerFrame = 4;       
 	bool  staggerShadowUpdates = true;
 
 private:

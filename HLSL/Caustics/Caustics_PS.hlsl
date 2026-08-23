@@ -50,8 +50,6 @@ float4 main(PSIn IN) : SV_TARGET
     dist = min(dist, 3000.0f); // 距離による減衰のクランプ
 
     // 面積比から集光の強さを計算し、水深による吸収減衰を掛ける。
-    // 従来の硬いしきい値は、小さな白い塗りを大量に作ってしまうため、
-    // 広い柔らかな光と、その中の明るい筋の2段階で合成する。
     float focusRatio = (oldArea / newArea) * exp(-absorptionCoeff * dist);
     float broadLight = smoothstep(0.90f, 1.20f, focusRatio);
     float brightRidge = smoothstep(1.12f, 1.85f, focusRatio);
@@ -68,7 +66,7 @@ float4 main(PSIn IN) : SV_TARGET
     // IN.SVPosition.w はカメラからの深度。これを使って 0.0 ~ 1.0 の減衰率を作る
     float fadeFactor = saturate((fadeEnd - IN.SVPosition.w) / (fadeEnd - fadeStart));
     
-    // smoothstepを通すことで、減衰の始まりと終わりがより滑らか（S字カーブ）になる
+    
     fadeFactor = smoothstep(0.0f, 1.0f, fadeFactor);
     
     // 最終的なカラーに減衰率を乗算

@@ -839,22 +839,22 @@ mul_sat r2.yz, r2.yyzy, l(0.000000, 1.515152, 2.702703, 0.000000)
 mad r3.xy, r2.yzyy, l(-2.000000, -2.000000, 0.000000, 0.000000), l(3.000000, 3.000000, 0.000000, 0.000000)
 mul r2.yz, r2.yyzy, r2.yyzy
 mul r2.yw, r2.yyyz, r3.xxxy
-add r3.xz, r0.wwww, l(-0.420000, 0.000000, -0.620000, 0.000000)
-mul_sat r3.xz, r3.xxzx, l(4.545455, 0.000000, 5.555555, 0.000000)
+add r3.xz, r0.wwww, l(-0.400000, 0.000000, -0.540000, 0.000000)
+mul_sat r3.xz, r3.xxzx, l(4.545455, 0.000000, 4.545455, 0.000000)
 mad r4.xy, r3.xzxx, l(-2.000000, -2.000000, 0.000000, 0.000000), l(3.000000, 3.000000, 0.000000, 0.000000)
 mul r3.xz, r3.xxzx, r3.xxzx
 mul r3.xz, r3.xxzx, r4.xxyx
 mul r0.w, r2.y, r3.z
-mad r1.x, r1.x, l(0.120000), l(0.380000)
-mad r0.x, r0.x, l(0.180000), l(0.500000)
-add r3.z, r1.z, l(0.120000)
+mad r1.x, r1.x, l(0.100000), l(0.480000)
+mad r0.x, r0.x, l(0.200000), l(0.580000)
+add r3.z, r1.z, l(0.180000)
 min r3.z, r3.z, l(1.000000)
 add r0.x, -r1.x, r0.x
 mad r0.x, r3.x, r0.x, r1.x
 add r1.x, -r0.x, r3.z
 mad r0.x, r0.w, r1.x, r0.x
-add r0.x, r0.x, l(-0.380000)
-mad r0.x, r2.y, r0.x, l(0.380000)
+add r0.x, r0.x, l(-0.480000)
+mad r0.x, r2.y, r0.x, l(0.480000)
 mul r0.y, r0.y, r2.y
 mad_sat r0.x, r0.y, l(0.040000), r0.x
 max r0.y, r1.z, r0.x

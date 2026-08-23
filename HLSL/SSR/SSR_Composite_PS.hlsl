@@ -5,7 +5,7 @@ Texture2D ssr_scene_color : register(t20);
 Texture2D ssr_reflection : register(t21);
 Texture2D ssr_param : register(t22);
 
-// 粗さぼかし用のポアソンディスク（単位円内にほぼ均等に分布）
+// 粗さぼかし用のポアソンディスク
 #define POISSON_SAMPLE_COUNT 16
 static const float BLUR_MAX_RADIUS_PIXELS = 24.0f;
 static const float2 poisson_disk[POISSON_SAMPLE_COUNT] =
@@ -45,7 +45,7 @@ float4 main(VS_OUT pin) : SV_TARGET
         float2 texture_size;
         ssr_reflection.GetDimensions(texture_size.x, texture_size.y);
 
-        // 以前は 13x13 = 169 タップの全探索で、画面全体に掛けるには非常に重かった。
+        
         // ポアソンディスクの 16 タップに置き換え、半径を粗さでスケールさせることで
         // 見た目をほぼ保ったままタップ数を 1/10 以下にする
         float2 blur_radius = (BLUR_MAX_RADIUS_PIXELS * roughness) / texture_size;

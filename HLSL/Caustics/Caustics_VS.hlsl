@@ -129,8 +129,7 @@ CausticsVSOut main(VSInput IN)
 
     float3 hitPos = waterPos;
     float t = 0.0f;
-    // This runs once per water vertex. A coarse 32-step search followed by
-    // binary refinement is sufficient for the intentionally soft caustics.
+    
     float stepSize = max(maxDist / 32.0f, 1.0f);
     const int maxSteps = 32;
     bool hit = false;

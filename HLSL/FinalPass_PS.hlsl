@@ -46,8 +46,7 @@ float4 main(VS_OUT pin) : SV_TARGET
     float3 hdr = scene_texture.Sample(sampler_states[ClampLinear], pin.texcoord).rgb;
     hdr = max(hdr, 0.0f);
 
-    // Lightweight multi-radius bloom keeps sun glints, foam and bright cloud
-    // edges readable on an exhibition display without adding another pass.
+    
     uint textureWidth, textureHeight;
     scene_texture.GetDimensions(textureWidth, textureHeight);
     float2 texel = 1.0f / float2(max(textureWidth, 1u), max(textureHeight, 1u));
@@ -67,8 +66,7 @@ float4 main(VS_OUT pin) : SV_TARGET
     float3 bloom = BrightPass(max(bloomNeighborhood, 0.0f));
     hdr += bloom * 0.28f;
 
-    // Lower exposure preserves reflection and cloud-shadow detail that was
-    // previously clipped to white; contrast and saturation restore punch.
+    
     const float exposure = 1.55f;
     hdr *= exposure;
 
@@ -77,8 +75,7 @@ float4 main(VS_OUT pin) : SV_TARGET
 
     float luma = dot(ldr, float3(0.2126f, 0.7152f, 0.0722f));
     ldr = lerp(luma.xxx, ldr, 1.12f);
-    // Preserve exhibition readability in dark hull/terrain materials without
-    // raising the HDR exposure or clipping bright water and clouds.
+    
     ldr = saturate((ldr - 0.5f) * 1.04f + 0.5f);
 
     float2 centeredUv = pin.texcoord * 2.0f - 1.0f;

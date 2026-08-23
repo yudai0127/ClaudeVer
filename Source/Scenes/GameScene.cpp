@@ -112,8 +112,7 @@ void GameScene::initialize()
 
 
 	DirectX::XMFLOAT3 startEye(-3122.40f, 867.93f, 11342.66f); // 初期カメラ位置
-	// Keep the horizon and the lower cloud deck in the opening composition so
-	// the volumetric silhouette is visible without first orbiting the camera.
+	
 	DirectX::XMFLOAT3 startFocus(600.0f, 1500.0f, 15000.0f);    // カメラが向くターゲット
 	
 	cameraCtrl->setMovementBounds(DirectX::XMFLOAT3(-70000.0f, -10.0f, -70000.0f), DirectX::XMFLOAT3(70000.0f, 80000.0f, 70000.0f));
@@ -143,9 +142,7 @@ void GameScene::initialize()
 	
 	
 	elapsedTime = 0.0f;
-	// Model lighting defaults. The BRDF contains the 1/PI diffuse
-	// normalization, so the previous 1.0-class sun and 0.1 diffuse IBL left
-	// ships and terrain several stops too dark.
+	
 	iblDiffuseIntensity = 0.50f;
 	iblSpecularIntensity = 0.55f;
 
@@ -213,9 +210,7 @@ void GameScene::initialize()
 	cascadeShadowMap = std::make_unique<CascadeShadowMap>(DeviceManager::instance()->getDevice());
 
 	water_simulation = std::make_unique<Water_Simulation>();
-	// Fine surface detail comes from the normal maps. A 1280x1280 geometry grid
-	// was spending most of its time evaluating waves on sub-pixel vertices in
-	// three water passes per frame without a visible benefit.
+	
 	constexpr uint32_t WATER_GRID_RESOLUTION = 512;
 	if (!water_simulation->Initialize(DeviceManager::instance()->getDevice(),
 		WATER_GRID_RESOLUTION, WATER_GRID_RESOLUTION))
@@ -235,8 +230,7 @@ void GameScene::initialize()
 		
 	}
 
-	// Caustics are broad and are bilinearly upsampled by the water shader, so
-	// half resolution removes 75% of this off-screen pixel work.
+	
 	causticsBuffer = std::make_unique<FrameBuffer>(
 		devicmgr->getDevice(),
 		static_cast<uint32_t>(devicmgr->getScreenWidth()) / 2u,
@@ -445,9 +439,7 @@ void GameScene::update(float elapsedTime)
 	}
 	if (!isDayNightCycleEnabled)
 	{
-		// Capture once on the running -> paused transition, then explicitly keep
-		// that direction. This prevents any delayed sky/IBL update from advancing
-		// the visible sun while the checkbox says Paused.
+		
 		if (wasDayNightCycleEnabled)
 			pausedSunDirection = skyMap->atmosphere_constants_data.sunDirection;
 		else
@@ -459,8 +451,7 @@ void GameScene::update(float elapsedTime)
 	}
 	wasDayNightCycleEnabled = isDayNightCycleEnabled;
 
-	// Keep ships, terrain, sky and water on one time-of-day palette even when
-	// the animation is paused or the sun direction is edited manually.
+	
 	DirectX::XMVECTOR sunDir = DirectX::XMVector3Normalize(
 		DirectX::XMLoadFloat3(&skyMap->atmosphere_constants_data.sunDirection));
 	DirectX::XMStoreFloat3(&skyMap->atmosphere_constants_data.sunDirection, sunDir);
@@ -475,8 +466,7 @@ void GameScene::update(float elapsedTime)
 
 	if (sunY >= -0.08f)
 	{
-		// Sun direction is surface-to-light; the renderer stores the direction
-		// in which the directional light travels, hence the negation.
+		
 		DirectX::XMVECTOR lightDir = DirectX::XMVectorNegate(sunDir);
 		DirectX::XMStoreFloat4(&LightDirection, DirectX::XMVectorSetW(lightDir, 0.0f));
 
@@ -491,8 +481,7 @@ void GameScene::update(float elapsedTime)
 	}
 	else
 	{
-		// The moon is placed opposite the sun. Its cool, weak light keeps the
-		// silhouette readable without making night look like a dim daytime scene.
+		
 		DirectX::XMVECTOR moonDir = DirectX::XMVectorNegate(sunDir);
 		DirectX::XMVECTOR lightDir = DirectX::XMVectorNegate(moonDir);
 		DirectX::XMStoreFloat4(&LightDirection, DirectX::XMVectorSetW(lightDir, 0.0f));
@@ -963,8 +952,7 @@ void GameScene::render()
 		ID3D11SamplerState* linearSamplerPtr = linearSampler.Get();
 		if (linearSamplerPtr)
 		{
-			// FinalPass_PS indexes sampler_states[ClampLinear], so the sampler
-			// must be bound at the enum's actual register (s4), not s1.
+			
 			const UINT samplerSlot = static_cast<UINT>(SAMPLER_STATE::CLAMP_LINEAR);
 			dc->PSSetSamplers(samplerSlot, 1, &linearSamplerPtr);
 		}
@@ -1087,8 +1075,7 @@ void GameScene::renderAtmosphere(ID3D11DeviceContext* dc, ID3D11RenderTargetView
 		atmoBlurHPS &&
 		atmoBlurVPS)
 	{
-		// Keep the expensive ray march at half resolution, as in the reference,
-		// but do not blur its cellular edge detail afterwards.
+		
 		atmoLowResBuffer->activate(dc);
 		atmoLowResBuffer->clear(dc, 0, 0, 0, 1);
 
@@ -1108,7 +1095,7 @@ void GameScene::renderAtmosphere(ID3D11DeviceContext* dc, ID3D11RenderTargetView
 		ID3D11ShaderResourceView* atmosphereCompositeSRV = atmoLowResBuffer->shader_resource_views[0].Get();
 		if (!renderClouds)
 		{
-			// The blur remains useful for a cloudless low-resolution sky.
+			
 			blurCB.gInvHalfRes = atmoBlurInvRes;
 			atmoBlurCB->UploadData<ATMOSPHERE_BLUR_CB>(dc, 1, blurCB, false, false, false, false, true, false);
 
@@ -1290,9 +1277,8 @@ void GameScene::beginGpuQuery(ID3D11DeviceContext* dc)
 				else
 					gpuFrameTimeMs = lerp(gpuFrameTimeMs, currentGpuFrameTimeMs, 0.10f);
 
-				// This is an occupancy estimate for the measured scene frame, not the
-				// system-wide GPU utilization reported by Task Manager. Use the CPU
-				// interval captured when this exact timestamp query was started.
+				
+				
 				float frameTime = gpuQueryFrameIntervalSeconds;
 				if (frameTime <= 0.0f) frameTime = 0.016f;
 				float currentUsage = static_cast<float>(gpuTimeSeconds / frameTime) * 100.0f;
@@ -1484,8 +1470,7 @@ void GameScene::injectShipInteractionRipples(float elapsedTime)
 		const DirectX::XMFLOAT3 forward{ sinf(yaw), 0.0f, cosf(yaw) };
 		const DirectX::XMFLOAT3 right{ forward.z, 0.0f, -forward.x };
 
-		// Emit just outside the hull instead of at its centre. The resulting
-		// rings split around the silhouette and make hull contact readable.
+		
 		DirectX::XMFLOAT3 bow{
 			ship->position.x + forward.x * 850.0f,
 			waterY,
@@ -1653,8 +1638,7 @@ void GameScene::updateIBLMaps(ID3D11DeviceContext* dc, const DirectX::XMFLOAT3& 
 {
 	static int s_skyVisualUpdateCounter = 0;
 	static int s_iblUpdateCounter = 0;
-	// The visible sky needs a much finer cadence than the filtered reflection
-	// maps. Updating them together every 12 frames made the setting sun jump.
+	
 	constexpr int SKY_VISUAL_UPDATE_INTERVAL = 2;
 	constexpr int IBL_UPDATE_INTERVAL = 12;
 	static DirectX::XMFLOAT3 s_lastCameraPos = cameraPos;
@@ -1672,8 +1656,7 @@ void GameScene::updateIBLMaps(ID3D11DeviceContext* dc, const DirectX::XMFLOAT3& 
 		s_lastCameraPos = cameraPos;
 	}
 
-	// Irradiance and specular PMREM change slowly and remain expensive, so keep
-	// those on the lower-frequency schedule.
+	
 	const bool needIBLUpdate =
 		(s_iblUpdateCounter++ % IBL_UPDATE_INTERVAL) == 0 || altitudeChanged;
 
@@ -1854,8 +1837,7 @@ void GameScene::copySceneDepth(ID3D11DeviceContext* dc)
 		copyDesc.CPUAccessFlags = 0;
 		copyDesc.MiscFlags = 0;
 
-		// 深度バッファが特殊なフォーマット(Typeless)の場合、SRVで読める形式に合わせる
-		// 一般的な D32_FLOAT や D24_S8 の場合、R32_FLOAT や R24_UNORM_X8 として読み出す必要がある
+		
 		DXGI_FORMAT srvFormat = desc.Format;
 		if (desc.Format == DXGI_FORMAT_R32_TYPELESS || desc.Format == DXGI_FORMAT_D32_FLOAT) {
 			copyDesc.Format = DXGI_FORMAT_R32_TYPELESS;
@@ -2012,14 +1994,11 @@ void GameScene::debugGui()
 
 		if (skyMap)
 		{
-			// The sky owns the sun direction. LightDirection may represent the sun
-			// by day or the opposite moon direction by night, so copying it back to
-			// the sky made a paused night alternate between sun and moon each frame.
-			// GameScene::update derives the correct primary light on the next frame.
+			
 			const bool skyChanged = skyMap->debugGui(nullptr);
 			if (skyChanged && !isDayNightCycleEnabled)
 			{
-				// Manual edits while paused become the new fixed position.
+				
 				pausedSunDirection = skyMap->atmosphere_constants_data.sunDirection;
 				dayNightPhaseRadians = atan2f(pausedSunDirection.x, pausedSunDirection.y);
 				if (dayNightPhaseRadians < 0.0f)

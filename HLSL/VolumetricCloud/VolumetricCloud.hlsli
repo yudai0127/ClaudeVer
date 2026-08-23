@@ -38,10 +38,6 @@ cbuffer VOLUMETRIC_CLOUD_CONSTANT_BUFFER : register(b8)
     bool auto_ray_marching_steps; 
 
     float time;
-    bool debug_disable_self_shadow;
-    bool debug_disable_height_lighting;
-    bool debug_disable_horizon_fade;
-    bool debug_show_density;
 }
 
 
@@ -63,17 +59,17 @@ static const float WEATHER_SPEED_CAP = 0.10;
 static const float WEATHER_UV_TIME_SCALE = 0.0015;
 static const float MIN_ALTITUDE_FROM_GROUND = 1.0;
 static const float MIN_HORIZON_DISTANCE = 512.0;
-// Horizon renders the volumetric cloudscape in a 35 km radius around the
-// player. Use the same world-space footprint for the weather map so its
-// clusters describe individual cloud groups rather than continent-sized
-// connected bands.
+
+
+
+
 static const float CLOUD_WEATHER_MAP_RADIUS = 35000.0;
-// HZD biases the outer weather field toward cumulus from 15 km to the edge of
-// its 35 km cloud radius so distant banks keep vertical silhouettes.
+
+
 static const float DISTANT_CLOUD_TRANSITION_START = 15000.0;
 static const float DISTANT_CLOUD_TRANSITION_END = 35000.0;
-// AtmosphereConstants stores planetary distances in kilometres, while the
-// scene camera, cloud altitudes and noise domains use metres.
+
+
 static const float METERS_PER_KILOMETRE = 1000.0;
 
 static const float ANIMATION_TIME_WRAP = 4096.0;
@@ -83,18 +79,23 @@ static const float ANIMATION_UV_WRAP = 2.0;
 static const float CURL_NOISE_UV_SCALE = 0.00008;
 static const float CURL_DISTORTION_BASE = 640.0;
 static const float CURL_DISTORTION_TOP = 280.0;
-// A modest height-dependent shear prevents every weather cell from growing as
-// a perfectly vertical column. The same offset is applied to base and detail
-// noise so their erosion remains coherent.
-static const float2 CLOUD_VERTICAL_SHEAR = float2(720.0, -360.0);
 
-// Horizon Zero Dawn uses five nearby samples distributed in a cone and one
-// distant sample to catch shadows from remote clouds (SIGGRAPH 2015, pp.85-86).
+
+
+static const float2 CLOUD_VERTICAL_SHEAR = float2(360.0, -180.0);
+
+
+
+static const float LOW_FREQ_VERTICAL_SCALE = 1.00;
+static const float HIGH_FREQ_VERTICAL_SCALE = 1.00;
+
+
+
 static const int LIGHT_CONE_NEAR_SAMPLES = 5;
 static const int LIGHT_CONE_CHEAP_SAMPLES = 2;
-// Spread the five local light taps through a useful portion of the layer.
-// The former /36 spacing kept all five taps near the same bright surface and
-// removed the broad internal shadow that gives cumulus its volume.
+
+
+
 static const float LIGHT_CONE_STEP_DIVISOR = 16.0;
 static const float LIGHT_CONE_RADIUS_SCALE = 0.35;
 static const float LIGHT_CONE_FAR_RADIUS_SCALE = 0.08;
@@ -109,9 +110,9 @@ static const float SUN_VISIBILITY_END_Y = 0.06;
 static const float SUNSET_HORIZON_BAND_END = 0.22;
 
 static const float BASE_MIP_MAX = 2.0;
-// segment_step_size is measured in scene metres. The former sub-metre
-// thresholds saturated this bias on every sample and discarded the Worley
-// silhouette detail even on nearby clouds.
+
+
+
 static const float STEP_BIAS_START = 320.0;
 static const float STEP_BIAS_RANGE = 960.0;
 static const float STEP_BIAS_SCALE = 0.75;
@@ -120,11 +121,11 @@ static const float MAX_DENSITY_MIP = 3.0;
 static const float RAY_MARCH_MIDPOINT = 0.5;
 static const float CHEAP_MARCH_STEP_MULTIPLIER = 2.0;
 static const int MAX_RAY_MARCH_ITERATIONS = 320;
-// 位相関数（二重ローブ Henyey-Greenstein）
+
 static const float PHASE_G_FORWARD = 0.65;         // 前方散乱ローブ（太陽側の輝き）
 static const float PHASE_G_BACKWARD = -0.25;       // 後方散乱ローブ（雲縁のシルバーライニング）
 static const float PHASE_LOBE_BLEND = 0.4;         // 後方ローブの混合比
-static const float ISOTROPIC_PHASE = 0.0795774715; // 1 / (4 * PI)
+static const float ISOTROPIC_PHASE = 0.0795774715;
 static const float PHASE_MAX_GAIN = 2.8;           // 等方散乱に対する最大ゲイン
 static const float PHASE_MIN_GAIN = 0.45;          // 等方散乱に対する最小ゲイン
 static const float SEGMENT_STEP_EPSILON = 1e-5;
@@ -143,9 +144,9 @@ static const float CLOUD_DIRECT_LUMINANCE_LIMIT = 2.2;
 static const float CLOUD_LUMINANCE_PER_OPACITY_LIMIT = 2.4;
 static const float3 LUMINANCE_WEIGHTS = float3(0.2126, 0.7152, 0.0722);
 
-// Stable, low-energy multiple scattering. The previous large white/core fills
-// erased the optical-depth variation and made the clouds look like solid clay.
-// Scales the layer-normalized density integral used for direct-light extinction.
+
+
+
 static const float CLOUD_VIEW_OPTICAL_SCALE = 7.0;
 static const float CLOUD_LIGHT_OPTICAL_SCALE = 5.0;
 static const float MULTI_SCATTER_EXTINCTION_SCALE = 0.25;
@@ -168,7 +169,7 @@ static const float RAININESS_LIGHTING_FULL = 0.94;
 
 static const float NIGHT_AMBIENT_MIN_FACTOR = 0.08;
 static const float DIRECT_VISIBILITY_POWER = 2.0;
-// remap
+
 float remap(float original_value, float original_min, float original_max, float new_min, float new_max)
 {
     float t = saturate((original_value - original_min) / (original_max - original_min));
@@ -196,23 +197,31 @@ float get_cloud_planet_radius()
     return planetRadius * METERS_PER_KILOMETRE;
 }
 
-// 低周波ノイズ(Perlin-Worley)をサンプル
+
 float4 sample_low_frequency_noises(float3 sample_point, float mip_level)
 {
+    float altitude = length(sample_point) - get_cloud_planet_radius();
+    float3 noise_point = float3(sample_point.x,
+                                altitude * LOW_FREQ_VERTICAL_SCALE,
+                                sample_point.z);
     return low_frequency_perlin_worley_texture.SampleLevel(
         sampler_states[WrapLinear],
-        sample_point * low_frequency_perlin_worley_sampling_scale,
+        noise_point * low_frequency_perlin_worley_sampling_scale,
         mip_level
     );
 }
 
 
-// 高周波ノイズ(Worley)をサンプル
+
 float3 sample_high_frequency_noises(float3 sample_point, float mip_level)
 {
+    float altitude = length(sample_point) - get_cloud_planet_radius();
+    float3 noise_point = float3(sample_point.x,
+                                altitude * HIGH_FREQ_VERTICAL_SCALE,
+                                sample_point.z);
     return high_frequency_worley_texture.SampleLevel(
         sampler_states[WrapLinear],
-        sample_point * high_frequency_worley_sampling_scale,
+        noise_point * high_frequency_worley_sampling_scale,
         mip_level
     );
 }
@@ -313,22 +322,22 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
     float low_frequency_fbm = dot(low_frequency_noises.gba,
                                   float3(0.625, 0.25, 0.125));
 
-    // The weather texture stores a continuous local coverage value. Keeping it
-    // continuous is essential: a binary mask forces every visible cell to the
-    // same maximum density and produces giant vertical columns.
+
+
+
     float cloud_coverage = saturate(weather_data.r * cloud_coverage_scale);
-    // Rain systems form a connected low-frequency deck. Keep the authored
-    // sunny coverage untouched, but prevent the base Perlin-Worley signal from
-    // opening weather-map-sized holes once precipitation is present.
+
+
+
     float raininess = saturate(weather_data.g);
     cloud_coverage = max(cloud_coverage,
                          raininess * RAIN_CLOUD_COVERAGE_FLOOR);
     float cloud_type = saturate(weather_data.b * cloud_type_scale);
 
-    // HZD gradually favours cumulus at long range, but forcing every distant
-    // sample to type 1 gives unrelated cells the same full-height profile and
-    // joins them into a horizontal wall. Keep the authored type variation and
-    // apply only a restrained long-distance bias.
+
+
+
+
     float camera_distance_xz = length(sample_point.xz - camera_position.xz);
     float distant_cloud_bias = smoothstep(DISTANT_CLOUD_TRANSITION_START,
                                           DISTANT_CLOUD_TRANSITION_END,
@@ -339,38 +348,20 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
                       distant_cloud_type,
                       distant_cloud_bias * distant_tower_mask * 0.30);
 
-    // Horizon-style base signal: Perlin provides connected masses while the
-    // packed Worley octaves erode them into broad, rounded billows.
+
+
     float shape_signal = remap(low_frequency_noises.r,
                                -(1.0 - low_frequency_fbm),
                                1.0,
                                0.0,
                                1.0);
-    // Weak low-frequency bridges are acceptable near the cloud base, but at
-    // higher altitudes they read as roofs over giant holes. Gradually tighten
-    // the base-shape threshold with altitude so those bridges separate into
-    // individual cloud towers without changing their weather-map placement.
     float cumulusCore = smoothstep(0.34, 0.86, cloud_type);
-    float upper_threshold_limit = lerp(0.32, 0.20, cumulusCore);
-    float upper_shape_threshold = lerp(0.0,
-                                       upper_threshold_limit,
-                                       smoothstep(0.24, 0.92,
-                                                  height_fraction));
-    shape_signal = remap(shape_signal,
-                         upper_shape_threshold,
-                         1.0,
-                         0.0,
-                         1.0);
-    // HZD forms the low-resolution body by multiplying the 3D base signal by
-    // one of three mathematical height gradients blended by cloud type. Do not
-    // rescale the height fraction per weather cell: that creates broad, flat
-    // local ceilings and turns separated cloud groups into horizontal loaves.
     float density_height_gradient = get_density_height_gradient(height_fraction,
                                                                  cloud_type);
     float height_shaped_density = shape_signal * density_height_gradient;
 
-    // Coverage shifts the density threshold instead of multiplying a binary
-    // placement mask. This is the key relationship used by the HZD method.
+
+
     float final_cloud = remap(height_shaped_density,
                               1.0 - cloud_coverage,
                               1.0,
@@ -378,11 +369,11 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
                               1.0);
     final_cloud *= cloud_coverage;
 
-	// The HZD construction explicitly reduces density at cloud bottoms after
-	// applying coverage. Widening this transition removes the opaque horizontal
-	// shelf while preserving the rounded Perlin-Worley body above it.
-    float bottom_density = smoothstep(0.0,
-                                      lerp(0.12, 0.08, cumulusCore),
+
+
+
+    float bottom_density = smoothstep(0.035,
+                                      lerp(0.18, 0.12, cumulusCore),
                                       height_fraction);
     final_cloud *= bottom_density;
 
@@ -400,9 +391,9 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
 
         detail_point.xz += CLOUD_VERTICAL_SHEAR * vertical_shear;
 
-        // Decode the 2D curl texture as a signed vector and use it to distort
-        // only the detail noise. This adds turbulence without breaking the
-        // readable low-frequency cloud silhouette.
+
+
+
         float2 curl_uv = detail_point.xz * CURL_NOISE_UV_SCALE;
         float2 curl_vector = curl_noise_texture.SampleLevel(
             sampler_states[WrapLinear], curl_uv, 0).xy * 2.0 - 1.0;
@@ -411,19 +402,19 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
                                    smoothstep(0.0, 0.85, height_fraction));
         detail_point.xz += curl_vector * curl_strength;
 
-        // The detail volume is only 32^3. Using the same far-distance MIP as
-        // the base volume collapses it to a handful of voxels and turns the
-        // silhouette back into a smooth wall. Keep roughly 1.5 MIP levels of
-        // extra detail; screen-space jitter handles the residual undersampling.
+
+
+
+
         float detail_mip = max(mip_level - 1.5, 0.0);
         float3 high_frequency_noises = sample_high_frequency_noises(detail_point,
                                                                      detail_mip);
         float high_frequency_fbm = dot(high_frequency_noises,
                                        float3(0.625, 0.25, 0.125));
 
-        // Invert detail near the base for wispy rising edges, then use it as a
-        // remap threshold. This erodes the perimeter without exposing Worley
-        // rings as circular craters across the whole cloud body.
+
+
+
         float detail_height_blend = smoothstep(0.10, 0.32, height_fraction);
         float erosion_noise = lerp(1.0 - high_frequency_fbm,
                                    high_frequency_fbm,
@@ -431,9 +422,9 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
         float erosion_strength = lerp(0.10, 0.30,
                                       smoothstep(0.08, 0.90,
                                                  height_fraction));
-        // The presentation explicitly reduces density at the cloud base. Add
-        // a short, stronger erosion band there so the visible underside follows
-        // the 3D detail field instead of exposing the spherical layer boundary.
+
+
+
         float base_erosion_strength = lerp(0.34, 0.0,
                                            smoothstep(0.02, 0.22,
                                                       height_fraction));
@@ -459,7 +450,7 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
 static const float CLOUD_LIGHT_SCALE = 0.82;
 
 
-// hash:ジッタリングに使う乱数
+
 float hash(float3 p)
 {
     p = frac(p * 0.3183099 + 0.1);
@@ -468,19 +459,19 @@ float hash(float3 p)
 }
 
 
-// Henyey-Greenstein 位相関数: 光の散乱の向き(前方散乱/後方散乱)を表す
+
 float henyey_greenstein(float cos_theta, float g)
 {
-    // g が 1 に近いと分母が 0 に落ちて発散するのでクランプする
+
     float denom = max(1.0 + g * g - 2.0 * g * cos_theta, 1e-4);
     return (1.0 - g * g) / (pow(denom, 1.50) * 4 * PI);
 }
 
 
-// 二重ローブ Henyey-Greenstein
+
 // 実際の雲は水滴が大きいため、強い前方散乱（太陽側の輝き）と
 // 後方散乱（雲縁のシルバーライニング）の両方を持つ。
-// 単一ローブでは g をどう選んでもどちらか片方しか再現できない。
+
 // どちらのローブも球面上で 1 に正規化されているので、混合しても総エネルギーは保存される
 float dual_lobe_henyey_greenstein(float cos_theta, float g_forward, float g_backward, float blend)
 {
@@ -570,9 +561,9 @@ static const float3 noise_kernel[6] =
 };
 
 
-// Boundary samples use five local cone taps plus one distant tap to preserve
-// the silver lining and catch remote occluders. Once accumulated view alpha is
-// high, two low-frequency taps are sufficient for hidden interior layers.
+
+
+
 float integrate_cloud_density_to_light(float3 ray_origin,
                                        float3 ray_direction,
                                        bool use_cheap_near_samples)
@@ -622,11 +613,11 @@ float integrate_cloud_density_to_light(float3 ray_origin,
         }
     }
 
-    // The distant sixth tap matters at a newly-entered sunlit boundary. Once
-    // the view ray is already opaque its contribution is visually negligible,
-    // so omit it together with three local taps. This preserves the Horizon
-    // cone shadow on the silhouette while avoiding six density evaluations for
-    // every interior march step.
+
+
+
+
+
     float far_sample_weight = 0.0;
     if (!use_cheap_near_samples)
     {
@@ -656,10 +647,10 @@ float integrate_cloud_density_to_light(float3 ray_origin,
 }
 
 
-// 大気散乱の Transmittance LUT から「太陽光がどれだけ減衰したか」を取得
+
 float3 GetSunTransmittance(float height, float sunZenithCos)
 {
-    // LUT作成時と同じマッピングでUV計算
+
     float u = (sunZenithCos + 1.0) * 0.5;
     float v = (height - planetRadius) / (atmosphereRadius - planetRadius);
     v = saturate(v);
@@ -688,7 +679,7 @@ float3 get_sunset_tint(float sun_y)
     return lerp(1.0.xxx, warm_tint, sunset);
 }
 
-//レイ進行状況 + その区間の実ステップ長からLODを決める
+
 float compute_density_mip(float t01, float segment_step_size)
 {
     // 既存の距離方向ミップ
@@ -701,11 +692,11 @@ float compute_density_mip(float t01, float segment_step_size)
 }
 
 
-// SIGGRAPH 2015 Horizon-style marcher:
-// - uniform full-resolution steps inside a potential cloud,
-// - double-sized low-frequency steps in empty space,
-// - one coarse step backwards when the low-frequency isosurface is hit,
-// - return to coarse marching after consecutive empty detailed samples.
+
+
+
+
+
 float4 ray_march(float3 ray_origin,
                  float3 ray_step,
                  int steps,
@@ -732,11 +723,11 @@ float4 ray_march(float3 ray_origin,
                   ISOTROPIC_PHASE * PHASE_MIN_GAIN,
                   ISOTROPIC_PHASE * PHASE_MAX_GAIN);
 
-    // The cloud field is a local weather patch. Sampling the atmosphere LUT
-    // with every curved-world sample projected the LUT's ground-occlusion
-    // boundary across the cloud as a broad dark band. Horizon colors direct
-    // light from the sun and applies atmospheric occlusion over view depth, so
-    // use one stable sun color for the complete patch.
+
+
+
+
+
     float cloud_lighting_radius = planetRadius
                                 + 0.5 * (cloud_altitudes_min_max.x
                                        + cloud_altitudes_min_max.y)
@@ -754,8 +745,8 @@ float4 ray_march(float3 ray_origin,
                              neutral_sun_level.xxx,
                              daylight_neutrality);
 
-    // A rainy overcast blocks the warm horizon beam before it reaches the
-    // cloud layer. Keep only a weak neutral component for readable volume.
+
+
     float weather_overcast = saturate(_padding2.x);
     float storm_sun_level = max(dot(sun_transmittance,
                                     LUMINANCE_WEIGHTS), 0.08);
@@ -776,9 +767,9 @@ float4 ray_march(float3 ray_origin,
                               * sun_transmittance
                               * CLOUD_LIGHT_SCALE;
 
-    // A single zenith ambient sample avoids cubemap face seams becoming
-    // diagonal bands in a cloud. Height, not world direction, controls the
-    // ambient contribution in the Horizon lighting model.
+
+
+
     float3 sky_irradiance = irradiance_texture.SampleLevel(
         sampler_states[ClampLinear], float3(0.0, 1.0, 0.0), 0).rgb;
     float sky_luminance = dot(sky_irradiance, LUMINANCE_WEIGHTS);
@@ -792,8 +783,8 @@ float4 ray_march(float3 ray_origin,
 
     float3 color = 0.0;
     float transmittance = 1.0;
-    // Use a stable midpoint. The 64-128 sample budget keeps the remaining
-    // integration planes close enough that spatial jitter is unnecessary.
+
+
     float fine_jitter_floor = ray_jitter * fine_step_size;
     float travel = ray_jitter * coarse_step_size;
     bool cheap_march = true;
@@ -807,9 +798,9 @@ float4 ray_march(float3 ray_origin,
             break;
         }
 
-		// Decorrelate the fixed march lattice from the view ray without adding
-		// another density sample.  The golden-ratio phase turns coherent rainy
-		// bands into low-amplitude noise that the existing resolve can smooth.
+
+
+
 		float step_phase = frac(ray_jitter + float(iteration) * 0.61803398875f) - 0.5f;
 		float phase_step = cheap_march ? coarse_step_size : fine_step_size;
 		float sample_travel = clamp(travel + step_phase * phase_step * 0.18f,
@@ -827,12 +818,12 @@ float4 ray_march(float3 ray_origin,
                                                             true);
             if (potential_density > 0.0)
             {
-                // The low-frequency isosurface surrounds the detailed cloud.
-                // Step back before switching to the expensive sampler so no
-                // edge sample is skipped.
-                // Preserve the sub-step phase even when the first coarse
-                // sample enters a cloud; clamping to zero would recreate the
-                // same aligned boundary at the shell entrance.
+
+
+
+
+
+
                 travel = max(fine_jitter_floor,
                              travel - coarse_step_size);
                 cheap_march = false;
@@ -862,9 +853,9 @@ float4 ray_march(float3 ray_origin,
         {
             consecutive_zero_samples = 0;
 
-            // Integrate in layer-relative units. density_scale is a
-            // dimensionless artistic multiplier; using the raw metre step made
-            // the first non-zero sample opaque and flattened the whole cloud.
+
+
+
             float normalized_step_length = fine_step_size / layer_thickness;
             float step_optical_depth = density_scale
                                      * sampled_density
@@ -885,14 +876,10 @@ float4 ray_march(float3 ray_origin,
                                             * RAIN_ABSORPTION_RAININESS_SCALE);
 
             float view_alpha = 1.0 - transmittance;
-            float light_density = 0.0;
-            if (!debug_disable_self_shadow)
-            {
-                light_density = integrate_cloud_density_to_light(
-                    sample_point,
-                    sun_direction,
-                    view_alpha >= LIGHT_FULL_TO_CHEAP_ALPHA);
-            }
+            float light_density = integrate_cloud_density_to_light(
+                sample_point,
+                sun_direction,
+                view_alpha >= LIGHT_FULL_TO_CHEAP_ALPHA);
 
             float optical_depth = density_scale
                                 * light_density
@@ -900,10 +887,10 @@ float4 ray_march(float3 ray_origin,
                                 * cloud_absorption;
             float beer = exp(-optical_depth);
 
-            // Beer-Powder from the presentation: Beer attenuation multiplied
-            // by a depth-based in-scattering probability. Near the sun-facing
-            // view it produces a dark surface edge followed by a brighter
-            // interior, instead of an additive white outline.
+
+
+
+
             float powder_depth = 1.0 - exp(-optical_depth
                                           * POWDERED_SUGAR_THICKNESS_SCALE);
             float powder_view = smoothstep(0.10, 0.82, cos_theta);
@@ -916,10 +903,6 @@ float4 ray_march(float3 ray_origin,
                                         1.0,
                                         smoothstep(0.02, 0.72,
                                                    height_fraction));
-            if (debug_disable_height_lighting)
-            {
-                height_ambient = 1.0;
-            }
 
             float ambient_occlusion = lerp(1.0,
                                            AMBIENT_OCCLUSION_STORM_MIN,
@@ -976,17 +959,12 @@ float4 ray_march(float3 ray_origin,
     }
 
     float alpha = 1.0 - transmittance;
-    if (debug_show_density)
-    {
-        return float4(alpha.xxx, alpha);
-    }
-
     return max(0.0, float4(color, alpha));
 }
 
 
-// Retained temporarily for reference while validating the replacement above.
-// It is not called by the cloud pass.
+
+
 float4 ray_march_legacy(float3 ray_origin, float3 ray_step, int steps)
 {
     float step_size = length(ray_step);
@@ -999,12 +977,12 @@ float4 ray_march_legacy(float3 ray_origin, float3 ray_step, int steps)
     // 太陽方向と位相関数(散乱の向き)を準備
     float3 sun_direction = normalize(sunDirection.xyz);
     float3 view_dir = normalize(ray_step);
-    // Incoming sunlight travels opposite to sun_direction and the scattered
-    // ray travels toward the camera. Their angle reduces to dot(sun, view).
+
+
     float cos_theta = dot(sun_direction, view_dir);
 
-    // 位相関数(Phase Function)の計算
-    // 以前は g=0.1 のほぼ等方散乱だったため、どの向きから見ても明るさが変わらず
+
+
     // 雲がのっぺりして見えていた。二重ローブにして方向性を持たせる
     float henyey_greenstein_phase = dual_lobe_henyey_greenstein(
         cos_theta, PHASE_G_FORWARD, PHASE_G_BACKWARD, PHASE_LOBE_BLEND);
@@ -1017,7 +995,7 @@ float4 ray_march_legacy(float3 ray_origin, float3 ray_step, int steps)
 
     float3 color = 0.0;
     float density = 0;
-    // transmittence: カメラ→現在地点までの透過率(1=透明, 0=不透明)
+
     float transmittence = 1.0;
     float cloud_test = 0;
     int zero_density_sample_count = 0;
@@ -1054,16 +1032,16 @@ float4 ray_march_legacy(float3 ray_origin, float3 ray_step, int steps)
                 {
                     
                     float step_transmittance = exp(-density_scale * sampled_density * segment_step_size);
-                    // 現在地点の高度・上方向ベクトルを作って、大気LUTから太陽光減衰を取る
+
                     float current_height = length(sample_point);
                     float3 up_vector = sample_point / current_height;
                     float sun_zenith_cos = dot(up_vector, sun_direction);
 
-                    // transmittance_texture から、太陽光が大気を通ってどれだけ弱まったか
+
                     float3 sun_transmittance = GetSunTransmittance(current_height, sun_zenith_cos);
-                    // At a high daytime sun the cloud body should be lit by
-                    // nearly neutral white light. Preserve the warm LUT colour
-                    // only near the horizon for sunrise and sunset.
+
+
+
                     float sun_transmittance_luminance = dot(sun_transmittance, LUMINANCE_WEIGHTS);
                     float neutral_sun_level = max(sun_transmittance_luminance, 0.12);
                     float3 neutral_sun_transmittance = float3(neutral_sun_level,
@@ -1086,35 +1064,31 @@ float4 ray_march_legacy(float3 ray_origin, float3 ray_step, int steps)
 
                     float3 sky_irradiance = irradiance_texture.SampleLevel(sampler_states[ClampLinear], up_vector, 0).rgb;
                     // 太陽方向へ密度を集める → 自己影を近似
-                    float normalized_light_density = 0.0;
-                    if (!debug_disable_self_shadow)
-                    {
-                        normalized_light_density = integrate_cloud_density_to_light(sample_point,
-                                                                                     sun_direction,
-                                                                                     true);
-                    }
+                    float normalized_light_density = integrate_cloud_density_to_light(sample_point,
+                                                                                       sun_direction,
+                                                                                       true);
                     float lighting_optical_thickness = density_scale
                                                      * normalized_light_density
                                                      * CLOUD_LIGHT_OPTICAL_SCALE;
-                    // Coverage controls where clouds form. It must not also act
-                    // as a rain switch: doing so projects the low-frequency
-                    // weather map into the lighting as a broad horizontal band.
-                    // Only the upper end of the precipitation channel darkens a
-                    // cloud, with a wide smooth transition for stable animation.
+
+
+
+
+
                     float raininess = smoothstep(RAININESS_LIGHTING_START,
                                                  RAININESS_LIGHTING_FULL,
                                                  saturate(weather_data.g));
                     float storminess = raininess;
-                    // The GUI rain absorption value must not darken fair-weather
-                    // cumulus. Blend from a low sunny extinction into the much
-                    // stronger rain-cloud extinction only as precipitation rises.
+
+
+
                     float rain_extinction = max(RAIN_ABSORPTION_MIN, rain_cloud_absorption_scale);
                     float cloud_absorption = lerp(SUNNY_CLOUD_ABSORPTION,
                                                   rain_extinction,
                                                   raininess)
                                            * (1.0 + raininess * RAIN_ABSORPTION_RAININESS_SCALE);
-                    // Beer-Lambert primary transmission plus one low-energy
-                    // multiple-scattering octave keeps dense cores readable.
+
+
                     float primary_scattering = exp(-lighting_optical_thickness * cloud_absorption);
                     float multiple_scattering = exp(-lighting_optical_thickness * cloud_absorption
                                                    * MULTI_SCATTER_EXTINCTION_SCALE)
@@ -1126,14 +1100,14 @@ float4 ray_march_legacy(float3 ray_origin, float3 ray_step, int steps)
                                              + multiple_scattering
                                              + tertiary_scattering);
 
-                    // Coverage describes where a cloud exists, not whether it is
-                    // automatically a rain cloud. Only dense overcast cells and
-                    // actual rain strongly suppress direct sunlight.
+
+
+
                     float direct_occlusion = lerp(1.0, DIRECT_OCCLUSION_MIN, storminess);
                     float ambient_occlusion = lerp(1.0, AMBIENT_OCCLUSION_STORM_MIN, storminess);
 
-                    // Beer-Powder is strongest toward the sun, producing a soft
-                    // silver lining instead of a uniform white outline.
+
+
                     float powder_response = 1.0 - exp(-lighting_optical_thickness
                                                     * POWDERED_SUGAR_THICKNESS_SCALE);
                     float powder_view = smoothstep(0.20, 0.88, cos_theta);
@@ -1155,13 +1129,9 @@ float4 ray_march_legacy(float3 ray_origin, float3 ray_step, int steps)
                     float height_fraction = get_height_fraction_for_point_radius(current_height);
                     float base_light = lerp(CLOUD_BASE_AMBIENT_MIN, 1.0,
                                             smoothstep(0.02, 0.72, height_fraction));
-                    if (debug_disable_height_lighting)
-                    {
-                        base_light = 1.0;
-                    }
 
-                    // Optical depth now creates the broad shaded side and the
-                    // darker condensation base; no uniform white core fill.
+
+
                     float optical_ambient = lerp(1.0,
                                                  CLOUD_OPTICAL_AMBIENT_MIN,
                                                  1.0 - exp(-lighting_optical_thickness * 0.22));
@@ -1184,10 +1154,6 @@ float4 ray_march_legacy(float3 ray_origin, float3 ray_step, int steps)
 
                     float vertical_direct = lerp(0.76, 1.04,
                                                  smoothstep(0.04, 0.78, height_fraction));
-                    if (debug_disable_height_lighting)
-                    {
-                        vertical_direct = 1.0;
-                    }
                     float3 direct_light = incoming_sun_light
                          * direct_visibility
                          * beers_law
@@ -1203,10 +1169,10 @@ float4 ray_march_legacy(float3 ray_origin, float3 ray_step, int steps)
                                                         CLOUD_DIRECT_LUMINANCE_LIMIT,
                                                         CLOUD_DIRECT_LUMINANCE_LIMIT * 0.18);
 
-                    // A modest isotropic multi-scattering floor represents
-                    // sunlight bouncing through many droplets. It is much
-                    // weaker than the removed core fill and remains modulated
-                    // by optical transmission, preserving visible volume.
+
+
+
+
                     float fill_energy = lerp(CLOUD_NIGHT_MULTISCATTER_FILL,
                                              CLOUD_DAY_MULTISCATTER_FILL,
                                              sun_visibility);
@@ -1220,7 +1186,7 @@ float4 ray_march_legacy(float3 ray_origin, float3 ray_step, int steps)
                                                * (1.0 - storminess * 0.58);
 
                     float3 step_light = direct_light + ambient_light + multiscatter_fill;
-                    // density_scale が 0 になるゼロ除算を防ぐため max で保護
+
                     color += transmittence * (step_light / max(density_scale, 1e-5)) * (1.0 - step_transmittance);
                     
                     transmittence *= step_transmittance;
@@ -1255,15 +1221,10 @@ float4 ray_march_legacy(float3 ray_origin, float3 ray_step, int steps)
     color *= opacity_gate;
     alpha *= opacity_gate;
 
-    // 稀薄な雲の色が透明度に対して明るすぎると、Bloomで点状に広がる。
+
     // プリマルチプライドカラーのエネルギーを不透明度に連動させる。
     float integrated_limit = max(alpha * CLOUD_LUMINANCE_PER_OPACITY_LIMIT, 1e-5);
     color = soft_luminance_limit(color, integrated_limit, integrated_limit * 0.16);
-
-    if (debug_show_density)
-    {
-        return float4(alpha.xxx, alpha);
-    }
 
     return max(0.0, float4(color, alpha));
 }

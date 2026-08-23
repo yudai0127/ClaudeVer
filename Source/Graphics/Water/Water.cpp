@@ -51,9 +51,7 @@ bool RippleSimulation::Initialize(ID3D11Device* device, uint32_t width, uint32_t
         _ASSERT_EXPR(SUCCEEDED(hr), hrTrace(hr));
     }
 
-    // デフォルトパラメータ設定
-    // The simulation is half the former resolution. Halving texel-space speed
-    // keeps approximately the same propagation speed in world space.
+    
     simParams.c = 15.0f;      // 波の伝播速度 (texels/sec)
     simParams.damping = 1.5f; // 減衰係数
 
@@ -224,19 +222,16 @@ bool Water_Simulation::Initialize(ID3D11Device* device, uint32_t gridWidth, uint
     psParams.normal1 = { -0.015f, 0.02f, 8.0f, 0.72f };
     psParams.normal2 = { 0.01f, -0.008f, 18.0f, 0.48f };
     psParams.misc = XMFLOAT4(0.02f, 0.12f, 1.35f, 0.0f);
-    // x broadens the Fresnel curve without introducing a constant reflection floor.
-    // 1.0 is strictly physical; the default compensates for HDR/SSR contrast loss.
-    // y scales reflected radiance and w adjusts SSR hit confidence.
+   
     psParams.iblParams = XMFLOAT4(3.50f, 1.0f, 1.0f, 1.80f);
     psParams.waterTint = XMFLOAT4(0.018f, 0.18f, 0.24f, 0.075f);
-    // x=scattering, y=caustics, z=turbidity, w=shore/crest foam
+    
     psParams.alphaParam = XMFLOAT4(0.16f, 0.80f, 0.10f, 0.85f);
     psParams.rippleParams = XMFLOAT4(1.2f, 0.0f, 0.0f, 70.0f);
-    // x=minimum path, y=depth absorption, z=detail fade, w=shore foam depth
+    
     psParams.shadingParams = XMFLOAT4(0.75f, 0.016f, 26000.0f, 260.0f);
 
-    // Two long swells, two mid-frequency waves and four short wind-chop
-    // bands break up the conspicuous repeating sine pattern.
+    
     waves[0] = { {0.7f, 0.7f}, 180.0f, 3000.0f, 0.5f, 0.35f };
     waves[1] = { {-0.3f, 1.0f},100.0f, 2000.0f, 0.7f, 0.3f };
     waves[2] = { {1.0f, 0.2f}, 45.0f, 700.0f, 0.9f, 0.5f };
@@ -348,9 +343,7 @@ void Water_Simulation::update(ID3D11DeviceContext* dc, float elapsedTime,
     if (!pauseds) {
         time += elapsedTime;
 
-        // Ripples do not need to run at the display refresh rate. A fixed
-        // 30 Hz step is smooth while avoiding redundant dispatches on
-        // high-refresh-rate displays.
+        
         constexpr float RIPPLE_FIXED_STEP = 1.0f / 30.0f;
         rippleUpdateAccumulator += elapsedTime;
         if (rippleUpdateAccumulator >= RIPPLE_FIXED_STEP)
@@ -548,8 +541,7 @@ void Water_Simulation::renderCaustics(
     if (!dc || !pCausticsVS || !pCausticsPS) return;
 
     cbwater->UploadData<CB_Water>(dc, 6, cb, /*VS*/ true, /*HS*/ false, /*DS*/ false, /*GS*/ false, /*PS*/ true, /*CS*/ false);
-    // Caustics_VS は b7 の normal0/normal1/rippleParams を参照するため VS にもバインドする。
-    // 以前は PS だけだったので、直前のパスがVS側のb7を差し替えると値が壊れる状態だった
+   
     pspara->UploadData<PSParams>(dc, 7, psParams, /*VS*/ true, /*HS*/ false, /*DS*/ false, /*GS*/ false, /*PS*/ true, /*CS*/ false);
 
     //////定数バッファの更新
@@ -664,9 +656,7 @@ void Water_Simulation::debugGui()
     if (ImGui::TreeNode("Shading"))
     {
 
-        // Liquid water has F0 close to 0.02. Values near 1.0 turn the surface
-        // into a perfect mirror and erase the tint, absorption and turbidity
-        // differences between appearance presets.
+       
         if (psParams.misc.x < 0.005f) psParams.misc.x = 0.005f;
         if (psParams.misc.x > 0.08f) psParams.misc.x = 0.08f;
         ImGui::ColorEdit3("Tint", &psParams.waterTint.x);
@@ -725,9 +715,7 @@ void Water_Simulation::debugGui()
 
 void Water_Simulation::ApplyPreset(Preset preset)
 {
-    // Every preset represents water, so do not carry a mirror-like F0 value
-    // across preset changes. Visual differences belong to absorption,
-    // turbidity, foam and wave spectra.
+    
     psParams.misc.x = 0.02f;
 
     switch (preset)
