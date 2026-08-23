@@ -61,7 +61,7 @@
 //
 // Name                                 Type  Format         Dim      HLSL Bind  Count
 // ------------------------------ ---------- ------- ----------- -------------- ------
-// sampler_states[7]                 sampler      NA          NA             s7      1 
+// sampler_states[1]                 sampler      NA          NA             s1      1 
 // low_frequency_perlin_worley_texture    texture  float4          3d             t1      1 
 // weather_texture                   texture  float4          2d             t3      1 
 // SCENE_CONSTANT_BUFFER             cbuffer      NA          NA            cb1      1 
@@ -89,7 +89,7 @@ dcl_globalFlags refactoringAllowed
 dcl_constantbuffer CB3[3], immediateIndexed
 dcl_constantbuffer CB1[5], immediateIndexed
 dcl_constantbuffer CB8[5], immediateIndexed
-dcl_sampler s7, mode_default
+dcl_sampler s1, mode_default
 dcl_resource_texture3d (float,float,float,float) t1
 dcl_resource_texture2d (float,float,float,float) t3
 dcl_input_ps linear v1.xy
@@ -227,7 +227,7 @@ max r2.w, r2.w, l(1.000000)
 sqrt r2.w, r2.w
 mul r2.w, r2.w, cb8[2].y
 max r2.w, r2.w, l(512.000000)
-min r2.w, r2.w, l(100000.000000)
+min r2.w, r2.w, l(35000.000000)
 add r3.z, r2.w, r2.w
 add r3.w, -cb8[0].z, cb8[0].w
 mul r4.x, cb8[4].x, l(0.000244)
@@ -267,14 +267,16 @@ loop
   div r5.zw, r6.xxxy, r3.zzzz
   add r5.zw, r3.xxxy, r5.zzzw
   frc r5.zw, r5.zzzw
-  sample_l_indexable(texture2d)(float,float,float,float) r6.xyz, r5.zwzz, t3.yxzw, s7, l(0.000000)
+  sample_l_indexable(texture2d)(float,float,float,float) r6.xyz, r5.zwzz, t3.yxzw, s1, l(0.000000)
   mad r5.y, -cb3[2].x, l(1000.000000), r5.y
   add r5.y, r5.y, -cb8[0].z
   div_sat r5.y, r5.y, r3.w
-  add r7.xz, r1.yyzy, r4.xxzx
+  add r5.zw, r1.yyyz, r4.xxxz
+  mul r6.w, r5.y, r5.y
+  mad r7.xz, r6.wwww, l(720.000000, 0.000000, -360.000000, 0.000000), r5.zzwz
   mov r7.y, r4.y
   mul r7.xyz, r7.xyzx, cb8[2].zzzz
-  sample_l_indexable(texture3d)(float,float,float,float) r7.xyzw, r7.xyzx, t1.xyzw, s7, l(1.000000)
+  sample_l_indexable(texture3d)(float,float,float,float) r7.xyzw, r7.xyzx, t1.xyzw, s1, l(1.000000)
   dp3 r5.z, r7.yzwy, l(0.625000, 0.250000, 0.125000, 0.000000)
   mul_sat r5.w, r6.y, cb8[1].z
   mov_sat r6.x, r6.x
@@ -303,24 +305,25 @@ loop
   add r6.y, r6.y, l(1.000000)
   add r5.z, -r5.z, l(2.000000)
   div_sat r5.z, r6.y, r5.z
-  add r6.y, r5.y, l(-0.300000)
-  mul_sat r6.y, r6.y, l(1.785714)
-  mad r6.z, r6.y, l(-2.000000), l(3.000000)
-  mul r6.y, r6.y, r6.y
-  mul r6.y, r6.y, r6.z
-  mad r5.z, -r6.y, l(0.160000), r5.z
-  mad r6.y, -r6.y, l(0.160000), l(1.000000)
-  div_sat r5.z, r5.z, r6.y
   add r6.yz, r6.xxxx, l(0.000000, -0.500000, -0.340000, 0.000000)
   mul_sat r6.z, r6.z, l(1.923077)
   mad r6.w, r6.z, l(-2.000000), l(3.000000)
   mul r6.z, r6.z, r6.z
   mul r6.z, r6.z, r6.w
+  mad r6.zw, r6.zzzz, l(0.000000, 0.000000, -0.120000, -0.040000), l(0.000000, 0.000000, 0.320000, 0.120000)
+  add r7.x, r5.y, l(-0.240000)
+  mul_sat r7.x, r7.x, l(1.470588)
+  mad r7.y, r7.x, l(-2.000000), l(3.000000)
+  mul r7.x, r7.x, r7.x
+  mul r7.x, r7.x, r7.y
+  mad r5.z, -r7.x, r6.z, r5.z
+  mad r6.z, -r7.x, r6.z, l(1.000000)
+  div_sat r5.z, r5.z, r6.z
   add_sat r6.x, r6.x, r6.x
   add r6.x, -r6.x, l(1.000000)
-  mad r6.w, -|r6.y|, l(2.000000), l(1.000000)
+  mad r6.z, -|r6.y|, l(2.000000), l(1.000000)
   mov_sat r6.y, r6.y
-  mul r7.xyzw, r6.wwww, l(0.020000, 0.200000, 0.480000, 0.625000)
+  mul r7.xyzw, r6.zzzz, l(0.020000, 0.200000, 0.480000, 0.625000)
   mad r7.xyzw, r6.xxxx, l(0.020000, 0.050000, 0.090000, 0.110000), r7.xyzw
   mad r7.xyzw, r6.yyyy, l(0.020000, 0.125000, 1.560000, 2.000000), r7.xyzw
   add r6.xy, -r7.xzxx, r7.ywyy
@@ -336,8 +339,7 @@ loop
   add r6.x, -r6.y, l(1.000000)
   div_sat r5.z, r5.z, r6.x
   mul r5.z, r5.w, r5.z
-  mad r5.w, r6.z, l(-0.040000), l(0.120000)
-  div r5.w, l(1.000000, 1.000000, 1.000000, 1.000000), r5.w
+  div r5.w, l(1.000000, 1.000000, 1.000000, 1.000000), r6.w
   mul_sat r5.y, r5.w, r5.y
   mad r5.w, r5.y, l(-2.000000), l(3.000000)
   mul r5.y, r5.y, r5.y
@@ -363,4 +365,4 @@ mul r0.x, r0.x, l(2.885390)
 exp o0.x, r0.x
 mov o0.yzw, l(0,0,0,1.000000)
 ret 
-// Approximately 268 instruction slots used
+// Approximately 270 instruction slots used

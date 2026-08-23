@@ -123,22 +123,23 @@ void VolumetricCloud::initialize(ID3D11Device* device, const wchar_t* filename)
 
 	volumetric_cloud_constant_data = {};
 	volumetric_cloud_constant_data.wind_direction = { 1.0f, 0.0f };
-	// Keep the common gameplay camera below the main cloud deck while retaining
-	// a low/mid-level HZD-style stratus and cumulus layer.
-	volumetric_cloud_constant_data.cloud_altitudes_min_max = { 9500.0f, 14000.0f };
+	// Keep the complete cloud layer clearly above the opening camera and tall
+	// terrain. The previous 2.8 km base projected too close to the horizon and
+	// made distant cumulus look like low fog banks.
+	volumetric_cloud_constant_data.cloud_altitudes_min_max = { 6500.0f, 10500.0f };
 	volumetric_cloud_constant_data.wind_speed = 0.02f;
-	volumetric_cloud_constant_data.density_scale = 1.05f;
-	volumetric_cloud_constant_data.cloud_coverage_scale = 0.82f;
+	volumetric_cloud_constant_data.density_scale = 0.82f;
+	volumetric_cloud_constant_data.cloud_coverage_scale = 0.95f;
 	volumetric_cloud_constant_data.rain_cloud_absorption_scale = 0.2f;
 	volumetric_cloud_constant_data.cloud_type_scale = 1.0f;
 	volumetric_cloud_constant_data.horizon_distance_scale = 1.0f;
-	volumetric_cloud_constant_data.low_frequency_perlin_worley_sampling_scale = 0.00036f;
-	volumetric_cloud_constant_data.high_frequency_worley_sampling_scale = 0.00220f;
+	volumetric_cloud_constant_data.low_frequency_perlin_worley_sampling_scale = 0.00040f;
+	volumetric_cloud_constant_data.high_frequency_worley_sampling_scale = 0.00240f;
 	volumetric_cloud_constant_data.cloud_density_long_distance_scale = 22.0f;
 	// Beer-Powder is now bounded and view dependent, so it can safely provide a
 	// subtle silver lining without turning every edge into a white outline.
 	volumetric_cloud_constant_data.enable_powdered_sugar_efffect = 1;
-	volumetric_cloud_constant_data.ray_marching_steps = 72;
+	volumetric_cloud_constant_data.ray_marching_steps = 128;
 	volumetric_cloud_constant_data.auto_ray_marching_steps = 1;
 	volumetric_cloud_constant_data.debug_disable_self_shadow = 0;
 	volumetric_cloud_constant_data.debug_disable_height_lighting = 0;
@@ -312,20 +313,20 @@ void VolumetricCloud::updateWeatherMap(ID3D11DeviceContext* dc, float weatherT)
 
 	// Scattered cumulus: distinct cells with clear sky between them. Local
 	// coverage is converted to a density threshold by the volumetric shader.
-	cb.sunnyCoverage = 0.42f;
-	cb.rainyCoverage = 0.84f;
+	cb.sunnyCoverage = 0.57f;
+	cb.rainyCoverage = 0.88f;
 	cb.sunnyRain = 0.0f;
 	cb.rainyRain = 1.0f;
 
 	// Cell centres select the tall cumulus profile. WeatherMap_CS lowers this
 	// value continuously toward each perimeter to produce rounded cloud tops.
-	cb.sunnyType = 0.72f;
-	cb.rainyType = 0.82f;
+	cb.sunnyType = 0.68f;
+	cb.rainyType = 0.88f;
 
 	// Increase the number of independent weather cells while retaining enough
 	// texels per cell for filtering and rounded cloud masses.
-	cb.noiseScale = 16.0f;
-	cb.noiseAmp = 0.22f;
+	cb.noiseScale = 24.0f;
+	cb.noiseAmp = 0.18f;
 
 	weather_gen_cb->UploadData<WEATHER_GEN_CB>(dc, 0, cb, /*VS*/ false, /*HS*/ false, /*DS*/ false, /*GS*/ false, /*PS*/ false, /*CS*/ true);
 

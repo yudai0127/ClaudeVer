@@ -160,8 +160,8 @@ float requestedType = saturate(lerp(sunnyType, rainyType, tType)
     // synoptic deck. Preserve the broad front as a placement guide, then let
     // the medium-scale field open clear corridors between sunny cumulus cells.
     // Precipitation progressively removes this separation for a rain deck.
-    float fairWeatherCell = smoothstep(0.44, 0.72, clusterNoise);
-    float fairWeatherSeparation = lerp(0.08, 1.0, fairWeatherCell);
+    float fairWeatherCell = smoothstep(0.50, 0.68, clusterNoise);
+    float fairWeatherSeparation = lerp(0.01, 1.0, fairWeatherCell);
     placement *= lerp(fairWeatherSeparation, 1.0, tRain);
 
     // Preserve a small amount of irregularity without rejoining neighbouring
@@ -182,15 +182,21 @@ float requestedType = saturate(lerp(sunnyType, rainyType, tType)
     // interpolation around requestedType kept almost every visible sample in
     // the same stratocumulus/cumulus blend and produced no visible height
     // variation even though the weather map changed.
-    float middleCloud = smoothstep(0.38, 0.56, typeField);
-    float towerCore = smoothstep(0.58, 0.72, typeField) * cellCore;
-    float lowCloudType = lerp(0.06, 0.18, macroNoise);
-    float middleCloudType = lerp(0.38, 0.52, clusterNoise);
-    float highCloudType = saturate(requestedType + 0.20);
+    float middleCloud = smoothstep(0.42, 0.64, typeField);
+    float towerCore = smoothstep(0.62, 0.80, typeField) * cellCore;
+
+    // Fair-weather clouds in the reference are dominated by vertically
+    // developed cumulus. Keep occupied cells above the stratus range, then
+    // raise only their clustered thermal cores toward the full cumulus profile.
+    // Coverage still fades independently at the perimeter, so this does not
+    // create blocky full-height columns.
+    float lowCloudType = lerp(0.38, 0.50, macroNoise);
+    float middleCloudType = lerp(0.50, 0.68, clusterNoise);
+    float highCloudType = saturate(requestedType + 0.12);
 
     float ctype = lerp(lowCloudType, middleCloudType, middleCloud);
     ctype = lerp(ctype, highCloudType, towerCore);
-    ctype = lerp(0.04, ctype, cellCore);
+    ctype = lerp(0.38, ctype, cellCore);
 
     float typeVariation = (detailNoise - 0.5) * 0.04;
     ctype = saturate(ctype + typeVariation * cellCore);

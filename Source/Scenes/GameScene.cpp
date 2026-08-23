@@ -112,7 +112,9 @@ void GameScene::initialize()
 
 
 	DirectX::XMFLOAT3 startEye(-3122.40f, 867.93f, 11342.66f); // 初期カメラ位置
-	DirectX::XMFLOAT3 startFocus(600.0f, 350.0f, 15000.0f);     // カメラが向くターゲット
+	// Keep the horizon and the lower cloud deck in the opening composition so
+	// the volumetric silhouette is visible without first orbiting the camera.
+	DirectX::XMFLOAT3 startFocus(600.0f, 1500.0f, 15000.0f);    // カメラが向くターゲット
 	
 	cameraCtrl->setMovementBounds(DirectX::XMFLOAT3(-70000.0f, -10.0f, -70000.0f), DirectX::XMFLOAT3(70000.0f, 80000.0f, 70000.0f));
 
@@ -1074,6 +1076,7 @@ void GameScene::renderShadow(ID3D11DeviceContext* dc)
 void GameScene::renderAtmosphere(ID3D11DeviceContext* dc, ID3D11RenderTargetView* hdrRTV, ID3D11DepthStencilView* dsv, const DirectX::XMFLOAT4X4& viewProjection)
 {
 	const AtmosphereConstants& atmosphereData = skyMap->getAtmosphereConstants();
+	const bool renderClouds = enableVolumetricCloud && volumetricCloud && skyMap && skyMap->getSkyCubemapSRV();
 
 	// 低解像度描画 + 2passブラー経由
 	if (enableLowResAtmosphere &&
@@ -1084,58 +1087,62 @@ void GameScene::renderAtmosphere(ID3D11DeviceContext* dc, ID3D11RenderTargetView
 		atmoBlurHPS &&
 		atmoBlurVPS)
 	{
-		//低解像度バッファに空/雲を描く
+		// Keep the expensive ray march at half resolution, as in the reference,
+		// but do not blur its cellular edge detail afterwards.
 		atmoLowResBuffer->activate(dc);
 		atmoLowResBuffer->clear(dc, 0, 0, 0, 1);
 
 		skyMap->render(dc, viewProjection);
-
-		if (enableVolumetricCloud && volumetricCloud && skyMap)
+		if (renderClouds)
 		{
-			ID3D11ShaderResourceView* skySrv = skyMap->getSkyCubemapSRV();
-			if (skySrv)
-			{
-				volumetricCloud->blit(dc, skySrv, skyMap->getTransmittanceSRV(), diffuse_iem_srv.Get(), atmosphereData);
-			}
+			volumetricCloud->blit(
+				dc,
+				skyMap->getSkyCubemapSRV(),
+				skyMap->getTransmittanceSRV(),
+				diffuse_iem_srv.Get(),
+				atmosphereData);
 		}
 
 		atmoLowResBuffer->deactivate(dc);
 
-		//ブラー定数を設定
-		
-		blurCB.gInvHalfRes = atmoBlurInvRes;
-		atmoBlurCB->UploadData<ATMOSPHERE_BLUR_CB>(dc, 1, blurCB, false, false, false, false, true, false);
-
-
-		auto linearSampler = GraphicsManager::instance()->getSamplerState(SAMPLER_STATE::CLAMP_LINEAR);
-		ID3D11SamplerState* linearSamplerPtr = linearSampler.Get();
-		if (linearSamplerPtr)
+		ID3D11ShaderResourceView* atmosphereCompositeSRV = atmoLowResBuffer->shader_resource_views[0].Get();
+		if (!renderClouds)
 		{
-			dc->PSSetSamplers(0, 1, &linearSamplerPtr);
-			dc->PSSetSamplers(1, 1, &linearSamplerPtr);
-		}
+			// The blur remains useful for a cloudless low-resolution sky.
+			blurCB.gInvHalfRes = atmoBlurInvRes;
+			atmoBlurCB->UploadData<ATMOSPHERE_BLUR_CB>(dc, 1, blurCB, false, false, false, false, true, false);
 
-		//横ブラー
-		atmoBlurTempBuffer->activate(dc);
-		atmoBlurTempBuffer->clear(dc, 0, 0, 0, 1);
-		{
-			ID3D11ShaderResourceView* src[1] = { atmoLowResBuffer->shader_resource_views[0].Get() };
-			bit_block_transfer->blit(dc, src, 0, 1, atmoBlurHPS.Get());
-			ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
-			dc->PSSetShaderResources(0, 1, nullSRV);
-		}
-		atmoBlurTempBuffer->deactivate(dc);
+			auto linearSampler = GraphicsManager::instance()->getSamplerState(SAMPLER_STATE::CLAMP_LINEAR);
+			ID3D11SamplerState* linearSamplerPtr = linearSampler.Get();
+			if (linearSamplerPtr)
+			{
+				dc->PSSetSamplers(0, 1, &linearSamplerPtr);
+				dc->PSSetSamplers(1, 1, &linearSamplerPtr);
+			}
 
-		//縦ブラー
-		atmoBlurBuffer->activate(dc);
-		atmoBlurBuffer->clear(dc, 0, 0, 0, 1);
-		{
-			ID3D11ShaderResourceView* src[1] = { atmoBlurTempBuffer->shader_resource_views[0].Get() };
-			bit_block_transfer->blit(dc, src, 0, 1, atmoBlurVPS.Get());
-			ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
-			dc->PSSetShaderResources(0, 1, nullSRV);
+			//横ブラー
+			atmoBlurTempBuffer->activate(dc);
+			atmoBlurTempBuffer->clear(dc, 0, 0, 0, 1);
+			{
+				ID3D11ShaderResourceView* src[1] = { atmoLowResBuffer->shader_resource_views[0].Get() };
+				bit_block_transfer->blit(dc, src, 0, 1, atmoBlurHPS.Get());
+				ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
+				dc->PSSetShaderResources(0, 1, nullSRV);
+			}
+			atmoBlurTempBuffer->deactivate(dc);
+
+			//縦ブラー
+			atmoBlurBuffer->activate(dc);
+			atmoBlurBuffer->clear(dc, 0, 0, 0, 1);
+			{
+				ID3D11ShaderResourceView* src[1] = { atmoBlurTempBuffer->shader_resource_views[0].Get() };
+				bit_block_transfer->blit(dc, src, 0, 1, atmoBlurVPS.Get());
+				ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
+				dc->PSSetShaderResources(0, 1, nullSRV);
+			}
+			atmoBlurBuffer->deactivate(dc);
+			atmosphereCompositeSRV = atmoBlurBuffer->shader_resource_views[0].Get();
 		}
-		atmoBlurBuffer->deactivate(dc);
 
 		//HDRターゲットへ合成
 		{
@@ -1147,7 +1154,7 @@ void GameScene::renderAtmosphere(ID3D11DeviceContext* dc, ID3D11RenderTargetView
 			dc->OMSetBlendState(blendNone, nullptr, 0xFFFFFFFF);
 			dc->OMSetDepthStencilState(depthOff, 0);
 
-			ID3D11ShaderResourceView* src[1] = { atmoBlurBuffer->shader_resource_views[0].Get() };
+			ID3D11ShaderResourceView* src[1] = { atmosphereCompositeSRV };
 			bit_block_transfer->blit(dc, src, 0, 1, nullptr);
 
 			ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
@@ -1160,14 +1167,14 @@ void GameScene::renderAtmosphere(ID3D11DeviceContext* dc, ID3D11RenderTargetView
 	{
 		// 通常解像度で直接描画
 		skyMap->render(dc, viewProjection);
-
-		if (enableVolumetricCloud && volumetricCloud && skyMap)
+		if (renderClouds)
 		{
-			ID3D11ShaderResourceView* skySrv = skyMap->getSkyCubemapSRV();
-			if (skySrv)
-			{
-				volumetricCloud->blit(dc, skySrv, skyMap->getTransmittanceSRV(), diffuse_iem_srv.Get(), atmosphereData);
-			}
+			volumetricCloud->blit(
+				dc,
+				skyMap->getSkyCubemapSRV(),
+				skyMap->getTransmittanceSRV(),
+				diffuse_iem_srv.Get(),
+				atmosphereData);
 		}
 	}
 }
@@ -1997,7 +2004,7 @@ void GameScene::debugGui()
 		ImGui::Separator();
 		ImGui::Text("Atmosphere Blur");
 		ImGui::Checkbox("Low Resolution Atmosphere", &enableLowResAtmosphere);
-		ImGui::TextDisabled("ON = 640x360 atmosphere pass (recommended for performance)");
+		ImGui::TextDisabled("ON = 800x450 atmosphere/cloud pass (recommended for performance)");
 		ImGui::TextDisabled("Blur texel size: %.6f, %.6f",
 			atmoBlurInvRes.x,
 			atmoBlurInvRes.y);

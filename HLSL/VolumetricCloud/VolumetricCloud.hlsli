@@ -63,7 +63,11 @@ static const float WEATHER_SPEED_CAP = 0.10;
 static const float WEATHER_UV_TIME_SCALE = 0.0015;
 static const float MIN_ALTITUDE_FROM_GROUND = 1.0;
 static const float MIN_HORIZON_DISTANCE = 512.0;
-static const float MAX_WEATHER_MAP_RADIUS = 100000.0;
+// Horizon renders the volumetric cloudscape in a 35 km radius around the
+// player. Use the same world-space footprint for the weather map so its
+// clusters describe individual cloud groups rather than continent-sized
+// connected bands.
+static const float CLOUD_WEATHER_MAP_RADIUS = 35000.0;
 // HZD biases the outer weather field toward cumulus from 15 km to the edge of
 // its 35 km cloud radius so distant banks keep vertical silhouettes.
 static const float DISTANT_CLOUD_TRANSITION_START = 15000.0;
@@ -79,29 +83,39 @@ static const float ANIMATION_UV_WRAP = 2.0;
 static const float CURL_NOISE_UV_SCALE = 0.00008;
 static const float CURL_DISTORTION_BASE = 640.0;
 static const float CURL_DISTORTION_TOP = 280.0;
+// A modest height-dependent shear prevents every weather cell from growing as
+// a perfectly vertical column. The same offset is applied to base and detail
+// noise so their erosion remains coherent.
+static const float2 CLOUD_VERTICAL_SHEAR = float2(720.0, -360.0);
 
 // Horizon Zero Dawn uses five nearby samples distributed in a cone and one
 // distant sample to catch shadows from remote clouds (SIGGRAPH 2015, pp.85-86).
 static const int LIGHT_CONE_NEAR_SAMPLES = 5;
 static const int LIGHT_CONE_CHEAP_SAMPLES = 2;
-static const float LIGHT_CONE_STEP_DIVISOR = 36.0;
+// Spread the five local light taps through a useful portion of the layer.
+// The former /36 spacing kept all five taps near the same bright surface and
+// removed the broad internal shadow that gives cumulus its volume.
+static const float LIGHT_CONE_STEP_DIVISOR = 16.0;
 static const float LIGHT_CONE_RADIUS_SCALE = 0.35;
 static const float LIGHT_CONE_FAR_RADIUS_SCALE = 0.08;
 static const float LIGHT_FULL_DETAIL_MIP = 2.0;
 static const float LIGHT_CHEAP_DETAIL_MIP = 4.5;
 static const float LIGHT_FAR_DETAIL_MIP = 5.0;
 static const float LIGHT_FAR_SAMPLE_WEIGHT = 0.75;
-static const float LIGHT_FULL_TO_CHEAP_ALPHA = 0.12;
+static const float LIGHT_FULL_TO_CHEAP_ALPHA = 0.28;
 
 static const float SUN_VISIBILITY_START_Y = -0.02;
 static const float SUN_VISIBILITY_END_Y = 0.06;
 static const float SUNSET_HORIZON_BAND_END = 0.22;
 
-static const float BASE_MIP_MAX = 2.5;
-static const float STEP_BIAS_START = 0.75;
-static const float STEP_BIAS_RANGE = 2.5;
-static const float STEP_BIAS_SCALE = 1.5;
-static const float MAX_DENSITY_MIP = 4.0;
+static const float BASE_MIP_MAX = 2.0;
+// segment_step_size is measured in scene metres. The former sub-metre
+// thresholds saturated this bias on every sample and discarded the Worley
+// silhouette detail even on nearby clouds.
+static const float STEP_BIAS_START = 320.0;
+static const float STEP_BIAS_RANGE = 960.0;
+static const float STEP_BIAS_SCALE = 0.75;
+static const float MAX_DENSITY_MIP = 3.0;
 
 static const float RAY_MARCH_MIDPOINT = 0.5;
 static const float CHEAP_MARCH_STEP_MULTIPLIER = 2.0;
@@ -120,7 +134,7 @@ static const float TRANSMITTANCE_EARLY_OUT = 0.01;
 static const float RAIN_ABSORPTION_MIN = 0.10;
 static const float RAIN_ABSORPTION_RAININESS_SCALE = 1.35;
 static const float RAIN_CLOUD_COVERAGE_FLOOR = 0.90;
-static const float SUNNY_CLOUD_ABSORPTION = 0.16;
+static const float SUNNY_CLOUD_ABSORPTION = 0.28;
 static const float DIRECT_OCCLUSION_MIN = 0.42;
 static const float AMBIENT_OCCLUSION_STORM_MIN = 0.62;
 static const float POWDERED_SUGAR_THICKNESS_SCALE = 2.0;
@@ -139,9 +153,9 @@ static const float MULTI_SCATTER_CONTRIBUTION = 0.28;
 static const float MULTI_SCATTER_TERTIARY_EXTINCTION_SCALE = 0.0625;
 static const float MULTI_SCATTER_TERTIARY_CONTRIBUTION = 0.10;
 static const float CLOUD_AMBIENT_NEUTRALITY = 0.82;
-static const float CLOUD_BASE_AMBIENT_MIN = 0.34;
-static const float CLOUD_AMBIENT_SCALE = 0.58;
-static const float CLOUD_OPTICAL_AMBIENT_MIN = 0.38;
+static const float CLOUD_BASE_AMBIENT_MIN = 0.16;
+static const float CLOUD_AMBIENT_SCALE = 0.34;
+static const float CLOUD_OPTICAL_AMBIENT_MIN = 0.20;
 static const float CLOUD_AMBIENT_LUMINANCE_LIMIT = 0.78;
 static const float3 OVERCAST_CLOUD_FILL = float3(0.14, 0.16, 0.19);
 static const float CLOUD_DAY_MULTISCATTER_FILL = 0.14;
@@ -186,7 +200,7 @@ float get_cloud_planet_radius()
 float4 sample_low_frequency_noises(float3 sample_point, float mip_level)
 {
     return low_frequency_perlin_worley_texture.SampleLevel(
-        sampler_states[LINEAR_MIRROR],
+        sampler_states[WrapLinear],
         sample_point * low_frequency_perlin_worley_sampling_scale,
         mip_level
     );
@@ -197,7 +211,7 @@ float4 sample_low_frequency_noises(float3 sample_point, float mip_level)
 float3 sample_high_frequency_noises(float3 sample_point, float mip_level)
 {
     return high_frequency_worley_texture.SampleLevel(
-        sampler_states[LINEAR_MIRROR],
+        sampler_states[WrapLinear],
         sample_point * high_frequency_worley_sampling_scale,
         mip_level
     );
@@ -220,14 +234,14 @@ float3 sample_weather_data(float2 sample_point)
     float horizon_distance = sqrt(max(cloud_base_altitude * (cloud_base_altitude + 2.0 * cloud_planet_radius), MIN_ALTITUDE_FROM_GROUND)) * horizon_distance_scale;
     horizon_distance = clamp(horizon_distance,
                              MIN_HORIZON_DISTANCE,
-                             MAX_WEATHER_MAP_RADIUS);
+                             CLOUD_WEATHER_MAP_RADIUS);
 
     float2 mapped = float2(sample_point.x + horizon_distance, horizon_distance - sample_point.y) / (2.0 * horizon_distance);
 
     float2 uv = frac(mapped + offset);
 
     return weather_texture.SampleLevel(
-        sampler_states[LINEAR_MIRROR],
+        sampler_states[WrapLinear],
         uv,
         0
     ).rgb;
@@ -292,6 +306,9 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
     float3 low_freq_point = sample_point;
 #endif
 
+    float vertical_shear = height_fraction * height_fraction;
+    low_freq_point.xz += CLOUD_VERTICAL_SHEAR * vertical_shear;
+
     float4 low_frequency_noises = sample_low_frequency_noises(low_freq_point, mip_level - 2.0);
     float low_frequency_fbm = dot(low_frequency_noises.gba,
                                   float3(0.625, 0.25, 0.125));
@@ -333,9 +350,11 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
     // higher altitudes they read as roofs over giant holes. Gradually tighten
     // the base-shape threshold with altitude so those bridges separate into
     // individual cloud towers without changing their weather-map placement.
+    float cumulusCore = smoothstep(0.34, 0.86, cloud_type);
+    float upper_threshold_limit = lerp(0.32, 0.20, cumulusCore);
     float upper_shape_threshold = lerp(0.0,
-                                       0.16,
-                                       smoothstep(0.30, 0.86,
+                                       upper_threshold_limit,
+                                       smoothstep(0.24, 0.92,
                                                   height_fraction));
     shape_signal = remap(shape_signal,
                          upper_shape_threshold,
@@ -346,7 +365,6 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
     // one of three mathematical height gradients blended by cloud type. Do not
     // rescale the height fraction per weather cell: that creates broad, flat
     // local ceilings and turns separated cloud groups into horizontal loaves.
-    float cumulusCore = smoothstep(0.34, 0.86, cloud_type);
     float density_height_gradient = get_density_height_gradient(height_fraction,
                                                                  cloud_type);
     float height_shaped_density = shape_signal * density_height_gradient;
@@ -380,18 +398,26 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
         float3 detail_point = sample_point;
 #endif
 
+        detail_point.xz += CLOUD_VERTICAL_SHEAR * vertical_shear;
+
         // Decode the 2D curl texture as a signed vector and use it to distort
         // only the detail noise. This adds turbulence without breaking the
         // readable low-frequency cloud silhouette.
         float2 curl_uv = detail_point.xz * CURL_NOISE_UV_SCALE;
         float2 curl_vector = curl_noise_texture.SampleLevel(
-            sampler_states[LINEAR_MIRROR], curl_uv, 0).xy * 2.0 - 1.0;
+            sampler_states[WrapLinear], curl_uv, 0).xy * 2.0 - 1.0;
         float curl_strength = lerp(CURL_DISTORTION_BASE,
                                    CURL_DISTORTION_TOP,
                                    smoothstep(0.0, 0.85, height_fraction));
         detail_point.xz += curl_vector * curl_strength;
 
-        float3 high_frequency_noises = sample_high_frequency_noises(detail_point, mip_level);
+        // The detail volume is only 32^3. Using the same far-distance MIP as
+        // the base volume collapses it to a handful of voxels and turns the
+        // silhouette back into a smooth wall. Keep roughly 1.5 MIP levels of
+        // extra detail; screen-space jitter handles the residual undersampling.
+        float detail_mip = max(mip_level - 1.5, 0.0);
+        float3 high_frequency_noises = sample_high_frequency_noises(detail_point,
+                                                                     detail_mip);
         float high_frequency_fbm = dot(high_frequency_noises,
                                        float3(0.625, 0.25, 0.125));
 
@@ -402,13 +428,13 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
         float erosion_noise = lerp(1.0 - high_frequency_fbm,
                                    high_frequency_fbm,
                                    detail_height_blend);
-        float erosion_strength = lerp(0.045, 0.13,
+        float erosion_strength = lerp(0.10, 0.30,
                                       smoothstep(0.08, 0.90,
                                                  height_fraction));
         // The presentation explicitly reduces density at the cloud base. Add
         // a short, stronger erosion band there so the visible underside follows
         // the 3D detail field instead of exposing the spherical layer boundary.
-        float base_erosion_strength = lerp(0.24, 0.0,
+        float base_erosion_strength = lerp(0.34, 0.0,
                                            smoothstep(0.02, 0.22,
                                                       height_fraction));
         float edge_mask = 1.0 - smoothstep(0.16, 0.52, final_cloud);
@@ -766,10 +792,8 @@ float4 ray_march(float3 ray_origin,
 
     float3 color = 0.0;
     float transmittance = 1.0;
-    // A fixed half-step places every pixel on the same depth planes. With a
-    // reduced step count those planes become visible as horizontal bands.
-    // Stable screen-space jitter supplied by the pixel shader decorrelates the
-    // planes without increasing the ray-march cost or making the cloud move.
+    // Use a stable midpoint. The 64-128 sample budget keeps the remaining
+    // integration planes close enough that spatial jitter is unnecessary.
     float fine_jitter_floor = ray_jitter * fine_step_size;
     float travel = ray_jitter * coarse_step_size;
     bool cheap_march = true;

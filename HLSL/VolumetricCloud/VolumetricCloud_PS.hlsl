@@ -6,32 +6,23 @@ static const float RAYMARCH_DIRECTION_Y_THRESHOLD = 0.0;
 
 static const float AUTO_ZENITH_STEP_SCALE = 0.52;
 static const float AUTO_HORIZON_STEP_SCALE = 1.0;
-static const float MIN_RAY_MARCH_STEPS = 24.0;
+static const float MIN_RAY_MARCH_STEPS = 64.0;
 static const float MAX_RAY_MARCH_STEPS = 128.0;
-static const float TARGET_RAY_STEP_LENGTH = 850.0;
+static const float TARGET_RAY_STEP_LENGTH = 250.0;
 
-// The scene's cloud layer is scaled far above HZD's 1.5-4 km layer. Extend the
-// visible field conservatively to 50 km, while fading the outer 10 km so the
-// boundary stays hidden without returning to the previous 110 km opaque slab.
-static const float MAX_CLOUD_VIEW_DISTANCE = 50000.0;
-static const float CLOUD_DISTANCE_FADE_START = 40000.0;
+// Match Horizon's 35 km volumetric field and fade only its outer rim. Keeping
+// the weather footprint and view distance aligned prevents a single weather
+// cell from spanning most of the visible sky.
+static const float MAX_CLOUD_VIEW_DISTANCE = 35000.0;
+static const float CLOUD_DISTANCE_FADE_START = 30000.0;
 
 static const float HORIZON_VISIBILITY_START_Y = 0.003;
 static const float HORIZON_VISIBILITY_END_Y = 0.055;
 
-// Interleaved gradient noise is deterministic for a screen pixel. It breaks
-// up ray-depth bands while avoiding temporal crawling in a renderer that does
-// not yet have cloud reprojection/TAA.
-float cloud_ray_jitter(float2 pixel_position)
-{
-    float2 pixel = floor(pixel_position);
-    float noise = frac(52.9829189
-                     * frac(dot(pixel,
-                                float2(0.06711056, 0.00583715))));
-    // Do not sample exactly at a segment boundary. The limited range keeps the
-    // spatial dither subtle enough for the current non-temporal composite.
-    return lerp(0.24, 0.76, noise);
-}
+// The renderer has no temporal cloud reprojection yet. A per-pixel ray jitter
+// therefore remains visible as grain and crawling instead of converging over
+// several frames. Sample every segment at its stable midpoint for now.
+static const float CLOUD_RAY_MIDPOINT = 0.5;
 
 float4 main(VS_OUT pin) : SV_TARGET
 {
@@ -132,7 +123,7 @@ float4 main(VS_OUT pin) : SV_TARGET
         steps = clamp(steps, MIN_RAY_MARCH_STEPS, MAX_RAY_MARCH_STEPS);
 
         float3 ray_step = ray_dir * shell_dist / steps;
-        float ray_jitter = cloud_ray_jitter(pin.position.xy);
+        float ray_jitter = CLOUD_RAY_MIDPOINT;
 
         float4 volume = ray_march(ray_origin,
                                   ray_step,
