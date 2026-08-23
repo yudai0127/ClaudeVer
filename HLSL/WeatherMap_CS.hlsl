@@ -28,11 +28,24 @@ static const float FBM_GAIN = 0.5;
 static const float FBM_LACUNARITY = 2.02;
 
 static const float FLOW_TIME_SCALE = 0.02;
+// The weather map spans roughly 200 km. These relative scales create a
+// hierarchy of broad weather fronts, cloud groups and irregular boundaries
+// instead of distributing equal-sized FBM cells uniformly across the sky.
+static const float2 WEATHER_PATTERN_OFFSET = float2(0.07, 0.37);
+static const float WEATHER_FRONT_SCALE = 0.18;
+static const float WEATHER_CLUSTER_SCALE = 0.72;
+static const float WEATHER_BOUNDARY_SCALE = 1.80;
+static const float WEATHER_WARP_SCALE = 0.30;
+static const float WEATHER_WARP_STRENGTH = 0.08;
+static const float WEATHER_FRONT_WEIGHT = 0.55;
+static const float WEATHER_CLUSTER_WEIGHT = 0.35;
+static const float WEATHER_BOUNDARY_WEIGHT = 0.10;
 
 static const float PRECIP_START = 0.75;
+static const float RAIN_COVERAGE_THRESHOLD_BIAS = 0.04;
+static const float RAIN_FIELD_FLOOR = 0.85;
 static const float FBM_NORMALIZATION = 1.0 / 0.9375;
-static const float MACRO_DETAIL_BLEND = 0.18;
-static const float COVERAGE_THRESHOLD_HIGH = 0.76;
+static const float COVERAGE_THRESHOLD_HIGH = 0.66;
 static const float COVERAGE_THRESHOLD_LOW = 0.30;
 static const float COVERAGE_EDGE_MIN = 0.10;
 static const float COVERAGE_EDGE_MAX = 0.22;
@@ -81,15 +94,38 @@ void main(uint3 id : SV_DispatchThreadID)
     float2 uv = (float2(id.xy) + 0.5) / resolution;
 
     float2 flow = (windDir * windSpeed) * time * FLOW_TIME_SCALE;
+    float2 weatherUv = uv + WEATHER_PATTERN_OFFSET;
 
-    // Separate large weather cells from a weak secondary breakup. The old
-    // single FBM value was used directly as coverage and produced one broad,
-    // connected cloud sheet. A thresholded macro field creates distinct cloud
-    // groups with clear sky between them.
-    float macroNoise = saturate(fbm((uv + flow) * noiseScale) * FBM_NORMALIZATION);
-    float2 detailUv = uv * float2(1.37, 0.91) + flow * 1.31 + float2(0.19, 0.43);
-    float detailNoise = saturate(fbm(detailUv * noiseScale * 2.35) * FBM_NORMALIZATION);
-    float weatherSignal = lerp(macroNoise, detailNoise, MACRO_DETAIL_BLEND);
+    // Domain-warp a low-frequency front so large cloud banks do not follow
+    // obvious circular FBM contours.
+    float2 baseWeatherUv = weatherUv + flow;
+    float2 warpNoise = float2(
+        fbm((baseWeatherUv + float2(0.17, 0.31))
+            * noiseScale * WEATHER_WARP_SCALE),
+        fbm((baseWeatherUv + float2(0.63, 0.11))
+            * noiseScale * WEATHER_WARP_SCALE));
+    warpNoise = saturate(warpNoise * FBM_NORMALIZATION);
+    float2 warpedWeatherUv = baseWeatherUv
+                           + (warpNoise - 0.5) * WEATHER_WARP_STRENGTH;
+
+    // HZD-style hierarchy: broad fronts govern placement, medium cells form
+    // distinct cloud groups, and the smallest field only breaks their edges.
+    float macroNoise = saturate(
+        fbm(warpedWeatherUv * noiseScale * WEATHER_FRONT_SCALE)
+        * FBM_NORMALIZATION);
+    float2 clusterUv = warpedWeatherUv * float2(1.19, 0.87)
+                     + float2(0.41, 0.23);
+    float clusterNoise = saturate(
+        fbm(clusterUv * noiseScale * WEATHER_CLUSTER_SCALE)
+        * FBM_NORMALIZATION);
+    float2 detailUv = warpedWeatherUv * float2(0.91, 1.31)
+                    + float2(0.19, 0.43);
+    float detailNoise = saturate(
+        fbm(detailUv * noiseScale * WEATHER_BOUNDARY_SCALE)
+        * FBM_NORMALIZATION);
+    float weatherSignal = macroNoise * WEATHER_FRONT_WEIGHT
+                        + clusterNoise * WEATHER_CLUSTER_WEIGHT
+                        + detailNoise * WEATHER_BOUNDARY_WEIGHT;
 
     float tCov = saturate(weatherT);
     float tType = saturate(weatherT);
@@ -108,7 +144,14 @@ float requestedType = saturate(lerp(sunnyType, rainyType, tType)
     float edgeWidth = lerp(COVERAGE_EDGE_MIN,
                            COVERAGE_EDGE_MAX,
                            requestedCoverage);
-    float placement = smoothstep(threshold, threshold + edgeWidth, weatherSignal);
+    // Close broad clear-sky holes only after precipitation begins. The 3D
+    // Perlin-Worley field still erodes the rain layer, so it does not become a
+    // featureless slab; this only prevents weather-map-sized blue openings.
+    float placementThreshold = threshold
+                             - tRain * RAIN_COVERAGE_THRESHOLD_BIAS;
+    float placement = smoothstep(placementThreshold,
+                                 placementThreshold + edgeWidth,
+                                 weatherSignal);
 
     // Preserve a small amount of irregularity without rejoining neighbouring
     // cells. noiseAmp remains part of the existing CPU/UI data contract.
@@ -122,8 +165,9 @@ float requestedType = saturate(lerp(sunnyType, rainyType, tType)
     // when viewed at grazing angles.
 float cellCore = smoothstep(0.08, 0.84, placement);
 float ctype = lerp(0.26, requestedType, cellCore);
-float typeVariation = (macroNoise - 0.5) * 0.22
-                    + (detailNoise - 0.5) * 0.08;
+float typeVariation = (clusterNoise - 0.5) * 0.24
+                    + (macroNoise - 0.5) * 0.12
+                    + (detailNoise - 0.5) * 0.04;
     ctype = saturate(ctype + typeVariation * lerp(0.25, 1.0, cellCore));
 
     // Store actual local coverage rather than a binary placement mask. The
@@ -136,7 +180,14 @@ float typeVariation = (macroNoise - 0.5) * 0.22
     }
     else
     {
-        rain *= smoothstep(0.35, 0.72, placement);
+        float rainMask = smoothstep(0.35, 0.72, placement);
+        // At full Rainy, precipitation represents a connected storm system.
+        // Keep spatial variation, but do not let weak placement cells disable
+        // the rain-only density floor and reopen large blue-sky holes.
+        rainMask = lerp(rainMask,
+                        max(rainMask, RAIN_FIELD_FLOOR),
+                        tRain);
+        rain *= rainMask;
         coverage = max(coverage, rain * requestedCoverage);
     }
 

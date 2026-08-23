@@ -38,121 +38,44 @@
 // -------------------- ----- ------ -------- -------- ------- ------
 // no Output
 cs_5_0
-dcl_globalFlags refactoringAllowed | skipOptimization
+dcl_globalFlags refactoringAllowed
 dcl_constantbuffer CB0[2], immediateIndexed
 dcl_resource_texture2d (float,float,float,float) t0
 dcl_uav_typed_texture2d (float,float,float,float) u0
 dcl_input vThreadID.xy
-dcl_temps 5
+dcl_temps 4
 dcl_thread_group 8, 8, 1
-//
-// Initial variable locations:
-//   vThreadID.x <- id.x; vThreadID.y <- id.y; vThreadID.z <- id.z
-//
-#line 20 "D:\zed AI ver\HLSL\Ripple\RippleSim_CS.hlsl"
 resinfo_indexable(texture2d)(float,float,float,float)_uint r0.xy, l(0), u0.xyzw
-mov r0.x, r0.x  // r0.x <- w
-mov r0.y, r0.y  // r0.y <- h
-
-#line 23
-uge r0.z, vThreadID.x, r0.x
-uge r0.w, vThreadID.y, r0.y
+uge r0.zw, vThreadID.xxxy, r0.xxxy
 or r0.z, r0.w, r0.z
 if_nz r0.z
-
-#line 24
   ret 
 endif 
-
-#line 30
 mov r1.xy, vThreadID.xyxx
-mov r1.zw, l(0,0,0,0)
-ld_indexable(texture2d)(float,float,float,float) r0.zw, r1.xyzw, t0.zwxy
-mov r0.zw, r0.zzzw  // r0.z <- c0.x; r0.w <- c0.y
-
-#line 31
-mov r0.z, r0.z  // r0.z <- hC
-
-#line 32
-mov r0.w, r0.w  // r0.w <- vC
-
-#line 35
-mov r1.x, vThreadID.x
-ineg r1.y, l(1)
-iadd r1.x, r1.y, r1.x
-imax r1.x, r1.x, l(0)  // r1.x <- l.x
-mov r1.y, vThreadID.y  // r1.y <- l.y
-
-#line 36
-mov r2.x, l(1)
-iadd r2.x, r2.x, vThreadID.x
-mov r2.y, l(1)
-ineg r2.y, r2.y
-iadd r0.x, r0.x, r2.y
-umin r2.x, r0.x, r2.x  // r2.x <- r.x
-mov r2.y, vThreadID.y  // r2.y <- r.y
-
-#line 37
-mov r0.x, vThreadID.y
-ineg r3.x, l(1)
-iadd r0.x, r0.x, r3.x
-imax r3.y, r0.x, l(0)  // r3.y <- t.y
-mov r3.x, vThreadID.x  // r3.x <- t.x
-
-#line 38
-mov r0.x, l(1)
-iadd r0.x, r0.x, vThreadID.y
-mov r4.x, l(1)
-ineg r4.x, r4.x
-iadd r0.y, r0.y, r4.x
-umin r4.y, r0.y, r0.x  // r4.y <- b.y
-mov r4.x, vThreadID.x  // r4.x <- b.x
-
-#line 41
-mov r1.zw, l(0,0,0,0)
-ld_indexable(texture2d)(float,float,float,float) r0.x, r1.xyzw, t0.xyzw
-mov r0.x, r0.x  // r0.x <- hL
-
-#line 42
-mov r2.zw, l(0,0,0,0)
-ld_indexable(texture2d)(float,float,float,float) r0.y, r2.xyzw, t0.yxzw
-mov r0.y, r0.y  // r0.y <- hR
-
-#line 43
-mov r3.zw, l(0,0,0,0)
-ld_indexable(texture2d)(float,float,float,float) r1.x, r3.xyzw, t0.xyzw
-mov r1.x, r1.x  // r1.x <- hT
-
-#line 44
-mov r4.zw, l(0,0,0,0)
-ld_indexable(texture2d)(float,float,float,float) r1.y, r4.xyzw, t0.yxzw
-mov r1.y, r1.y  // r1.y <- hB
-
-#line 47
+mov r1.z, l(0)
+ld_indexable(texture2d)(float,float,float,float) r0.zw, r1.xyzz, t0.zwxy
+iadd r2.xyzw, vThreadID.xxyy, l(-1, 1, -1, 1)
+iadd r0.xy, r0.xyxx, l(-1, -1, 0, 0)
+imax r3.xy, r2.xzxx, l(0, 0, 0, 0)
+umin r2.xy, r0.xyxx, r2.ywyy
+mov r3.zw, r1.yyyz
+ld_indexable(texture2d)(float,float,float,float) r0.x, r3.xzww, t0.xyzw
+mov r2.zw, r3.zzzw
+ld_indexable(texture2d)(float,float,float,float) r0.y, r2.xzww, t0.yxzw
+mov r1.w, r3.y
+ld_indexable(texture2d)(float,float,float,float) r1.y, r1.xwzz, t0.yxzw
+mov r2.xzw, r1.xxzz
+ld_indexable(texture2d)(float,float,float,float) r1.x, r2.xyzw, t0.xyzw
 add r0.x, r0.y, r0.x
-add r0.x, r1.x, r0.x
 add r0.x, r1.y, r0.x
-mul r0.y, r0.z, l(4.000000)
-mov r0.y, -r0.y
-add r0.x, r0.y, r0.x  // r0.x <- lap
-
-#line 51
+add r0.x, r1.x, r0.x
+mad r0.x, -r0.z, l(4.000000), r0.x
 mul r0.y, cb0[0].w, cb0[0].w
 mul r0.y, r0.y, cb0[0].z
-mul r0.x, r0.x, r0.y
-add r0.x, r0.x, r0.w
-mul r0.y, cb0[0].z, cb0[1].x
-mov r0.y, -r0.y
-add r0.y, r0.y, l(1.000000)
-mul r1.y, r0.y, r0.x  // r1.y <- vN
-
-#line 55
-mul r0.x, r1.y, cb0[0].z
-add r1.xzw, r0.xxxx, r0.zzzz  // r1.w <- hN
-
-#line 58
+mad r0.x, r0.y, r0.x, r0.w
+mad r0.y, -cb0[1].x, cb0[0].z, l(1.000000)
+mul r1.y, r0.y, r0.x
+mad r1.xzw, r1.yyyy, cb0[0].zzzz, r0.zzzz
 store_uav_typed u0.xyzw, vThreadID.xyyy, r1.xyzw
-
-#line 59
 ret 
-// Approximately 69 instruction slots used
+// Approximately 33 instruction slots used

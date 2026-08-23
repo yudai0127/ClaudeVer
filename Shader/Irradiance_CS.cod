@@ -24,303 +24,125 @@
 // -------------------- ----- ------ -------- -------- ------- ------
 // no Output
 cs_5_0
-dcl_globalFlags refactoringAllowed | skipOptimization
+dcl_globalFlags refactoringAllowed
 dcl_sampler s0, mode_default
 dcl_resource_texturecube (float,float,float,float) t0
 dcl_uav_typed_texture2darray (float,float,float,float) u0
 dcl_input vThreadID.xyz
-dcl_temps 9
+dcl_temps 6
 dcl_thread_group 8, 8, 1
-//
-// Initial variable locations:
-//   vThreadID.x <- dispatchID.x; vThreadID.y <- dispatchID.y; vThreadID.z <- dispatchID.z
-//
-#line 6 "D:\zed AI ver\HLSL\IBL\Irradiance_CS.hlsl"
-mov r0.x, l(3.141593)  // r0.x <- PI
-
-#line 8
-mov r0.y, l(256)  // r0.y <- NUM_SAMPLES
-
-#line 85
-resinfo_indexable(texture2darray)(float,float,float,float)_uint r0.zw, l(0), u0.zwxy
-mov r0.z, r0.z  // r0.z <- width
-mov r0.w, r0.w  // r0.w <- height
-
-#line 88
-nop 
-mov r1.xy, vThreadID.xyxx
-mov r0.z, r0.z
-mov r0.w, r0.w
-
-#line 48
-utof r1.xy, r1.xyxx
-add r1.xy, r1.xyxx, l(0.500000, 0.500000, 0.000000, 0.000000)
-utof r0.zw, r0.zzzw
-div r0.zw, r1.xxxy, r0.zzzw  // r0.z <- uv.x; r0.w <- uv.y
-
-#line 49
-mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 2.000000, 2.000000)
-mov r1.xy, l(-1.000000,-1.000000,-0.000000,-0.000000)
-add r1.xz, r0.zzwz, r1.xxyx  // r1.x <- ndc.x; r1.z <- ndc.y
-
-#line 50
-mov r1.z, -r1.z
-
-#line 53
+resinfo_indexable(texture2darray)(float,float,float,float)_uint r0.xy, l(0), u0.xyzw
+utof r0.zw, vThreadID.xxxy
+add r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.500000, 0.500000)
+utof r0.xy, r0.xyxx
+div r0.xy, r0.zwzz, r0.xyxx
+mad r0.xz, r0.xxyx, l(2.000000, 0.000000, 2.000000, 0.000000), l(-1.000000, 0.000000, -1.000000, 0.000000)
 switch vThreadID.z
-
-#line 55
   case l(0)
-
-#line 56
-  mov r1.y, -r1.x
-  mov r1.x, l(1.000000)
-  dp3 r0.z, r1.xyzx, r1.xyzx
-  rsq r0.z, r0.z
-  mul r2.xyz, r0.zzzz, r1.xzyx  // r2.x <- dir.x; r2.y <- dir.y; r2.z <- dir.z
-
-#line 57
-  break   // r1.x <- ndc.x
-
-#line 58
-  case l(1)
-
-#line 59
-  mov r1.y, l(-1.000000)
-  mov r1.w, r1.z
-  dp3 r0.z, r1.xywx, r1.xywx
-  rsq r0.z, r0.z
-  mul r2.xyz, r0.zzzz, r1.ywxy  // r2.x <- dir.x; r2.y <- dir.y; r2.z <- dir.z
-
-#line 60
-  break 
-
-#line 61
-  case l(2)
-
-#line 62
-  mov r1.y, l(1.000000)
-  dp3 r0.z, r1.xyzx, r1.xyzx
-  rsq r0.z, r0.z
-  mul r2.xyz, r0.zzzz, r1.xyzx  // r2.x <- dir.x; r2.y <- dir.y; r2.z <- dir.z
-
-#line 63
-  break 
-
-#line 64
-  case l(3)
-
-#line 65
-  mov r1.y, -r1.z
-  mov r1.z, l(-1.000000)
-  dp3 r0.z, r1.xyzx, r1.xyzx
-  rsq r0.z, r0.z
-  mul r2.xyz, r0.zzzz, r1.xzyx  // r2.x <- dir.x; r2.y <- dir.y; r2.z <- dir.z
-
-#line 66
-  break   // r1.z <- ndc.y
-
-#line 67
-  case l(4)
-
-#line 68
-  mov r1.y, l(1.000000)
-  dp3 r0.z, r1.xyzx, r1.xyzx
-  rsq r0.z, r0.z
-  mul r2.xyz, r0.zzzz, r1.xzyx  // r2.x <- dir.x; r2.y <- dir.y; r2.z <- dir.z
-
-#line 69
-  break 
-
-#line 70
-  case l(5)
-
-#line 71
-  mov r1.x, -r1.x
-  mov r1.y, l(-1.000000)
-  dp3 r0.z, r1.xyzx, r1.xyzx
-  rsq r0.z, r0.z
-  mul r2.xyz, r0.zzzz, r1.xzyx  // r2.x <- dir.x; r2.y <- dir.y; r2.z <- dir.z
-
-#line 72
-  break   // r1.x <- ndc.x
-
-#line 73
-  default 
-
-#line 74
-  itof r2.xyz, l(1, 0, 0, 0)  // r2.x <- dir.x; r2.y <- dir.y; r2.z <- dir.z
-
-#line 75
-  break 
-
-#line 76
-endswitch   // r2.x <- dir.x; r2.y <- dir.y; r2.z <- dir.z
-
-#line 77
-mov r2.xyz, r2.xyzx  // r2.x <- <UVToDirection return value>.x; r2.y <- <UVToDirection return value>.y; r2.z <- <UVToDirection return value>.z
-
-#line 88
-mov r2.xyz, r2.xyzx  // r2.x <- N.x; r2.y <- N.y; r2.z <- N.z
-
-#line 90
-mov r1.xyz, l(0,0,0,0)  // r1.x <- irradiance.x; r1.y <- irradiance.y; r1.z <- irradiance.z
-
-#line 92
-mov r0.z, l(0)  // r0.z <- i
-mov r3.xyz, r1.xyzx  // r3.x <- irradiance.x; r3.y <- irradiance.y; r3.z <- irradiance.z
-mov r0.w, r0.z  // r0.w <- i
-loop 
-  ult r1.w, r0.w, r0.y
-  breakc_z r1.w
-
-#line 94
-  nop 
-  mov r1.w, r0.w
-  mov r2.w, r0.y
-
-#line 14
-  mov r1.w, r1.w  // r1.w <- bits
-
-#line 15
-  mov r3.w, l(16)
-  ishl r3.w, r1.w, r3.w
-  mov r4.x, l(16)
-  ushr r4.x, r1.w, r4.x
-  iadd r3.w, r3.w, r4.x  // r3.w <- bits
-
-#line 16
-  and r4.x, r3.w, l(0x55555555)
-  mov r4.y, l(1)
-  ishl r4.x, r4.x, r4.y
-  and r3.w, r3.w, l(0xaaaaaaaa)
-  mov r4.y, l(1)
-  ushr r3.w, r3.w, r4.y
-  iadd r3.w, r3.w, r4.x  // r3.w <- bits
-
-#line 17
-  and r4.x, r3.w, l(0x33333333)
-  mov r4.y, l(2)
-  ishl r4.x, r4.x, r4.y
-  and r3.w, r3.w, l(0xcccccccc)
-  mov r4.y, l(2)
-  ushr r3.w, r3.w, r4.y
-  iadd r3.w, r3.w, r4.x  // r3.w <- bits
-
-#line 18
-  and r4.x, r3.w, l(0x0f0f0f0f)
-  mov r4.y, l(4)
-  ishl r4.x, r4.x, r4.y
-  and r3.w, r3.w, l(0xf0f0f0f0)
-  mov r4.y, l(4)
-  ushr r3.w, r3.w, r4.y
-  iadd r3.w, r3.w, r4.x  // r3.w <- bits
-
-#line 19
-  and r4.x, r3.w, l(0x00ff00ff)
-  mov r4.y, l(8)
-  ishl r4.x, r4.x, r4.y
-  and r3.w, r3.w, l(0xff00ff00)
-  mov r4.y, l(8)
-  ushr r3.w, r3.w, r4.y
-  iadd r3.w, r3.w, r4.x  // r3.w <- bits
-
-#line 22
-  utof r3.w, r3.w
-  div r4.x, r3.w, l(4294967296.000000)  // r4.x <- <Hammersley return value>.x
-  utof r1.w, r1.w
-  utof r2.w, r2.w
-  div r4.y, r1.w, r2.w  // r4.y <- <Hammersley return value>.y
-
-#line 94
-  mov r4.xy, r4.xyxx  // r4.x <- r.x; r4.y <- r.y
-
-#line 95
-  nop 
-  mov r4.xy, r4.xyxx
-  mov r5.xyz, r2.xyzx
-
-#line 29
-  mov r1.w, -r5.y
-  max r1.w, r1.w, r5.y
-  lt r1.w, r1.w, l(0.999000)
-  itof r6.xyz, l(0, 0, 1, 0)
-  itof r7.xyz, l(0, 1, 0, 0)
-  movc r6.xyz, r1.wwww, r6.xyzx, r7.xyzx  // r6.x <- up.z; r6.y <- up.x; r6.z <- up.y
-
-#line 30
-  mul r7.xyz, r5.zxyz, r6.zxyz
-  mul r6.xyz, r5.yzxy, r6.xyzx
-  mov r6.xyz, -r6.xyzx
-  add r6.xyz, r6.xyzx, r7.xyzx
-  dp3 r1.w, r6.xyzx, r6.xyzx
+  mov r2.x, l(1.000000)
+  mov r2.yz, -r0.zzxz
+  dp3 r1.w, r2.xyzx, r2.xyzx
   rsq r1.w, r1.w
-  mul r6.xyz, r1.wwww, r6.xyzx  // r6.x <- T.x; r6.y <- T.y; r6.z <- T.z
-
-#line 31
-  mul r7.xyz, r5.yzxy, r6.zxyz
-  mul r8.xyz, r5.zxyz, r6.yzxy
-  mov r8.xyz, -r8.xyzx
-  add r7.xyz, r7.xyzx, r8.xyzx  // r7.x <- B.x; r7.y <- B.y; r7.z <- B.z
-
-#line 34
-  mul r1.w, r4.x, l(6.283185)  // r1.w <- phi
-
-#line 35
-  mov r2.w, -r4.y
-  add r2.w, r2.w, l(1.000000)
-  sqrt r2.w, r2.w  // r2.w <- cosTheta
-
-#line 36
-  sqrt r3.w, r4.y  // r3.w <- sinTheta
-
-#line 39
-  sincos null, r4.x, r1.w
-  mul r4.x, r3.w, r4.x  // r4.x <- L_tangent.x
-  sincos r1.w, null, r1.w
-  mul r1.w, r3.w, r1.w  // r1.w <- L_tangent.y
-  mov r2.w, r2.w  // r2.w <- L_tangent.z
-
-#line 42
-  mul r4.xyz, r4.xxxx, r6.xyzx
-  mul r6.xyz, r1.wwww, r7.xyzx
-  add r4.xyz, r4.xyzx, r6.xyzx
-  mul r5.xyz, r2.wwww, r5.xyzx
-  add r4.xyz, r4.xyzx, r5.xyzx  // r4.x <- <ImportanceSampleCos return value>.x; r4.y <- <ImportanceSampleCos return value>.y; r4.z <- <ImportanceSampleCos return value>.z
-
-#line 95
-  mov r4.xyz, r4.xyzx  // r4.x <- L.x; r4.y <- L.y; r4.z <- L.z
-
-#line 97
-  dp3 r1.w, r2.xyzx, r4.xyzx
-  max r1.w, r1.w, l(0.000000)
-  min r1.w, r1.w, l(1.000000)  // r1.w <- NdotL
-
-#line 98
-  lt r1.w, l(0.000000), r1.w
-  if_nz r1.w
-
-#line 100
-    itof r1.w, l(0)
-    sample_l_indexable(texturecube)(float,float,float,float) r4.xyz, r4.xyzx, t0.xyzw, s0, r1.w
+  mul r1.xyz, r1.wwww, r2.xyzx
+  break 
+  case l(1)
+  mov r0.y, l(-1.000000)
+  mov r0.w, -r0.z
+  mul r2.xyz, r0.yzxy, l(1.000000, -1.000000, 1.000000, 0.000000)
+  dp3 r0.w, r0.ywxy, r2.xyzx
+  rsq r0.w, r0.w
+  mul r1.xyz, r0.wwww, r2.xyzx
+  break 
+  case l(2)
+  mul r2.xz, r0.xxzx, l(1.000000, 0.000000, -1.000000, 0.000000)
+  mov r2.y, l(1.000000)
+  dp3 r0.w, r2.xyzx, r2.xyzx
+  rsq r0.w, r0.w
+  mul r1.xyz, r0.wwww, r2.xyzx
+  break 
+  case l(3)
+  mov r0.y, l(-1.000000)
+  dp3 r0.w, r0.xyzx, r0.xyzx
+  rsq r0.w, r0.w
+  mul r1.xyz, r0.wwww, r0.xyzx
+  break 
+  case l(4)
+  mul r2.xy, r0.xzxx, l(1.000000, -1.000000, 0.000000, 0.000000)
+  mov r2.z, l(1.000000)
+  dp3 r0.y, r2.xyzx, r2.xyzx
+  rsq r0.y, r0.y
+  mul r1.xyz, r0.yyyy, r2.xyzx
+  break 
+  case l(5)
+  mov r0.xy, -r0.xzxx
+  mov r0.z, l(-1.000000)
+  dp3 r0.w, r0.xyzx, r0.xyzx
+  rsq r0.w, r0.w
+  mul r1.xyz, r0.wwww, r0.xyzx
+  break 
+  default 
+  mov r1.xyz, l(1.000000,0,0,0)
+  break 
+endswitch 
+lt r0.x, |r1.y|, l(0.999000)
+movc r0.xyz, r0.xxxx, l(0,0,1.000000,0), l(0,1.000000,0,0)
+mul r2.xyz, r1.yzxy, r0.xyzx
+mad r0.xyz, r0.zxyz, r1.zxyz, -r2.xyzx
+dp3 r0.w, r0.xyzx, r0.xyzx
+rsq r0.w, r0.w
+mul r0.xyz, r0.wwww, r0.xyzx
+mul r2.xyz, r0.yzxy, r1.zxyz
+mad r2.xyz, r1.yzxy, r0.zxyz, -r2.xyzx
+mov r3.xyzw, l(0,0,0,0)
+loop 
+  uge r0.w, r3.w, l(256)
+  breakc_nz r0.w
+  ushr r0.w, r3.w, l(16)
+  bfi r1.w, l(16), l(16), r3.w, r0.w
+  ishl r0.w, r0.w, l(1)
+  bfi r0.w, l(16), l(17), r3.w, r0.w
+  and r0.w, r0.w, l(0xaaaaaaaa)
+  ushr r1.w, r1.w, l(1)
+  and r1.w, r1.w, l(0x55555555)
+  iadd r0.w, r0.w, r1.w
+  ishl r1.w, r0.w, l(2)
+  and r1.w, r1.w, l(0xcccccccc)
+  ushr r0.w, r0.w, l(2)
+  and r0.w, r0.w, l(0x33333333)
+  iadd r0.w, r0.w, r1.w
+  ishl r1.w, r0.w, l(4)
+  and r1.w, r1.w, l(0xf0f0f0f0)
+  ushr r0.w, r0.w, l(4)
+  and r0.w, r0.w, l(0x0f0f0f0f)
+  iadd r0.w, r0.w, r1.w
+  ishl r1.w, r0.w, l(8)
+  and r1.w, r1.w, l(0xff00ff00)
+  ushr r0.w, r0.w, l(8)
+  and r0.w, r0.w, l(0x00ff00ff)
+  iadd r0.w, r0.w, r1.w
+  utof r0.w, r0.w
+  utof r1.w, r3.w
+  mul r2.w, r1.w, l(0.003906)
+  mul r0.w, r0.w, l(0.000000)
+  mad r1.w, -r1.w, l(0.003906), l(1.000000)
+  sqrt r1.w, r1.w
+  sqrt r2.w, r2.w
+  sincos r4.x, r5.x, r0.w
+  mul r0.w, r2.w, r5.x
+  mul r2.w, r2.w, r4.x
+  mul r4.xyz, r2.wwww, r2.xyzx
+  mad r4.xyz, r0.xyzx, r0.wwww, r4.xyzx
+  mad r4.xyz, r1.xyzx, r1.wwww, r4.xyzx
+  dp3_sat r0.w, r1.xyzx, r4.xyzx
+  lt r0.w, l(0.000000), r0.w
+  if_nz r0.w
+    sample_l_indexable(texturecube)(float,float,float,float) r4.xyz, r4.xyzx, t0.xyzw, s0, l(0.000000)
     add r3.xyz, r3.xyzx, r4.xyzx
-
-#line 101
   endif 
-
-#line 102
-  iadd r0.w, r0.w, l(1)
+  iadd r3.w, r3.w, l(1)
 endloop 
-
-#line 105
-mul r0.xzw, r0.xxxx, r3.xxyz
-utof r0.y, r0.y
-div r0.xyz, r0.xzwx, r0.yyyy  // r0.x <- irradiance.x; r0.y <- irradiance.y; r0.z <- irradiance.z
-
-#line 107
+mul r0.xyz, r3.xyzx, l(0.012272, 0.012272, 0.012272, 0.000000)
 mov r0.w, l(1.000000)
 store_uav_typed u0.xyzw, vThreadID.xyzz, r0.xyzw
-
-#line 108
 ret 
-// Approximately 167 instruction slots used
+// Approximately 114 instruction slots used

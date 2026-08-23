@@ -64,6 +64,10 @@ static const float WEATHER_UV_TIME_SCALE = 0.0015;
 static const float MIN_ALTITUDE_FROM_GROUND = 1.0;
 static const float MIN_HORIZON_DISTANCE = 512.0;
 static const float MAX_WEATHER_MAP_RADIUS = 100000.0;
+// HZD biases the outer weather field toward cumulus from 15 km to the edge of
+// its 35 km cloud radius so distant banks keep vertical silhouettes.
+static const float DISTANT_CLOUD_TRANSITION_START = 15000.0;
+static const float DISTANT_CLOUD_TRANSITION_END = 35000.0;
 // AtmosphereConstants stores planetary distances in kilometres, while the
 // scene camera, cloud altitudes and noise domains use metres.
 static const float METERS_PER_KILOMETRE = 1000.0;
@@ -115,6 +119,7 @@ static const float TRANSMITTANCE_EARLY_OUT = 0.01;
 
 static const float RAIN_ABSORPTION_MIN = 0.10;
 static const float RAIN_ABSORPTION_RAININESS_SCALE = 1.35;
+static const float RAIN_CLOUD_COVERAGE_FLOOR = 0.90;
 static const float SUNNY_CLOUD_ABSORPTION = 0.16;
 static const float DIRECT_OCCLUSION_MIN = 0.42;
 static const float AMBIENT_OCCLUSION_STORM_MIN = 0.62;
@@ -294,7 +299,23 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
     // continuous is essential: a binary mask forces every visible cell to the
     // same maximum density and produces giant vertical columns.
     float cloud_coverage = saturate(weather_data.r * cloud_coverage_scale);
+    // Rain systems form a connected low-frequency deck. Keep the authored
+    // sunny coverage untouched, but prevent the base Perlin-Worley signal from
+    // opening weather-map-sized holes once precipitation is present.
+    float raininess = saturate(weather_data.g);
+    cloud_coverage = max(cloud_coverage,
+                         raininess * RAIN_CLOUD_COVERAGE_FLOOR);
     float cloud_type = saturate(weather_data.b * cloud_type_scale);
+
+    // Preserve the authored coverage map at every distance. Raising every
+    // distant sample to a fixed coverage floor turns a long horizon ray into a
+    // continuous opaque wall. Only bias the height profile toward cumulus; the
+    // existing weather pattern must keep carving clear gaps between masses.
+    float camera_distance_xz = length(sample_point.xz - camera_position.xz);
+    float distant_cloud_bias = smoothstep(DISTANT_CLOUD_TRANSITION_START,
+                                          DISTANT_CLOUD_TRANSITION_END,
+                                          camera_distance_xz);
+    cloud_type = lerp(cloud_type, 1.0, distant_cloud_bias);
 
     // Horizon-style base signal: Perlin provides connected masses while the
     // packed Worley octaves erode them into broad, rounded billows.
@@ -366,9 +387,18 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
         float erosion_noise = lerp(1.0 - high_frequency_fbm,
                                    high_frequency_fbm,
                                    detail_height_blend);
+        float erosion_strength = lerp(0.035, 0.11,
+                                      smoothstep(0.08, 0.90,
+                                                 height_fraction));
+        // The presentation explicitly reduces density at the cloud base. Add
+        // a short, stronger erosion band there so the visible underside follows
+        // the 3D detail field instead of exposing the spherical layer boundary.
+        float base_erosion_strength = lerp(0.20, 0.0,
+                                           smoothstep(0.02, 0.22,
+                                                      height_fraction));
         float erosion_threshold = erosion_noise
-                                * lerp(0.035, 0.11,
-                                       smoothstep(0.08, 0.90, height_fraction));
+                                * max(erosion_strength,
+                                      base_erosion_strength);
         final_cloud = remap(final_cloud,
                             erosion_threshold,
                             1.0,

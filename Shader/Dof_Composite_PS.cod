@@ -28,49 +28,20 @@
 // SV_Target                0   xyzw        0   TARGET   float   xyzw
 //
 ps_5_0
-dcl_globalFlags refactoringAllowed | skipOptimization
+dcl_globalFlags refactoringAllowed
 dcl_sampler s4, mode_default
 dcl_resource_texture2d (float,float,float,float) t0
 dcl_resource_texture2d (float,float,float,float) t2
 dcl_resource_texture2d (float,float,float,float) t3
 dcl_input_ps linear v1.xy
 dcl_output o0.xyzw
-dcl_temps 3
-//
-// Initial variable locations:
-//   v0.x <- i.position.x; v0.y <- i.position.y; v0.z <- i.position.z; v0.w <- i.position.w; 
-//   v1.x <- i.texcoord.x; v1.y <- i.texcoord.y; 
-//   o0.x <- <main return value>.x; o0.y <- <main return value>.y; o0.z <- <main return value>.z; o0.w <- <main return value>.w
-//
-#line 29 "D:\zed AI ver\HLSL\Dof\Dof_Composite_PS.hlsl"
-itof r0.x, l(0)
-sample_l_indexable(texture2d)(float,float,float,float) r0.xyz, v1.xyxx, t0.xyzw, s4, r0.x
-mov r0.xyz, r0.xyzx  // r0.x <- sharp.x; r0.y <- sharp.y; r0.z <- sharp.z
-
-#line 33
-itof r0.w, l(0)
-sample_l_indexable(texture2d)(float,float,float,float) r0.w, v1.xyxx, t2.xyzw, s4, r0.w
-mov r0.w, r0.w  // r0.w <- coc
-
-#line 37
-mov r1.x, -r0.w
-max r0.w, r0.w, r1.x
-max r0.w, r0.w, l(0.000000)
-min r0.w, r0.w, l(1.000000)  // r0.w <- blurAmount
-
-#line 40
-itof r1.x, l(0)
-sample_l_indexable(texture2d)(float,float,float,float) r1.xyz, v1.xyxx, t3.xyzw, s4, r1.x
-mov r1.xyz, r1.xyzx  // r1.x <- blur.x; r1.y <- blur.y; r1.z <- blur.z
-
-#line 43
-mov r2.xyz, -r0.xyzx
-add r1.xyz, r1.xyzx, r2.xyzx
-mul r1.xyz, r0.wwww, r1.xyzx
-add r0.xyz, r0.xyzx, r1.xyzx  // r0.x <- outCol.x; r0.y <- outCol.y; r0.z <- outCol.z
-
-#line 45
-itof o0.w, l(1)
-mov o0.xyz, r0.xyzx
+dcl_temps 2
+sample_l_indexable(texture2d)(float,float,float,float) r0.x, v1.xyxx, t2.wxyz, s4, l(0.000000)
+min r0.x, |r0.x|, l(1.000000)
+sample_l_indexable(texture2d)(float,float,float,float) r0.yzw, v1.xyxx, t3.wxyz, s4, l(0.000000)
+sample_l_indexable(texture2d)(float,float,float,float) r1.xyz, v1.xyxx, t0.xyzw, s4, l(0.000000)
+add r0.yzw, r0.yyzw, -r1.xxyz
+mad o0.xyz, r0.xxxx, r0.yzwy, r1.xyzx
+mov o0.w, l(1.000000)
 ret 
-// Approximately 20 instruction slots used
+// Approximately 8 instruction slots used

@@ -40,136 +40,62 @@
 // -------------------- ----- ------ -------- -------- ------- ------
 // no Output
 cs_5_0
-dcl_globalFlags refactoringAllowed | skipOptimization
+dcl_globalFlags refactoringAllowed
 dcl_constantbuffer CB0[2], immediateIndexed
 dcl_uav_typed_texture2d (float,float,float,float) u0
-dcl_temps 6
+dcl_temps 5
 dcl_thread_group 1, 1, 1
-//
-// Initial variable locations:
-//   vThreadID.x <- id.x; vThreadID.y <- id.y; vThreadID.z <- id.z
-//
-#line 17 "D:\zed AI ver\HLSL\Ripple\RippleInject_CS.hlsl"
 resinfo_indexable(texture2d)(float,float,float,float)_uint r0.xy, l(0), u0.xyzw
-mov r0.x, r0.x  // r0.x <- w
-mov r0.y, r0.y  // r0.y <- h
-
-#line 19
 max r0.z, cb0[0].w, l(0.000000)
-ftoi r0.z, r0.z  // r0.z <- rad
-
-#line 22
+ftoi r0.z, r0.z
 if_z r0.z
-
-#line 25
-  umax r0.w, cb0[0].x, l(0)
-  mov r1.x, l(1)
-  ineg r1.x, r1.x
-  iadd r1.x, r0.x, r1.x
-  umin r1.x, r0.w, r1.x  // r1.x <- p.x
-  umax r0.w, cb0[0].y, l(0)
-  mov r2.x, l(1)
-  ineg r2.x, r2.x
-  iadd r2.x, r0.y, r2.x
-  umin r1.yzw, r0.wwww, r2.xxxx  // r1.w <- p.y
-
-#line 29
-  ld_uav_typed_indexable(texture2d)(float,float,float,float) r2.xy, r1.xwww, u0.xyzw  // r2.x <- v.x
-  mov r2.xy, r2.xyxx  // r2.y <- v.y
-
-#line 30
-  add r2.z, r2.y, cb0[0].z  // r2.z <- v.y
-
-#line 31
-  store_uav_typed u0.xyzw, r1.xyzw, r2.xzxx
-
-#line 32
+  iadd r1.xyzw, r0.xyyy, l(-1, -1, -1, -1)
+  umin r1.xyzw, r1.xyzw, cb0[0].xyyy
+  ld_uav_typed_indexable(texture2d)(float,float,float,float) r2.xy, r1.xwww, u0.xyzw
+  add r3.y, r2.y, cb0[0].z
+  mov r3.xzw, r2.xxxx
+  store_uav_typed u0.xyzw, r1.xyzw, r3.xyzw
   ret 
-
-#line 33
 endif 
-
-#line 36
-mov r1.xyzw, cb0[0].xyyy  // r1.x <- c.x; r1.w <- c.y
-
-#line 38
-ineg r0.w, r0.z  // r0.w <- dy
-mov r2.x, r0.w  // r2.x <- dy
+ineg r0.w, r0.z
+mov r1.y, r0.w
 loop 
-  ige r2.y, r0.z, r2.x
-  breakc_z r2.y
-
-#line 40
-  ineg r2.y, r0.z  // r2.y <- dx
-  mov r3.x, r2.y  // r3.x <- dx
+  ilt r1.z, r0.z, r1.y
+  breakc_nz r1.z
+  mov r1.z, r0.w
   loop 
-    ige r2.z, r0.z, r3.x
-    breakc_z r2.z
-
-#line 42
-    mov r3.yzw, r2.xxxx
-    iadd r4.xyzw, r1.xyzw, r3.xyzw  // r4.x <- p.x; r4.w <- p.y
-
-#line 45
-    uge r2.z, r4.x, r0.x
-    uge r2.w, r4.w, r0.y
-    or r2.z, r2.w, r2.z
-    if_nz r2.z
-
-#line 46
-      iadd r3.x, r3.x, l(1)
+    ilt r1.w, r0.z, r1.z
+    breakc_nz r1.w
+    mov r1.x, r1.z
+    iadd r2.xyzw, r1.xyyy, cb0[0].xyyy
+    uge r3.xy, r2.xwxx, r0.xyxx
+    or r1.w, r3.y, r3.x
+    if_nz r1.w
+      iadd r1.w, r1.z, l(1)
+      mov r1.z, r1.w
       continue 
     endif 
-
-#line 48
-    itof r5.x, r3.x
-    itof r5.y, r2.x
-    dp2 r2.z, r5.xyxx, r5.xyxx
-    sqrt r2.z, r2.z  // r2.z <- d
-
-#line 49
-    lt r2.w, cb0[0].w, r2.z
-    if_nz r2.w
-
-#line 50
-      iadd r3.x, r3.x, l(1)
+    itof r1.xw, r1.xxxy
+    dp2 r1.x, r1.xwxx, r1.xwxx
+    sqrt r1.x, r1.x
+    lt r1.w, cb0[0].w, r1.x
+    if_nz r1.w
+      iadd r1.w, r1.z, l(1)
+      mov r1.z, r1.w
       continue 
     endif 
-
-#line 53
-    div r2.z, r2.z, cb0[0].w
-    max r2.z, r2.z, l(0.000000)
-    min r2.z, r2.z, l(1.000000)
-    log r2.z, r2.z
-    mul r2.z, r2.z, cb0[1].x
-    exp r2.z, r2.z
-    mov r2.z, -r2.z
-    add r2.z, r2.z, l(1.000000)  // r2.z <- wgt
-
-#line 55
-    mov r4.xyzw, r4.xyzw  // r4.x <- pp.x; r4.w <- pp.y
-
-#line 58
-    ld_uav_typed_indexable(texture2d)(float,float,float,float) r3.yz, r4.xwww, u0.wxyz
-    mov r3.yz, r3.yyzy  // r3.y <- v.x; r3.z <- v.y
-
-#line 59
-    mul r2.z, r2.z, cb0[0].z
-    add r3.w, r2.z, r3.z  // r3.w <- v.y
-
-#line 60
-    store_uav_typed u0.xyzw, r4.xyzw, r3.ywyy
-
-#line 40
-    iadd r3.x, r3.x, l(1)
-
-#line 61
+    div_sat r1.x, r1.x, cb0[0].w
+    log r1.x, r1.x
+    mul r1.x, r1.x, cb0[1].x
+    exp r1.x, r1.x
+    add r1.x, -r1.x, l(1.000000)
+    ld_uav_typed_indexable(texture2d)(float,float,float,float) r3.xy, r2.xwww, u0.xyzw
+    mad r4.y, cb0[0].z, r1.x, r3.y
+    mov r4.xzw, r3.xxxx
+    store_uav_typed u0.xyzw, r2.xyzw, r4.xyzw
+    iadd r1.z, r1.z, l(1)
   endloop 
-
-#line 62
-  iadd r2.x, r2.x, l(1)
+  iadd r1.y, r1.y, l(1)
 endloop 
-
-#line 63
 ret 
-// Approximately 70 instruction slots used
+// Approximately 53 instruction slots used

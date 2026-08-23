@@ -123,11 +123,10 @@ void VolumetricCloud::initialize(ID3D11Device* device, const wchar_t* filename)
 
 	volumetric_cloud_constant_data = {};
 	volumetric_cloud_constant_data.wind_direction = { 1.0f, 0.0f };
-	// This scene uses large artistic world units (ships are scaled by 60).
-	// Keep the base above the harbour and tall terrain, but avoid stretching the
-	// normalized Horizon height profiles through a 22 km shell. A 10 km layer
-	// gives cumulus room to grow without turning weather cells into pillars.
-	volumetric_cloud_constant_data.cloud_altitudes_min_max = { 12000.0f, 22000.0f };
+	// Keep the 10 km layer thickness, but lower it into the initial camera's
+	// upper field of view. At an 8 km base the marked 10-17 degree band reaches
+	// the cloud shell within the existing 50 km view-distance budget.
+	volumetric_cloud_constant_data.cloud_altitudes_min_max = { 8000.0f, 18000.0f };
 	volumetric_cloud_constant_data.wind_speed = 0.02f;
 	volumetric_cloud_constant_data.density_scale = 1.05f;
 	volumetric_cloud_constant_data.cloud_coverage_scale = 0.82f;
@@ -324,11 +323,9 @@ void VolumetricCloud::updateWeatherMap(ID3D11DeviceContext* dc, float weatherT)
 	cb.sunnyType = 0.72f;
 	cb.rainyType = 0.82f;
 
-	// At scale 18 a 256 px weather map gives one cloud cell only about 14
-	// texels, so filtering exposes block-like towers. Broader cells retain clear
-	// gaps but give the 3D Perlin-Worley field enough horizontal room to form
-	// rounded cumulus masses.
-	cb.noiseScale = 10.0f;
+	// Increase the number of independent weather cells while retaining enough
+	// texels per cell for filtering and rounded cloud masses.
+	cb.noiseScale = 16.0f;
 	cb.noiseAmp = 0.22f;
 
 	weather_gen_cb->UploadData<WEATHER_GEN_CB>(dc, 0, cb, /*VS*/ false, /*HS*/ false, /*DS*/ false, /*GS*/ false, /*PS*/ false, /*CS*/ true);

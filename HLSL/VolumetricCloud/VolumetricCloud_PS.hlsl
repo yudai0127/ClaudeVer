@@ -10,12 +10,11 @@ static const float MIN_RAY_MARCH_STEPS = 24.0;
 static const float MAX_RAY_MARCH_STEPS = 128.0;
 static const float TARGET_RAY_STEP_LENGTH = 850.0;
 
-// Keep the expensive cloud field local to the playable scene. A spherical
-// atmosphere intersects nearly horizontal rays hundreds of kilometres away;
-// marching the complete interval made the distant bank look flat and kept the
-// GPU busy even when useful cloud detail was only in the foreground.
-static const float MAX_CLOUD_VIEW_DISTANCE = 110000.0;
-static const float CLOUD_DISTANCE_FADE_START = 75000.0;
+// The scene's cloud layer is scaled far above HZD's 1.5-4 km layer. Extend the
+// visible field conservatively to 50 km, while fading the outer 10 km so the
+// boundary stays hidden without returning to the previous 110 km opaque slab.
+static const float MAX_CLOUD_VIEW_DISTANCE = 50000.0;
+static const float CLOUD_DISTANCE_FADE_START = 40000.0;
 
 static const float HORIZON_VISIBILITY_START_Y = 0.003;
 static const float HORIZON_VISIBILITY_END_Y = 0.055;
