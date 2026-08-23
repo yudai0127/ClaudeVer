@@ -33,13 +33,13 @@ static const float FLOW_TIME_SCALE = 0.02;
 // instead of distributing equal-sized FBM cells uniformly across the sky.
 static const float2 WEATHER_PATTERN_OFFSET = float2(0.07, 0.37);
 static const float WEATHER_FRONT_SCALE = 0.18;
-static const float WEATHER_CLUSTER_SCALE = 0.72;
-static const float WEATHER_BOUNDARY_SCALE = 1.80;
+static const float WEATHER_CLUSTER_SCALE = 1.15;
+static const float WEATHER_BOUNDARY_SCALE = 2.40;
 static const float WEATHER_WARP_SCALE = 0.30;
 static const float WEATHER_WARP_STRENGTH = 0.08;
-static const float WEATHER_FRONT_WEIGHT = 0.55;
-static const float WEATHER_CLUSTER_WEIGHT = 0.35;
-static const float WEATHER_BOUNDARY_WEIGHT = 0.10;
+static const float WEATHER_FRONT_WEIGHT = 0.35;
+static const float WEATHER_CLUSTER_WEIGHT = 0.50;
+static const float WEATHER_BOUNDARY_WEIGHT = 0.15;
 
 static const float PRECIP_START = 0.75;
 static const float RAIN_COVERAGE_THRESHOLD_BIAS = 0.04;
@@ -127,7 +127,10 @@ void main(uint3 id : SV_DispatchThreadID)
                         + clusterNoise * WEATHER_CLUSTER_WEIGHT
                         + detailNoise * WEATHER_BOUNDARY_WEIGHT;
 
-    float tCov = saturate(weatherT);
+    // Coverage grows more slowly than the preset blend. At Cloudy=0.5 a
+    // linear interpolation was already close to a rain-deck coverage and
+    // joined every cloud group into one horizontal band.
+    float tCov = saturate(weatherT * weatherT);
     float tType = saturate(weatherT);
 
     float tRain = saturate((weatherT - PRECIP_START) / (1.0 - PRECIP_START));
@@ -153,22 +156,45 @@ float requestedType = saturate(lerp(sunnyType, rainyType, tType)
                                  placementThreshold + edgeWidth,
                                  weatherSignal);
 
+    // Fair weather is made of separated cloud groups rather than one connected
+    // synoptic deck. Preserve the broad front as a placement guide, then let
+    // the medium-scale field open clear corridors between sunny cumulus cells.
+    // Precipitation progressively removes this separation for a rain deck.
+    float fairWeatherCell = smoothstep(0.44, 0.72, clusterNoise);
+    float fairWeatherSeparation = lerp(0.08, 1.0, fairWeatherCell);
+    placement *= lerp(fairWeatherSeparation, 1.0, tRain);
+
     // Preserve a small amount of irregularity without rejoining neighbouring
     // cells. noiseAmp remains part of the existing CPU/UI data contract.
     float boundaryDetail = (detailNoise - 0.5) * noiseAmp * 0.35;
     placement = saturate(placement + boundaryDetail * placement * (1.0 - placement));
 
-    // HZD uses the weather-map cloud type to select a vertical density
-    // profile. Make that type spatial: a cloud-cell core grows into cumulus,
-    // while its perimeter collapses toward lower stratocumulus. Keeping one
-    // nearly constant type across the whole cell produces a flat cloud slab
-    // when viewed at grazing angles.
-float cellCore = smoothstep(0.08, 0.84, placement);
-float ctype = lerp(0.26, requestedType, cellCore);
-float typeVariation = (clusterNoise - 0.5) * 0.24
-                    + (macroNoise - 0.5) * 0.12
-                    + (detailNoise - 0.5) * 0.04;
-    ctype = saturate(ctype + typeVariation * lerp(0.25, 1.0, cellCore));
+    // HZD stores cloud type independently from coverage. Use the clustered
+    // weather hierarchy to mix low stratus, intermediate stratocumulus and
+    // isolated cumulus cores inside the same front. Driving type mostly from
+    // placement made every occupied texel use nearly the same tall profile.
+    float cellCore = smoothstep(0.16, 0.82, placement);
+    float typeField = clusterNoise * 0.68
+                    + macroNoise * 0.20
+                    + detailNoise * 0.12;
+
+    // Keep the three HZD profiles in deliberately separated ranges. A broad
+    // interpolation around requestedType kept almost every visible sample in
+    // the same stratocumulus/cumulus blend and produced no visible height
+    // variation even though the weather map changed.
+    float middleCloud = smoothstep(0.38, 0.56, typeField);
+    float towerCore = smoothstep(0.58, 0.72, typeField) * cellCore;
+    float lowCloudType = lerp(0.06, 0.18, macroNoise);
+    float middleCloudType = lerp(0.38, 0.52, clusterNoise);
+    float highCloudType = saturate(requestedType + 0.20);
+
+    float ctype = lerp(lowCloudType, middleCloudType, middleCloud);
+    ctype = lerp(ctype, highCloudType, towerCore);
+    ctype = lerp(0.04, ctype, cellCore);
+
+    float typeVariation = (detailNoise - 0.5) * 0.04;
+    ctype = saturate(ctype + typeVariation * cellCore);
+    ctype = lerp(ctype, max(ctype, requestedType), tRain);
 
     // Store actual local coverage rather than a binary placement mask. The
     // volumetric shader uses this value to shift its density threshold.

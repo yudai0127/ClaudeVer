@@ -494,55 +494,67 @@ if_nz r2.w
       mad r26.w, r25.w, l(-2.000000), l(3.000000)
       mul r25.w, r25.w, r25.w
       mul r25.w, r25.w, r26.w
-      add r26.w, -r24.w, l(1.000000)
+      add r26.w, r24.w, l(-0.550000)
+      mul_sat r26.w, r26.w, l(4.000000)
+      mad r27.y, r26.w, l(-2.000000), l(3.000000)
+      mul r26.w, r26.w, r26.w
+      mul r26.w, r26.w, r27.y
+      max r27.y, r24.w, l(0.780000)
+      mul r25.w, r25.w, r26.w
+      mul r25.w, r25.w, l(0.300000)
+      add r26.w, -r24.w, r27.y
       mad r24.w, r25.w, r26.w, r24.w
       add r25.w, -r22.w, r27.x
       add r25.w, r25.w, l(1.000000)
       add r22.w, -r22.w, l(2.000000)
       div_sat r22.w, r25.w, r22.w
-      add r27.xy, r24.wwww, l(-0.500000, -0.240000, 0.000000, 0.000000)
-      mul_sat r25.w, r27.y, l(1.666667)
+      add r25.w, r22.z, l(-0.300000)
+      mul_sat r25.w, r25.w, l(1.785714)
       mad r26.w, r25.w, l(-2.000000), l(3.000000)
       mul r25.w, r25.w, r25.w
       mul r25.w, r25.w, r26.w
-      mad r27.yz, r25.wwww, l(0.000000, 0.540000, 0.140000, 0.000000), l(0.000000, 0.320000, 0.720000, 0.000000)
-      div r25.w, r22.z, r27.y
-      min r25.w, r25.w, l(1.000000)
-      add r24.w, r24.w, r24.w
-      min r24.w, r24.w, l(1.000000)
+      mad r22.w, -r25.w, l(0.160000), r22.w
+      mad r25.w, -r25.w, l(0.160000), l(1.000000)
+      div_sat r22.w, r22.w, r25.w
+      add r27.xy, r24.wwww, l(-0.500000, -0.340000, 0.000000, 0.000000)
+      mul_sat r25.w, r27.y, l(1.923077)
+      mad r26.w, r25.w, l(-2.000000), l(3.000000)
+      mul r25.w, r25.w, r25.w
+      mul r25.w, r25.w, r26.w
+      add_sat r24.w, r24.w, r24.w
       add r24.w, -r24.w, l(1.000000)
       mad r26.w, -|r27.x|, l(2.000000), l(1.000000)
       mov_sat r27.x, r27.x
       mul r28.xyzw, r26.wwww, l(0.020000, 0.200000, 0.480000, 0.625000)
       mad r28.xyzw, r24.wwww, l(0.020000, 0.050000, 0.090000, 0.110000), r28.xyzw
-      mad r28.xyzw, r27.xxxx, l(0.020000, 0.125000, 1.560000, 2.000000), r28.xyzw
-      add r27.xw, -r28.xxxz, r28.yyyw
-      add r28.xy, r25.wwww, -r28.xzxx
-      div r27.xw, l(1.000000, 1.000000, 1.000000, 1.000000), r27.xxxw
-      mul_sat r27.xw, r27.xxxw, r28.xxxy
-      mad r28.xy, r27.xwxx, l(-2.000000, -2.000000, 0.000000, 0.000000), l(3.000000, 3.000000, 0.000000, 0.000000)
-      mul r27.xw, r27.xxxw, r27.xxxw
-      mul r24.w, r27.w, r28.y
-      mad r24.w, r28.x, r27.x, -r24.w
-      mad r25.w, -r27.y, r27.z, r27.y
-      mad r22.z, -r27.y, r27.z, r22.z
-      div r25.w, l(1.000000, 1.000000, 1.000000, 1.000000), r25.w
-      mul_sat r22.z, r22.z, r25.w
-      mad r25.w, r22.z, l(-2.000000), l(3.000000)
-      mul r22.z, r22.z, r22.z
-      mad r22.z, -r25.w, r22.z, l(1.000000)
-      mul r22.z, r22.z, r24.w
-      add r24.w, -r24.z, l(1.000000)
-      mad r22.z, r22.w, r22.z, -r24.w
-      add r22.w, -r24.w, l(1.000000)
-      div_sat r22.z, r22.z, r22.w
-      mul r22.w, r24.z, r22.z
-      mad r22.z, r22.z, r24.z, l(-0.003000)
-      mul_sat r22.z, r22.z, l(23.809523)
+      mad r27.xyzw, r27.xxxx, l(0.020000, 0.125000, 1.560000, 2.000000), r28.xyzw
+      add r27.yw, -r27.xxxz, r27.yyyw
+      add r27.xz, r22.zzzz, -r27.xxzx
+      div r27.yw, l(1.000000, 1.000000, 1.000000, 1.000000), r27.yyyw
+      mul_sat r27.xy, r27.ywyy, r27.xzxx
+      mad r27.zw, r27.xxxy, l(0.000000, 0.000000, -2.000000, -2.000000), l(0.000000, 0.000000, 3.000000, 3.000000)
+      mul r27.xy, r27.xyxx, r27.xyxx
+      mul r24.w, r27.y, r27.w
+      mad r24.w, r27.z, r27.x, -r24.w
+      add r26.w, -r24.z, l(1.000000)
+      mad r22.w, r22.w, r24.w, -r26.w
+      add r24.w, -r26.w, l(1.000000)
+      div_sat r22.w, r22.w, r24.w
+      mul r22.w, r24.z, r22.w
+      mad r24.z, r25.w, l(-0.040000), l(0.120000)
+      div r24.z, l(1.000000, 1.000000, 1.000000, 1.000000), r24.z
+      mul_sat r22.z, r22.z, r24.z
       mad r24.z, r22.z, l(-2.000000), l(3.000000)
       mul r22.z, r22.z, r22.z
       mul r22.z, r22.z, r24.z
       mul r22.z, r22.z, r22.w
+      min r22.z, r22.z, l(1.000000)
+      add r22.w, r22.z, l(-0.003000)
+      mul_sat r22.w, r22.w, l(23.809523)
+      mad r24.z, r22.w, l(-2.000000), l(3.000000)
+      mul r22.w, r22.w, r22.w
+      mul r22.w, r22.w, r24.z
+      mul r22.z, r22.w, r22.z
       lt r22.z, l(0.000000), r22.z
       not r18.w, r22.z
       mad r22.w, -r2.y, l(2.000000), r16.w
@@ -579,21 +591,34 @@ if_nz r2.w
     mad r24.w, r24.z, l(-2.000000), l(3.000000)
     mul r24.z, r24.z, r24.z
     mul r24.z, r24.z, r24.w
-    add r24.w, -r24.x, l(1.000000)
+    add r24.w, r24.x, l(-0.550000)
+    mul_sat r24.w, r24.w, l(4.000000)
+    mad r25.w, r24.w, l(-2.000000), l(3.000000)
+    mul r24.w, r24.w, r24.w
+    mul r24.w, r24.w, r25.w
+    max r25.w, r24.x, l(0.780000)
+    mul r24.z, r24.w, r24.z
+    mul r24.z, r24.z, l(0.300000)
+    add r24.w, -r24.x, r25.w
     mad r24.x, r24.z, r24.w, r24.x
     add r24.z, -r22.z, r28.x
     add r24.z, r24.z, l(1.000000)
     add r22.z, -r22.z, l(2.000000)
     div_sat r22.z, r24.z, r22.z
-    add r24.zw, r24.xxxx, l(0.000000, 0.000000, -0.500000, -0.240000)
-    mul_sat r24.w, r24.w, l(1.666667)
+    add r24.z, r22.x, l(-0.300000)
+    mul_sat r24.z, r24.z, l(1.785714)
+    mad r24.w, r24.z, l(-2.000000), l(3.000000)
+    mul r24.z, r24.z, r24.z
+    mul r24.z, r24.z, r24.w
+    mad r22.z, -r24.z, l(0.160000), r22.z
+    mad r24.z, -r24.z, l(0.160000), l(1.000000)
+    div_sat r22.z, r22.z, r24.z
+    add r24.zw, r24.xxxx, l(0.000000, 0.000000, -0.500000, -0.340000)
+    mul_sat r24.w, r24.w, l(1.923077)
     mad r25.w, r24.w, l(-2.000000), l(3.000000)
     mul r24.w, r24.w, r24.w
     mul r24.w, r24.w, r25.w
-    mad r26.yz, r24.wwww, l(0.000000, 0.540000, 0.140000, 0.000000), l(0.000000, 0.320000, 0.720000, 0.000000)
-    div r24.w, r22.x, r26.y
-    add r24.x, r24.x, r24.x
-    min r24.xw, r24.xxxw, l(1.000000, 0.000000, 0.000000, 1.000000)
+    add_sat r24.x, r24.x, r24.x
     add r24.x, -r24.x, l(1.000000)
     mad r25.w, -|r24.z|, l(2.000000), l(1.000000)
     mov_sat r24.z, r24.z
@@ -601,25 +626,24 @@ if_nz r2.w
     mad r28.xyzw, r24.xxxx, l(0.020000, 0.050000, 0.090000, 0.110000), r28.xyzw
     mad r28.xyzw, r24.zzzz, l(0.020000, 0.125000, 1.560000, 2.000000), r28.xyzw
     add r24.xz, -r28.xxzx, r28.yywy
-    add r28.xy, r24.wwww, -r28.xzxx
+    add r26.yz, r22.xxxx, -r28.xxzx
     div r24.xz, l(1.000000, 1.000000, 1.000000, 1.000000), r24.xxzx
-    mul_sat r24.xz, r24.xxzx, r28.xxyx
-    mad r28.xy, r24.xzxx, l(-2.000000, -2.000000, 0.000000, 0.000000), l(3.000000, 3.000000, 0.000000, 0.000000)
+    mul_sat r24.xz, r24.xxzx, r26.yyzy
+    mad r26.yz, r24.xxzx, l(0.000000, -2.000000, -2.000000, 0.000000), l(0.000000, 3.000000, 3.000000, 0.000000)
     mul r24.xz, r24.xxzx, r24.xxzx
-    mul r24.z, r24.z, r28.y
-    mad r24.x, r28.x, r24.x, -r24.z
-    mad r24.z, -r26.y, r26.z, r26.y
-    mad r24.w, -r26.y, r26.z, r22.x
-    div r24.z, l(1.000000, 1.000000, 1.000000, 1.000000), r24.z
-    mul_sat r24.z, r24.z, r24.w
-    mad r24.w, r24.z, l(-2.000000), l(3.000000)
-    mul r24.z, r24.z, r24.z
-    mad r24.z, -r24.w, r24.z, l(1.000000)
-    mul r24.x, r24.z, r24.x
+    mul r24.z, r24.z, r26.z
+    mad r24.x, r26.y, r24.x, -r24.z
     add r24.z, -r22.w, l(1.000000)
     mad r22.z, r22.z, r24.x, -r24.z
     add r24.x, -r24.z, l(1.000000)
     div_sat r22.z, r22.z, r24.x
+    mul r22.z, r22.w, r22.z
+    mad r22.w, r24.w, l(-0.040000), l(0.120000)
+    div r22.w, l(1.000000, 1.000000, 1.000000, 1.000000), r22.w
+    mul_sat r22.w, r22.w, r22.x
+    mad r24.x, r22.w, l(-2.000000), l(3.000000)
+    mul r22.w, r22.w, r22.w
+    mul r22.w, r22.w, r24.x
     mul r24.x, r22.w, r22.z
     lt r24.x, l(0.000000), r24.x
     if_nz r24.x
@@ -632,7 +656,7 @@ if_nz r2.w
       mad r25.w, r24.w, l(-2.000000), l(3.000000)
       mul r24.w, r24.w, r24.w
       mul r24.w, r24.w, r25.w
-      mad r24.w, r24.w, l(-300.000000), l(520.000000)
+      mad r24.w, r24.w, l(-360.000000), l(640.000000)
       mad r27.xz, r26.yyzy, r24.wwww, r24.xxzx
       mul r24.xzw, r27.xxyz, cb8[2].wwww
       sample_l_indexable(texture3d)(float,float,float,float) r24.xzw, r24.xzwx, t2.xwyz, s7, r21.w
@@ -645,8 +669,15 @@ if_nz r2.w
       add r25.w, -r21.w, l(1.000000)
       add r21.w, r21.w, -r25.w
       mad r21.w, r24.x, r21.w, r25.w
-      mad r24.xz, r24.zzwz, l(0.075000, 0.000000, -0.200000, 0.000000), l(0.035000, 0.000000, 0.200000, 0.000000)
+      mad r24.xz, r24.zzwz, l(0.085000, 0.000000, -0.240000, 0.000000), l(0.045000, 0.000000, 0.240000, 0.000000)
+      mad r24.w, r22.z, r22.w, l(-0.160000)
+      mul_sat r24.w, r24.w, l(2.777778)
+      mad r25.w, r24.w, l(-2.000000), l(3.000000)
+      mul r24.w, r24.w, r24.w
+      mad r24.w, -r25.w, r24.w, l(1.000000)
       max r24.x, r24.z, r24.x
+      mul r21.w, r21.w, r24.x
+      mad r24.x, r24.w, l(0.880000), l(0.120000)
       mul r24.z, r21.w, r24.x
       mad r22.z, r22.z, r22.w, -r24.z
       mad r21.w, -r21.w, r24.x, l(1.000000)
@@ -722,49 +753,60 @@ if_nz r2.w
           mad r27.y, r27.x, l(-2.000000), l(3.000000)
           mul r27.x, r27.x, r27.x
           mul r27.x, r27.x, r27.y
-          add r27.y, -r26.w, l(1.000000)
+          add r27.y, r26.w, l(-0.550000)
+          mul_sat r27.y, r27.y, l(4.000000)
+          mad r27.z, r27.y, l(-2.000000), l(3.000000)
+          mul r27.y, r27.y, r27.y
+          mul r27.y, r27.y, r27.z
+          max r27.z, r26.w, l(0.780000)
+          mul r27.x, r27.y, r27.x
+          mul r27.x, r27.x, l(0.300000)
+          add r27.y, -r26.w, r27.z
           mad r26.w, r27.x, r27.y, r26.w
           add r27.x, -r25.w, r29.x
           add r27.x, r27.x, l(1.000000)
           add r25.w, -r25.w, l(2.000000)
           div_sat r25.w, r27.x, r25.w
-          add r27.xy, r26.wwww, l(-0.500000, -0.240000, 0.000000, 0.000000)
-          mul_sat r27.y, r27.y, l(1.666667)
+          add r27.x, r24.x, l(-0.300000)
+          mul_sat r27.x, r27.x, l(1.785714)
+          mad r27.y, r27.x, l(-2.000000), l(3.000000)
+          mul r27.x, r27.x, r27.x
+          mul r27.x, r27.x, r27.y
+          mad r25.w, -r27.x, l(0.160000), r25.w
+          mad r27.x, -r27.x, l(0.160000), l(1.000000)
+          div_sat r25.w, r25.w, r27.x
+          add r27.xy, r26.wwww, l(-0.500000, -0.340000, 0.000000, 0.000000)
+          mul_sat r27.y, r27.y, l(1.923077)
           mad r27.z, r27.y, l(-2.000000), l(3.000000)
           mul r27.y, r27.y, r27.y
           mul r27.y, r27.y, r27.z
-          mad r27.yz, r27.yyyy, l(0.000000, 0.540000, 0.140000, 0.000000), l(0.000000, 0.320000, 0.720000, 0.000000)
-          div r27.w, r24.x, r27.y
-          min r27.w, r27.w, l(1.000000)
-          add r26.w, r26.w, r26.w
-          min r26.w, r26.w, l(1.000000)
+          add_sat r26.w, r26.w, r26.w
           add r26.w, -r26.w, l(1.000000)
-          mad r28.w, -|r27.x|, l(2.000000), l(1.000000)
+          mad r27.z, -|r27.x|, l(2.000000), l(1.000000)
           mov_sat r27.x, r27.x
-          mul r29.xyzw, r28.wwww, l(0.020000, 0.200000, 0.480000, 0.625000)
+          mul r29.xyzw, r27.zzzz, l(0.020000, 0.200000, 0.480000, 0.625000)
           mad r29.xyzw, r26.wwww, l(0.020000, 0.050000, 0.090000, 0.110000), r29.xyzw
           mad r29.xyzw, r27.xxxx, l(0.020000, 0.125000, 1.560000, 2.000000), r29.xyzw
-          add r29.yw, -r29.xxxz, r29.yyyw
-          add r27.xw, r27.wwww, -r29.xxxz
-          div r29.xy, l(1.000000, 1.000000, 1.000000, 1.000000), r29.ywyy
-          mul_sat r27.xw, r27.xxxw, r29.xxxy
-          mad r29.xy, r27.xwxx, l(-2.000000, -2.000000, 0.000000, 0.000000), l(3.000000, 3.000000, 0.000000, 0.000000)
-          mul r27.xw, r27.xxxw, r27.xxxw
-          mul r26.w, r27.w, r29.y
+          add r27.xz, -r29.xxzx, r29.yywy
+          add r29.xy, r24.xxxx, -r29.xzxx
+          div r27.xz, l(1.000000, 1.000000, 1.000000, 1.000000), r27.xxzx
+          mul_sat r27.xz, r27.xxzx, r29.xxyx
+          mad r29.xy, r27.xzxx, l(-2.000000, -2.000000, 0.000000, 0.000000), l(3.000000, 3.000000, 0.000000, 0.000000)
+          mul r27.xz, r27.xxzx, r27.xxzx
+          mul r26.w, r27.z, r29.y
           mad r26.w, r29.x, r27.x, -r26.w
-          mad r27.x, -r27.y, r27.z, r27.y
-          mad r27.y, -r27.y, r27.z, r24.x
-          div r27.x, l(1.000000, 1.000000, 1.000000, 1.000000), r27.x
-          mul_sat r27.x, r27.x, r27.y
-          mad r27.y, r27.x, l(-2.000000), l(3.000000)
-          mul r27.x, r27.x, r27.x
-          mad r27.x, -r27.y, r27.x, l(1.000000)
-          mul r26.w, r26.w, r27.x
           add r27.x, -r26.y, l(1.000000)
           mad r25.w, r25.w, r26.w, -r27.x
           add r26.w, -r27.x, l(1.000000)
           div_sat r25.w, r25.w, r26.w
-          mul r26.w, r26.y, r25.w
+          mul r25.w, r26.y, r25.w
+          mad r26.y, r27.y, l(-0.040000), l(0.120000)
+          div r26.y, l(1.000000, 1.000000, 1.000000, 1.000000), r26.y
+          mul_sat r26.y, r24.x, r26.y
+          mad r26.w, r26.y, l(-2.000000), l(3.000000)
+          mul r26.y, r26.y, r26.y
+          mul r26.y, r26.y, r26.w
+          mul r26.w, r25.w, r26.y
           not r27.x, r22.w
           lt r27.y, l(0.000000), r26.w
           and r27.x, r27.y, r27.x
@@ -778,7 +820,7 @@ if_nz r2.w
             mad r27.w, r27.z, l(-2.000000), l(3.000000)
             mul r27.z, r27.z, r27.z
             mul r27.z, r27.z, r27.w
-            mad r27.z, r27.z, l(-300.000000), l(520.000000)
+            mad r27.z, r27.z, l(-360.000000), l(640.000000)
             mad r28.xz, r27.xxyx, r27.zzzz, r26.xxzx
             mul r27.xyz, r28.xyzx, cb8[2].wwww
             sample_l_indexable(texture3d)(float,float,float,float) r27.xyz, r27.xyzx, t2.xyzw, s7, l(2.000000)
@@ -791,19 +833,27 @@ if_nz r2.w
             add r24.x, -r26.x, l(1.000000)
             add r26.x, -r24.x, r26.x
             mad r24.x, r27.x, r26.x, r24.x
-            mad r26.xz, r27.yyzy, l(0.075000, 0.000000, -0.200000, 0.000000), l(0.035000, 0.000000, 0.200000, 0.000000)
+            mad r26.xz, r27.yyzy, l(0.085000, 0.000000, -0.240000, 0.000000), l(0.045000, 0.000000, 0.240000, 0.000000)
+            mad r27.x, r25.w, r26.y, l(-0.160000)
+            mul_sat r27.x, r27.x, l(2.777778)
+            mad r27.y, r27.x, l(-2.000000), l(3.000000)
+            mul r27.x, r27.x, r27.x
+            mad r27.x, -r27.y, r27.x, l(1.000000)
             max r26.x, r26.z, r26.x
+            mul r24.x, r24.x, r26.x
+            mad r26.x, r27.x, l(0.880000), l(0.120000)
             mul r26.z, r24.x, r26.x
             mad r25.w, r25.w, r26.y, -r26.z
             mad r24.x, -r24.x, r26.x, l(1.000000)
             div_sat r26.w, r25.w, r24.x
           endif 
-          add r24.x, r26.w, l(-0.003000)
-          mul_sat r24.x, r24.x, l(23.809523)
-          mad r25.w, r24.x, l(-2.000000), l(3.000000)
-          mul r24.x, r24.x, r24.x
+          min r24.x, r26.w, l(1.000000)
+          add r25.w, r24.x, l(-0.003000)
+          mul_sat r25.w, r25.w, l(23.809523)
+          mad r26.x, r25.w, l(-2.000000), l(3.000000)
+          mul r25.w, r25.w, r25.w
+          mul r25.w, r25.w, r26.x
           mul r24.x, r24.x, r25.w
-          mul r24.x, r24.x, r26.w
         else 
           mov r24.x, l(0)
         endif 
@@ -843,48 +893,59 @@ if_nz r2.w
           mad r27.z, r27.y, l(-2.000000), l(3.000000)
           mul r27.y, r27.y, r27.y
           mul r27.y, r27.y, r27.z
-          add r27.z, -r27.x, l(1.000000)
+          add r27.z, r27.x, l(-0.550000)
+          mul_sat r27.z, r27.z, l(4.000000)
+          mad r27.w, r27.z, l(-2.000000), l(3.000000)
+          mul r27.z, r27.z, r27.z
+          mul r27.z, r27.z, r27.w
+          max r27.w, r27.x, l(0.780000)
+          mul r27.y, r27.z, r27.y
+          mul r27.y, r27.y, l(0.300000)
+          add r27.z, -r27.x, r27.w
           mad r27.x, r27.y, r27.z, r27.x
           add r27.y, -r26.y, r29.x
           add r27.y, r27.y, l(1.000000)
           add r26.y, -r26.y, l(2.000000)
           div_sat r26.y, r27.y, r26.y
-          add r27.yz, r27.xxxx, l(0.000000, -0.500000, -0.240000, 0.000000)
-          mul_sat r27.z, r27.z, l(1.666667)
+          add r27.y, r25.w, l(-0.300000)
+          mul_sat r27.y, r27.y, l(1.785714)
+          mad r27.z, r27.y, l(-2.000000), l(3.000000)
+          mul r27.y, r27.y, r27.y
+          mul r27.y, r27.y, r27.z
+          mad r26.y, -r27.y, l(0.160000), r26.y
+          mad r27.y, -r27.y, l(0.160000), l(1.000000)
+          div_sat r26.y, r26.y, r27.y
+          add r27.yz, r27.xxxx, l(0.000000, -0.500000, -0.340000, 0.000000)
+          mul_sat r27.z, r27.z, l(1.923077)
           mad r27.w, r27.z, l(-2.000000), l(3.000000)
           mul r27.z, r27.z, r27.z
           mul r27.z, r27.z, r27.w
-          mad r27.zw, r27.zzzz, l(0.000000, 0.000000, 0.540000, 0.140000), l(0.000000, 0.000000, 0.320000, 0.720000)
-          div r28.w, r25.w, r27.z
-          min r28.w, r28.w, l(1.000000)
-          add r27.x, r27.x, r27.x
-          min r27.x, r27.x, l(1.000000)
+          add_sat r27.x, r27.x, r27.x
           add r27.x, -r27.x, l(1.000000)
-          mad r29.x, -|r27.y|, l(2.000000), l(1.000000)
+          mad r27.w, -|r27.y|, l(2.000000), l(1.000000)
           mov_sat r27.y, r27.y
-          mul r29.xyzw, r29.xxxx, l(0.020000, 0.200000, 0.480000, 0.625000)
+          mul r29.xyzw, r27.wwww, l(0.020000, 0.200000, 0.480000, 0.625000)
           mad r29.xyzw, r27.xxxx, l(0.020000, 0.050000, 0.090000, 0.110000), r29.xyzw
           mad r29.xyzw, r27.yyyy, l(0.020000, 0.125000, 1.560000, 2.000000), r29.xyzw
           add r27.xy, -r29.xzxx, r29.ywyy
-          add r29.xy, r28.wwww, -r29.xzxx
+          add r29.xy, r25.wwww, -r29.xzxx
           div r27.xy, l(1.000000, 1.000000, 1.000000, 1.000000), r27.xyxx
           mul_sat r27.xy, r27.xyxx, r29.xyxx
           mad r29.xy, r27.xyxx, l(-2.000000, -2.000000, 0.000000, 0.000000), l(3.000000, 3.000000, 0.000000, 0.000000)
           mul r27.xy, r27.xyxx, r27.xyxx
           mul r27.y, r27.y, r29.y
           mad r27.x, r29.x, r27.x, -r27.y
-          mad r27.y, -r27.z, r27.w, r27.z
-          mad r27.z, -r27.z, r27.w, r25.w
-          div r27.y, l(1.000000, 1.000000, 1.000000, 1.000000), r27.y
-          mul_sat r27.y, r27.y, r27.z
-          mad r27.z, r27.y, l(-2.000000), l(3.000000)
-          mul r27.y, r27.y, r27.y
-          mad r27.y, -r27.z, r27.y, l(1.000000)
-          mul r27.x, r27.y, r27.x
           add r27.y, -r26.w, l(1.000000)
           mad r26.y, r26.y, r27.x, -r27.y
           add r27.x, -r27.y, l(1.000000)
           div_sat r26.y, r26.y, r27.x
+          mul r26.y, r26.w, r26.y
+          mad r26.w, r27.z, l(-0.040000), l(0.120000)
+          div r26.w, l(1.000000, 1.000000, 1.000000, 1.000000), r26.w
+          mul_sat r26.w, r25.w, r26.w
+          mad r27.x, r26.w, l(-2.000000), l(3.000000)
+          mul r26.w, r26.w, r26.w
+          mul r26.w, r26.w, r27.x
           mul r27.x, r26.w, r26.y
           not r27.y, r22.w
           lt r27.z, l(0.000000), r27.x
@@ -899,7 +960,7 @@ if_nz r2.w
             mad r28.w, r27.w, l(-2.000000), l(3.000000)
             mul r27.w, r27.w, r27.w
             mul r27.w, r27.w, r28.w
-            mad r27.w, r27.w, l(-300.000000), l(520.000000)
+            mad r27.w, r27.w, l(-360.000000), l(640.000000)
             mad r28.xz, r27.yyzy, r27.wwww, r26.xxzx
             mul r27.yzw, r28.xxyz, cb8[2].wwww
             sample_l_indexable(texture3d)(float,float,float,float) r27.yzw, r27.yzwy, t2.wxyz, s7, l(2.000000)
@@ -912,19 +973,27 @@ if_nz r2.w
             add r25.w, -r26.x, l(1.000000)
             add r26.x, -r25.w, r26.x
             mad r25.w, r27.y, r26.x, r25.w
-            mad r26.xz, r27.zzwz, l(0.075000, 0.000000, -0.200000, 0.000000), l(0.035000, 0.000000, 0.200000, 0.000000)
+            mad r26.xz, r27.zzwz, l(0.085000, 0.000000, -0.240000, 0.000000), l(0.045000, 0.000000, 0.240000, 0.000000)
+            mad r27.y, r26.y, r26.w, l(-0.160000)
+            mul_sat r27.y, r27.y, l(2.777778)
+            mad r27.z, r27.y, l(-2.000000), l(3.000000)
+            mul r27.y, r27.y, r27.y
+            mad r27.y, -r27.z, r27.y, l(1.000000)
             max r26.x, r26.z, r26.x
+            mul r25.w, r25.w, r26.x
+            mad r26.x, r27.y, l(0.880000), l(0.120000)
             mul r26.z, r25.w, r26.x
             mad r26.y, r26.y, r26.w, -r26.z
             mad r25.w, -r25.w, r26.x, l(1.000000)
             div_sat r27.x, r26.y, r25.w
           endif 
-          add r25.w, r27.x, l(-0.003000)
-          mul_sat r25.w, r25.w, l(23.809523)
-          mad r26.x, r25.w, l(-2.000000), l(3.000000)
-          mul r25.w, r25.w, r25.w
-          mul r25.w, r25.w, r26.x
-          mad r24.x, r27.x, r25.w, r24.x
+          min r25.w, r27.x, l(1.000000)
+          add r26.x, r25.w, l(-0.003000)
+          mul_sat r26.x, r26.x, l(23.809523)
+          mad r26.y, r26.x, l(-2.000000), l(3.000000)
+          mul r26.x, r26.x, r26.x
+          mul r26.x, r26.x, r26.y
+          mad r24.x, r25.w, r26.x, r24.x
         endif 
         if_z r22.w
           mad r26.xyz, r5.xyzx, r17.xxxx, r25.xyzx
@@ -962,48 +1031,59 @@ if_nz r2.w
             mad r27.z, r27.y, l(-2.000000), l(3.000000)
             mul r27.y, r27.y, r27.y
             mul r27.y, r27.y, r27.z
-            add r27.z, -r27.x, l(1.000000)
+            add r27.z, r27.x, l(-0.550000)
+            mul_sat r27.z, r27.z, l(4.000000)
+            mad r27.w, r27.z, l(-2.000000), l(3.000000)
+            mul r27.z, r27.z, r27.z
+            mul r27.z, r27.z, r27.w
+            max r27.w, r27.x, l(0.780000)
+            mul r27.y, r27.z, r27.y
+            mul r27.y, r27.y, l(0.300000)
+            add r27.z, -r27.x, r27.w
             mad r27.x, r27.y, r27.z, r27.x
             add r27.y, -r26.y, r29.x
             add r27.y, r27.y, l(1.000000)
             add r26.y, -r26.y, l(2.000000)
             div_sat r26.y, r27.y, r26.y
-            add r27.yz, r27.xxxx, l(0.000000, -0.500000, -0.240000, 0.000000)
-            mul_sat r27.z, r27.z, l(1.666667)
+            add r27.y, r25.w, l(-0.300000)
+            mul_sat r27.y, r27.y, l(1.785714)
+            mad r27.z, r27.y, l(-2.000000), l(3.000000)
+            mul r27.y, r27.y, r27.y
+            mul r27.y, r27.y, r27.z
+            mad r26.y, -r27.y, l(0.160000), r26.y
+            mad r27.y, -r27.y, l(0.160000), l(1.000000)
+            div_sat r26.y, r26.y, r27.y
+            add r27.yz, r27.xxxx, l(0.000000, -0.500000, -0.340000, 0.000000)
+            mul_sat r27.z, r27.z, l(1.923077)
             mad r27.w, r27.z, l(-2.000000), l(3.000000)
             mul r27.z, r27.z, r27.z
             mul r27.z, r27.z, r27.w
-            mad r27.zw, r27.zzzz, l(0.000000, 0.000000, 0.540000, 0.140000), l(0.000000, 0.000000, 0.320000, 0.720000)
-            div r28.w, r25.w, r27.z
-            min r28.w, r28.w, l(1.000000)
-            add r27.x, r27.x, r27.x
-            min r27.x, r27.x, l(1.000000)
+            add_sat r27.x, r27.x, r27.x
             add r27.x, -r27.x, l(1.000000)
-            mad r29.x, -|r27.y|, l(2.000000), l(1.000000)
+            mad r27.w, -|r27.y|, l(2.000000), l(1.000000)
             mov_sat r27.y, r27.y
-            mul r29.xyzw, r29.xxxx, l(0.020000, 0.200000, 0.480000, 0.625000)
+            mul r29.xyzw, r27.wwww, l(0.020000, 0.200000, 0.480000, 0.625000)
             mad r29.xyzw, r27.xxxx, l(0.020000, 0.050000, 0.090000, 0.110000), r29.xyzw
             mad r29.xyzw, r27.yyyy, l(0.020000, 0.125000, 1.560000, 2.000000), r29.xyzw
             add r27.xy, -r29.xzxx, r29.ywyy
-            add r29.xy, r28.wwww, -r29.xzxx
+            add r29.xy, r25.wwww, -r29.xzxx
             div r27.xy, l(1.000000, 1.000000, 1.000000, 1.000000), r27.xyxx
             mul_sat r27.xy, r27.xyxx, r29.xyxx
             mad r29.xy, r27.xyxx, l(-2.000000, -2.000000, 0.000000, 0.000000), l(3.000000, 3.000000, 0.000000, 0.000000)
             mul r27.xy, r27.xyxx, r27.xyxx
             mul r27.y, r27.y, r29.y
             mad r27.x, r29.x, r27.x, -r27.y
-            mad r27.y, -r27.z, r27.w, r27.z
-            mad r27.z, -r27.z, r27.w, r25.w
-            div r27.y, l(1.000000, 1.000000, 1.000000, 1.000000), r27.y
-            mul_sat r27.y, r27.y, r27.z
-            mad r27.z, r27.y, l(-2.000000), l(3.000000)
-            mul r27.y, r27.y, r27.y
-            mad r27.y, -r27.z, r27.y, l(1.000000)
-            mul r27.x, r27.y, r27.x
             add r27.y, -r26.w, l(1.000000)
             mad r26.y, r26.y, r27.x, -r27.y
             add r27.x, -r27.y, l(1.000000)
             div_sat r26.y, r26.y, r27.x
+            mul r26.y, r26.w, r26.y
+            mad r26.w, r27.z, l(-0.040000), l(0.120000)
+            div r26.w, l(1.000000, 1.000000, 1.000000, 1.000000), r26.w
+            mul_sat r26.w, r25.w, r26.w
+            mad r27.x, r26.w, l(-2.000000), l(3.000000)
+            mul r26.w, r26.w, r26.w
+            mul r26.w, r26.w, r27.x
             mul r27.x, r26.w, r26.y
             lt r27.x, l(0.000000), r27.x
             if_nz r27.x
@@ -1016,7 +1096,7 @@ if_nz r2.w
               mad r27.w, r27.z, l(-2.000000), l(3.000000)
               mul r27.z, r27.z, r27.z
               mul r27.z, r27.z, r27.w
-              mad r27.z, r27.z, l(-300.000000), l(520.000000)
+              mad r27.z, r27.z, l(-360.000000), l(640.000000)
               mad r28.xz, r27.xxyx, r27.zzzz, r26.xxzx
               mul r27.xyz, r28.xyzx, cb8[2].wwww
               sample_l_indexable(texture3d)(float,float,float,float) r27.xyz, r27.xyzx, t2.xyzw, s7, l(2.000000)
@@ -1029,8 +1109,15 @@ if_nz r2.w
               add r25.w, -r26.x, l(1.000000)
               add r26.x, -r25.w, r26.x
               mad r25.w, r27.x, r26.x, r25.w
-              mad r26.xz, r27.yyzy, l(0.075000, 0.000000, -0.200000, 0.000000), l(0.035000, 0.000000, 0.200000, 0.000000)
+              mad r26.xz, r27.yyzy, l(0.085000, 0.000000, -0.240000, 0.000000), l(0.045000, 0.000000, 0.240000, 0.000000)
+              mad r27.x, r26.y, r26.w, l(-0.160000)
+              mul_sat r27.x, r27.x, l(2.777778)
+              mad r27.y, r27.x, l(-2.000000), l(3.000000)
+              mul r27.x, r27.x, r27.x
+              mad r27.x, -r27.y, r27.x, l(1.000000)
               max r26.x, r26.z, r26.x
+              mul r25.w, r25.w, r26.x
+              mad r26.x, r27.x, l(0.880000), l(0.120000)
               mul r26.z, r25.w, r26.x
               mad r26.y, r26.y, r26.w, -r26.z
               mad r25.w, -r25.w, r26.x, l(1.000000)
@@ -1083,48 +1170,59 @@ if_nz r2.w
               mad r27.z, r27.y, l(-2.000000), l(3.000000)
               mul r27.y, r27.y, r27.y
               mul r27.y, r27.y, r27.z
-              add r27.z, -r27.x, l(1.000000)
+              add r27.z, r27.x, l(-0.550000)
+              mul_sat r27.z, r27.z, l(4.000000)
+              mad r27.w, r27.z, l(-2.000000), l(3.000000)
+              mul r27.z, r27.z, r27.z
+              mul r27.z, r27.z, r27.w
+              max r27.w, r27.x, l(0.780000)
+              mul r27.y, r27.z, r27.y
+              mul r27.y, r27.y, l(0.300000)
+              add r27.z, -r27.x, r27.w
               mad r27.x, r27.y, r27.z, r27.x
               add r27.y, -r26.y, r29.x
               add r27.y, r27.y, l(1.000000)
               add r26.y, -r26.y, l(2.000000)
               div_sat r26.y, r27.y, r26.y
-              add r27.yz, r27.xxxx, l(0.000000, -0.500000, -0.240000, 0.000000)
-              mul_sat r27.z, r27.z, l(1.666667)
+              add r27.y, r25.w, l(-0.300000)
+              mul_sat r27.y, r27.y, l(1.785714)
+              mad r27.z, r27.y, l(-2.000000), l(3.000000)
+              mul r27.y, r27.y, r27.y
+              mul r27.y, r27.y, r27.z
+              mad r26.y, -r27.y, l(0.160000), r26.y
+              mad r27.y, -r27.y, l(0.160000), l(1.000000)
+              div_sat r26.y, r26.y, r27.y
+              add r27.yz, r27.xxxx, l(0.000000, -0.500000, -0.340000, 0.000000)
+              mul_sat r27.z, r27.z, l(1.923077)
               mad r27.w, r27.z, l(-2.000000), l(3.000000)
               mul r27.z, r27.z, r27.z
               mul r27.z, r27.z, r27.w
-              mad r27.zw, r27.zzzz, l(0.000000, 0.000000, 0.540000, 0.140000), l(0.000000, 0.000000, 0.320000, 0.720000)
-              div r28.w, r25.w, r27.z
-              min r28.w, r28.w, l(1.000000)
-              add r27.x, r27.x, r27.x
-              min r27.x, r27.x, l(1.000000)
+              add_sat r27.x, r27.x, r27.x
               add r27.x, -r27.x, l(1.000000)
-              mad r29.x, -|r27.y|, l(2.000000), l(1.000000)
+              mad r27.w, -|r27.y|, l(2.000000), l(1.000000)
               mov_sat r27.y, r27.y
-              mul r29.xyzw, r29.xxxx, l(0.020000, 0.200000, 0.480000, 0.625000)
+              mul r29.xyzw, r27.wwww, l(0.020000, 0.200000, 0.480000, 0.625000)
               mad r29.xyzw, r27.xxxx, l(0.020000, 0.050000, 0.090000, 0.110000), r29.xyzw
               mad r29.xyzw, r27.yyyy, l(0.020000, 0.125000, 1.560000, 2.000000), r29.xyzw
               add r27.xy, -r29.xzxx, r29.ywyy
-              add r29.xy, r28.wwww, -r29.xzxx
+              add r29.xy, r25.wwww, -r29.xzxx
               div r27.xy, l(1.000000, 1.000000, 1.000000, 1.000000), r27.xyxx
               mul_sat r27.xy, r27.xyxx, r29.xyxx
               mad r29.xy, r27.xyxx, l(-2.000000, -2.000000, 0.000000, 0.000000), l(3.000000, 3.000000, 0.000000, 0.000000)
               mul r27.xy, r27.xyxx, r27.xyxx
               mul r27.y, r27.y, r29.y
               mad r27.x, r29.x, r27.x, -r27.y
-              mad r27.y, -r27.z, r27.w, r27.z
-              mad r27.z, -r27.z, r27.w, r25.w
-              div r27.y, l(1.000000, 1.000000, 1.000000, 1.000000), r27.y
-              mul_sat r27.y, r27.y, r27.z
-              mad r27.z, r27.y, l(-2.000000), l(3.000000)
-              mul r27.y, r27.y, r27.y
-              mad r27.y, -r27.z, r27.y, l(1.000000)
-              mul r27.x, r27.y, r27.x
               add r27.y, -r26.w, l(1.000000)
               mad r26.y, r26.y, r27.x, -r27.y
               add r27.x, -r27.y, l(1.000000)
               div_sat r26.y, r26.y, r27.x
+              mul r26.y, r26.w, r26.y
+              mad r26.w, r27.z, l(-0.040000), l(0.120000)
+              div r26.w, l(1.000000, 1.000000, 1.000000, 1.000000), r26.w
+              mul_sat r26.w, r25.w, r26.w
+              mad r27.x, r26.w, l(-2.000000), l(3.000000)
+              mul r26.w, r26.w, r26.w
+              mul r26.w, r26.w, r27.x
               mul r27.x, r26.w, r26.y
               lt r27.x, l(0.000000), r27.x
               if_nz r27.x
@@ -1137,7 +1235,7 @@ if_nz r2.w
                 mad r27.w, r27.z, l(-2.000000), l(3.000000)
                 mul r27.z, r27.z, r27.z
                 mul r27.z, r27.z, r27.w
-                mad r27.z, r27.z, l(-300.000000), l(520.000000)
+                mad r27.z, r27.z, l(-360.000000), l(640.000000)
                 mad r28.xz, r27.xxyx, r27.zzzz, r26.xxzx
                 mul r27.xyz, r28.xyzx, cb8[2].wwww
                 sample_l_indexable(texture3d)(float,float,float,float) r27.xyz, r27.xyzx, t2.xyzw, s7, l(2.000000)
@@ -1150,8 +1248,15 @@ if_nz r2.w
                 add r25.w, -r26.x, l(1.000000)
                 add r26.x, -r25.w, r26.x
                 mad r25.w, r27.x, r26.x, r25.w
-                mad r26.xz, r27.yyzy, l(0.075000, 0.000000, -0.200000, 0.000000), l(0.035000, 0.000000, 0.200000, 0.000000)
+                mad r26.xz, r27.yyzy, l(0.085000, 0.000000, -0.240000, 0.000000), l(0.045000, 0.000000, 0.240000, 0.000000)
+                mad r27.x, r26.y, r26.w, l(-0.160000)
+                mul_sat r27.x, r27.x, l(2.777778)
+                mad r27.y, r27.x, l(-2.000000), l(3.000000)
+                mul r27.x, r27.x, r27.x
+                mad r27.x, -r27.y, r27.x, l(1.000000)
                 max r26.x, r26.z, r26.x
+                mul r25.w, r25.w, r26.x
+                mad r26.x, r27.x, l(0.880000), l(0.120000)
                 mul r26.z, r25.w, r26.x
                 mad r26.y, r26.y, r26.w, -r26.z
                 mad r25.w, -r25.w, r26.x, l(1.000000)
@@ -1208,48 +1313,59 @@ if_nz r2.w
               mad r27.z, r27.y, l(-2.000000), l(3.000000)
               mul r27.y, r27.y, r27.y
               mul r27.y, r27.y, r27.z
-              add r27.z, -r27.x, l(1.000000)
+              add r27.z, r27.x, l(-0.550000)
+              mul_sat r27.z, r27.z, l(4.000000)
+              mad r27.w, r27.z, l(-2.000000), l(3.000000)
+              mul r27.z, r27.z, r27.z
+              mul r27.z, r27.z, r27.w
+              max r27.w, r27.x, l(0.780000)
+              mul r27.y, r27.z, r27.y
+              mul r27.y, r27.y, l(0.300000)
+              add r27.z, -r27.x, r27.w
               mad r27.x, r27.y, r27.z, r27.x
               add r27.y, -r26.y, r29.x
               add r27.y, r27.y, l(1.000000)
               add r26.y, -r26.y, l(2.000000)
               div_sat r26.y, r27.y, r26.y
-              add r27.yz, r27.xxxx, l(0.000000, -0.500000, -0.240000, 0.000000)
-              mul_sat r27.z, r27.z, l(1.666667)
+              add r27.y, r25.w, l(-0.300000)
+              mul_sat r27.y, r27.y, l(1.785714)
+              mad r27.z, r27.y, l(-2.000000), l(3.000000)
+              mul r27.y, r27.y, r27.y
+              mul r27.y, r27.y, r27.z
+              mad r26.y, -r27.y, l(0.160000), r26.y
+              mad r27.y, -r27.y, l(0.160000), l(1.000000)
+              div_sat r26.y, r26.y, r27.y
+              add r27.yz, r27.xxxx, l(0.000000, -0.500000, -0.340000, 0.000000)
+              mul_sat r27.z, r27.z, l(1.923077)
               mad r27.w, r27.z, l(-2.000000), l(3.000000)
               mul r27.z, r27.z, r27.z
               mul r27.z, r27.z, r27.w
-              mad r27.zw, r27.zzzz, l(0.000000, 0.000000, 0.540000, 0.140000), l(0.000000, 0.000000, 0.320000, 0.720000)
-              div r28.w, r25.w, r27.z
-              min r28.w, r28.w, l(1.000000)
-              add r27.x, r27.x, r27.x
-              min r27.x, r27.x, l(1.000000)
+              add_sat r27.x, r27.x, r27.x
               add r27.x, -r27.x, l(1.000000)
-              mad r29.x, -|r27.y|, l(2.000000), l(1.000000)
+              mad r27.w, -|r27.y|, l(2.000000), l(1.000000)
               mov_sat r27.y, r27.y
-              mul r29.xyzw, r29.xxxx, l(0.020000, 0.200000, 0.480000, 0.625000)
+              mul r29.xyzw, r27.wwww, l(0.020000, 0.200000, 0.480000, 0.625000)
               mad r29.xyzw, r27.xxxx, l(0.020000, 0.050000, 0.090000, 0.110000), r29.xyzw
               mad r29.xyzw, r27.yyyy, l(0.020000, 0.125000, 1.560000, 2.000000), r29.xyzw
               add r27.xy, -r29.xzxx, r29.ywyy
-              add r29.xy, r28.wwww, -r29.xzxx
+              add r29.xy, r25.wwww, -r29.xzxx
               div r27.xy, l(1.000000, 1.000000, 1.000000, 1.000000), r27.xyxx
               mul_sat r27.xy, r27.xyxx, r29.xyxx
               mad r29.xy, r27.xyxx, l(-2.000000, -2.000000, 0.000000, 0.000000), l(3.000000, 3.000000, 0.000000, 0.000000)
               mul r27.xy, r27.xyxx, r27.xyxx
               mul r27.y, r27.y, r29.y
               mad r27.x, r29.x, r27.x, -r27.y
-              mad r27.y, -r27.z, r27.w, r27.z
-              mad r27.z, -r27.z, r27.w, r25.w
-              div r27.y, l(1.000000, 1.000000, 1.000000, 1.000000), r27.y
-              mul_sat r27.y, r27.y, r27.z
-              mad r27.z, r27.y, l(-2.000000), l(3.000000)
-              mul r27.y, r27.y, r27.y
-              mad r27.y, -r27.z, r27.y, l(1.000000)
-              mul r27.x, r27.y, r27.x
               add r27.y, -r26.w, l(1.000000)
               mad r26.y, r26.y, r27.x, -r27.y
               add r27.x, -r27.y, l(1.000000)
               div_sat r26.y, r26.y, r27.x
+              mul r26.y, r26.w, r26.y
+              mad r26.w, r27.z, l(-0.040000), l(0.120000)
+              div r26.w, l(1.000000, 1.000000, 1.000000, 1.000000), r26.w
+              mul_sat r26.w, r25.w, r26.w
+              mad r27.x, r26.w, l(-2.000000), l(3.000000)
+              mul r26.w, r26.w, r26.w
+              mul r26.w, r26.w, r27.x
               mul r27.x, r26.w, r26.y
               lt r27.x, l(0.000000), r27.x
               if_nz r27.x
@@ -1262,7 +1378,7 @@ if_nz r2.w
                 mad r27.w, r27.z, l(-2.000000), l(3.000000)
                 mul r27.z, r27.z, r27.z
                 mul r27.z, r27.z, r27.w
-                mad r27.z, r27.z, l(-300.000000), l(520.000000)
+                mad r27.z, r27.z, l(-360.000000), l(640.000000)
                 mad r28.xz, r27.xxyx, r27.zzzz, r26.xxzx
                 mul r27.xyz, r28.xyzx, cb8[2].wwww
                 sample_l_indexable(texture3d)(float,float,float,float) r27.xyz, r27.xyzx, t2.xyzw, s7, l(2.000000)
@@ -1275,8 +1391,15 @@ if_nz r2.w
                 add r25.w, -r26.x, l(1.000000)
                 add r26.x, -r25.w, r26.x
                 mad r25.w, r27.x, r26.x, r25.w
-                mad r26.xz, r27.yyzy, l(0.075000, 0.000000, -0.200000, 0.000000), l(0.035000, 0.000000, 0.200000, 0.000000)
+                mad r26.xz, r27.yyzy, l(0.085000, 0.000000, -0.240000, 0.000000), l(0.045000, 0.000000, 0.240000, 0.000000)
+                mad r27.x, r26.y, r26.w, l(-0.160000)
+                mul_sat r27.x, r27.x, l(2.777778)
+                mad r27.y, r27.x, l(-2.000000), l(3.000000)
+                mul r27.x, r27.x, r27.x
+                mad r27.x, -r27.y, r27.x, l(1.000000)
                 max r26.x, r26.z, r26.x
+                mul r25.w, r25.w, r26.x
+                mad r26.x, r27.x, l(0.880000), l(0.120000)
                 mul r26.z, r25.w, r26.x
                 mad r26.y, r26.y, r26.w, -r26.z
                 mad r25.w, -r25.w, r26.x, l(1.000000)
@@ -1329,54 +1452,67 @@ if_nz r2.w
             mad r25.z, r25.x, l(-2.000000), l(3.000000)
             mul r25.x, r25.x, r25.x
             mul r25.x, r25.x, r25.z
-            add r25.z, -r26.y, l(1.000000)
+            add r25.z, r26.y, l(-0.550000)
+            mul_sat r25.z, r25.z, l(4.000000)
+            mad r26.z, r25.z, l(-2.000000), l(3.000000)
+            mul r25.z, r25.z, r25.z
+            mul r25.z, r25.z, r26.z
+            max r26.z, r26.y, l(0.780000)
+            mul r25.x, r25.z, r25.x
+            mul r25.x, r25.x, l(0.300000)
+            add r25.z, -r26.y, r26.z
             mad r25.x, r25.x, r25.z, r26.y
             add r25.z, -r25.y, r27.x
             add r25.z, r25.z, l(1.000000)
             add r25.y, -r25.y, l(2.000000)
             div_sat r25.y, r25.z, r25.y
-            add r26.yz, r25.xxxx, l(0.000000, -0.500000, -0.240000, 0.000000)
-            mul_sat r25.z, r26.z, l(1.666667)
+            add r25.z, r25.w, l(-0.300000)
+            mul_sat r25.z, r25.z, l(1.785714)
+            mad r26.y, r25.z, l(-2.000000), l(3.000000)
+            mul r25.z, r25.z, r25.z
+            mul r25.z, r25.z, r26.y
+            mad r25.y, -r25.z, l(0.160000), r25.y
+            mad r25.z, -r25.z, l(0.160000), l(1.000000)
+            div_sat r25.y, r25.y, r25.z
+            add r26.yz, r25.xxxx, l(0.000000, -0.500000, -0.340000, 0.000000)
+            mul_sat r25.z, r26.z, l(1.923077)
             mad r26.z, r25.z, l(-2.000000), l(3.000000)
             mul r25.z, r25.z, r25.z
             mul r25.z, r25.z, r26.z
-            mad r26.zw, r25.zzzz, l(0.000000, 0.000000, 0.540000, 0.140000), l(0.000000, 0.000000, 0.320000, 0.720000)
-            div r25.z, r25.w, r26.z
-            add r25.x, r25.x, r25.x
-            min r25.xz, r25.xxzx, l(1.000000, 0.000000, 1.000000, 0.000000)
+            add_sat r25.x, r25.x, r25.x
             add r25.x, -r25.x, l(1.000000)
-            mad r27.x, -|r26.y|, l(2.000000), l(1.000000)
+            mad r26.z, -|r26.y|, l(2.000000), l(1.000000)
             mov_sat r26.y, r26.y
-            mul r27.xyzw, r27.xxxx, l(0.020000, 0.200000, 0.480000, 0.625000)
+            mul r27.xyzw, r26.zzzz, l(0.020000, 0.200000, 0.480000, 0.625000)
             mad r27.xyzw, r25.xxxx, l(0.020000, 0.050000, 0.090000, 0.110000), r27.xyzw
             mad r27.xyzw, r26.yyyy, l(0.020000, 0.125000, 1.560000, 2.000000), r27.xyzw
-            add r27.yw, -r27.xxxz, r27.yyyw
-            add r25.xz, r25.zzzz, -r27.xxzx
-            div r27.xy, l(1.000000, 1.000000, 1.000000, 1.000000), r27.ywyy
-            mul_sat r25.xz, r25.xxzx, r27.xxyx
-            mad r27.xy, r25.xzxx, l(-2.000000, -2.000000, 0.000000, 0.000000), l(3.000000, 3.000000, 0.000000, 0.000000)
-            mul r25.xz, r25.xxzx, r25.xxzx
-            mul r25.z, r25.z, r27.y
-            mad r25.x, r27.x, r25.x, -r25.z
-            mad r25.z, -r26.z, r26.w, r26.z
-            mad r25.w, -r26.z, r26.w, r25.w
-            div r25.z, l(1.000000, 1.000000, 1.000000, 1.000000), r25.z
-            mul_sat r25.z, r25.z, r25.w
-            mad r25.w, r25.z, l(-2.000000), l(3.000000)
-            mul r25.z, r25.z, r25.z
-            mad r25.z, -r25.w, r25.z, l(1.000000)
-            mul r25.x, r25.z, r25.x
-            add r25.z, -r26.x, l(1.000000)
-            mad r25.x, r25.y, r25.x, -r25.z
-            add r25.y, -r25.z, l(1.000000)
+            add r26.yz, -r27.xxzx, r27.yywy
+            add r27.xy, r25.wwww, -r27.xzxx
+            div r26.yz, l(1.000000, 1.000000, 1.000000, 1.000000), r26.yyzy
+            mul_sat r26.yz, r26.yyzy, r27.xxyx
+            mad r27.xy, r26.yzyy, l(-2.000000, -2.000000, 0.000000, 0.000000), l(3.000000, 3.000000, 0.000000, 0.000000)
+            mul r26.yz, r26.yyzy, r26.yyzy
+            mul r25.x, r26.z, r27.y
+            mad r25.x, r27.x, r26.y, -r25.x
+            add r26.y, -r26.x, l(1.000000)
+            mad r25.x, r25.y, r25.x, -r26.y
+            add r25.y, -r26.y, l(1.000000)
             div_sat r25.x, r25.x, r25.y
-            mul r25.y, r26.x, r25.x
-            mad r25.x, r25.x, r26.x, l(-0.003000)
-            mul_sat r25.x, r25.x, l(23.809523)
-            mad r25.z, r25.x, l(-2.000000), l(3.000000)
-            mul r25.x, r25.x, r25.x
-            mul r25.x, r25.x, r25.z
-            mul r25.x, r25.x, r25.y
+            mul r25.x, r26.x, r25.x
+            mad r25.y, r25.z, l(-0.040000), l(0.120000)
+            div r25.y, l(1.000000, 1.000000, 1.000000, 1.000000), r25.y
+            mul_sat r25.y, r25.y, r25.w
+            mad r25.z, r25.y, l(-2.000000), l(3.000000)
+            mul r25.y, r25.y, r25.y
+            mul r25.y, r25.y, r25.z
+            mul r25.x, r25.y, r25.x
+            min r25.x, r25.x, l(1.000000)
+            add r25.y, r25.x, l(-0.003000)
+            mul_sat r25.y, r25.y, l(23.809523)
+            mad r25.z, r25.y, l(-2.000000), l(3.000000)
+            mul r25.y, r25.y, r25.y
+            mul r25.y, r25.y, r25.z
+            mul r25.x, r25.y, r25.x
             mad r24.x, r25.x, l(0.750000), r24.x
           endif 
           mov r25.x, l(0.750000)
@@ -1478,4 +1614,4 @@ endif
 mov o0.xyz, r1.xyzx
 mov o0.w, l(1.000000)
 ret 
-// Approximately 1370 instruction slots used
+// Approximately 1506 instruction slots used

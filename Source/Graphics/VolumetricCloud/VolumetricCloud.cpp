@@ -123,18 +123,17 @@ void VolumetricCloud::initialize(ID3D11Device* device, const wchar_t* filename)
 
 	volumetric_cloud_constant_data = {};
 	volumetric_cloud_constant_data.wind_direction = { 1.0f, 0.0f };
-	// Keep the 10 km layer thickness, but lower it into the initial camera's
-	// upper field of view. At an 8 km base the marked 10-17 degree band reaches
-	// the cloud shell within the existing 50 km view-distance budget.
-	volumetric_cloud_constant_data.cloud_altitudes_min_max = { 8000.0f, 18000.0f };
+	// Keep the common gameplay camera below the main cloud deck while retaining
+	// a low/mid-level HZD-style stratus and cumulus layer.
+	volumetric_cloud_constant_data.cloud_altitudes_min_max = { 9500.0f, 14000.0f };
 	volumetric_cloud_constant_data.wind_speed = 0.02f;
 	volumetric_cloud_constant_data.density_scale = 1.05f;
 	volumetric_cloud_constant_data.cloud_coverage_scale = 0.82f;
 	volumetric_cloud_constant_data.rain_cloud_absorption_scale = 0.2f;
 	volumetric_cloud_constant_data.cloud_type_scale = 1.0f;
 	volumetric_cloud_constant_data.horizon_distance_scale = 1.0f;
-	volumetric_cloud_constant_data.low_frequency_perlin_worley_sampling_scale = 0.00020f;
-	volumetric_cloud_constant_data.high_frequency_worley_sampling_scale = 0.00125f;
+	volumetric_cloud_constant_data.low_frequency_perlin_worley_sampling_scale = 0.00036f;
+	volumetric_cloud_constant_data.high_frequency_worley_sampling_scale = 0.00220f;
 	volumetric_cloud_constant_data.cloud_density_long_distance_scale = 22.0f;
 	// Beer-Powder is now bounded and view dependent, so it can safely provide a
 	// subtle silver lining without turning every edge into a white outline.

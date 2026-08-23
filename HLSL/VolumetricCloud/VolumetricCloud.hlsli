@@ -77,8 +77,8 @@ static const float LOW_FREQ_WIND_ANIM_SCALE = 600.0;
 static const float HIGH_FREQ_WIND_ANIM_SCALE = 900.0;
 static const float ANIMATION_UV_WRAP = 2.0;
 static const float CURL_NOISE_UV_SCALE = 0.00008;
-static const float CURL_DISTORTION_BASE = 520.0;
-static const float CURL_DISTORTION_TOP = 220.0;
+static const float CURL_DISTORTION_BASE = 640.0;
+static const float CURL_DISTORTION_TOP = 280.0;
 
 // Horizon Zero Dawn uses five nearby samples distributed in a cone and one
 // distant sample to catch shadows from remote clouds (SIGGRAPH 2015, pp.85-86).
@@ -308,15 +308,19 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
                          raininess * RAIN_CLOUD_COVERAGE_FLOOR);
     float cloud_type = saturate(weather_data.b * cloud_type_scale);
 
-    // Preserve the authored coverage map at every distance. Raising every
-    // distant sample to a fixed coverage floor turns a long horizon ray into a
-    // continuous opaque wall. Only bias the height profile toward cumulus; the
-    // existing weather pattern must keep carving clear gaps between masses.
+    // HZD gradually favours cumulus at long range, but forcing every distant
+    // sample to type 1 gives unrelated cells the same full-height profile and
+    // joins them into a horizontal wall. Keep the authored type variation and
+    // apply only a restrained long-distance bias.
     float camera_distance_xz = length(sample_point.xz - camera_position.xz);
     float distant_cloud_bias = smoothstep(DISTANT_CLOUD_TRANSITION_START,
                                           DISTANT_CLOUD_TRANSITION_END,
                                           camera_distance_xz);
-    cloud_type = lerp(cloud_type, 1.0, distant_cloud_bias);
+    float distant_tower_mask = smoothstep(0.55, 0.80, cloud_type);
+    float distant_cloud_type = max(cloud_type, 0.78);
+    cloud_type = lerp(cloud_type,
+                      distant_cloud_type,
+                      distant_cloud_bias * distant_tower_mask * 0.30);
 
     // Horizon-style base signal: Perlin provides connected masses while the
     // packed Worley octaves erode them into broad, rounded billows.
@@ -325,24 +329,26 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
                                1.0,
                                0.0,
                                1.0);
-    // Cloud type controls both the HZD height-density profile and the local
-    // top of each weather cell. Cumulus cores may use almost the full layer;
-    // lower-type cell edges terminate much earlier. This gives the footprint a
-    // rounded volume instead of extruding it through one uniform layer.
-    // A weather cell must not extrude through the entire shell. The previous
-    // 1.0 maximum became a 22 km vertical pillar when the layer was made tall.
-    // Keep a useful cumulus range, but reserve the top of the shell as empty
-    // space so the silhouette closes into rounded lobes.
-	float cumulusCore = smoothstep(0.24, 0.84, cloud_type);
-	float localTop = lerp(0.32, 0.86, cumulusCore);
-	float localHeightFraction = saturate(height_fraction / max(localTop, 0.05));
-	float density_height_gradient = get_density_height_gradient(localHeightFraction,
-														 cloud_type);
-	float taperStart = lerp(0.72, 0.86, cumulusCore);
-	float localTopTaper = 1.0 - smoothstep(localTop * taperStart,
-										localTop,
-										height_fraction);
-    density_height_gradient *= localTopTaper;
+    // Weak low-frequency bridges are acceptable near the cloud base, but at
+    // higher altitudes they read as roofs over giant holes. Gradually tighten
+    // the base-shape threshold with altitude so those bridges separate into
+    // individual cloud towers without changing their weather-map placement.
+    float upper_shape_threshold = lerp(0.0,
+                                       0.16,
+                                       smoothstep(0.30, 0.86,
+                                                  height_fraction));
+    shape_signal = remap(shape_signal,
+                         upper_shape_threshold,
+                         1.0,
+                         0.0,
+                         1.0);
+    // HZD forms the low-resolution body by multiplying the 3D base signal by
+    // one of three mathematical height gradients blended by cloud type. Do not
+    // rescale the height fraction per weather cell: that creates broad, flat
+    // local ceilings and turns separated cloud groups into horizontal loaves.
+    float cumulusCore = smoothstep(0.34, 0.86, cloud_type);
+    float density_height_gradient = get_density_height_gradient(height_fraction,
+                                                                 cloud_type);
     float height_shaped_density = shape_signal * density_height_gradient;
 
     // Coverage shifts the density threshold instead of multiplying a binary
@@ -353,6 +359,14 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
                               0.0,
                               1.0);
     final_cloud *= cloud_coverage;
+
+	// The HZD construction explicitly reduces density at cloud bottoms after
+	// applying coverage. Widening this transition removes the opaque horizontal
+	// shelf while preserving the rounded Perlin-Worley body above it.
+    float bottom_density = smoothstep(0.0,
+                                      lerp(0.12, 0.08, cumulusCore),
+                                      height_fraction);
+    final_cloud *= bottom_density;
 
     if (!cheap_sample && final_cloud > 0.0)
     {
@@ -388,18 +402,20 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
         float erosion_noise = lerp(1.0 - high_frequency_fbm,
                                    high_frequency_fbm,
                                    detail_height_blend);
-        float erosion_strength = lerp(0.035, 0.11,
+        float erosion_strength = lerp(0.045, 0.13,
                                       smoothstep(0.08, 0.90,
                                                  height_fraction));
         // The presentation explicitly reduces density at the cloud base. Add
         // a short, stronger erosion band there so the visible underside follows
         // the 3D detail field instead of exposing the spherical layer boundary.
-        float base_erosion_strength = lerp(0.20, 0.0,
+        float base_erosion_strength = lerp(0.24, 0.0,
                                            smoothstep(0.02, 0.22,
                                                       height_fraction));
+        float edge_mask = 1.0 - smoothstep(0.16, 0.52, final_cloud);
         float erosion_threshold = erosion_noise
-                                * max(erosion_strength,
-                                      base_erosion_strength);
+                                 * max(erosion_strength,
+                                      base_erosion_strength)
+                                 * lerp(0.12, 1.0, edge_mask);
         final_cloud = remap(final_cloud,
                             erosion_threshold,
                             1.0,

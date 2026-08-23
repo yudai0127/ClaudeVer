@@ -94,7 +94,7 @@ dcl_resource_texture3d (float,float,float,float) t1
 dcl_resource_texture2d (float,float,float,float) t3
 dcl_input_ps linear v1.xy
 dcl_output o0.xyzw
-dcl_temps 9
+dcl_temps 8
 add r0.xy, v1.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
 mad r0.xz, r0.xxyx, l(20000.000000, 0.000000, 20000.000000, 0.000000), cb1[4].xxzx
 mul r0.w, cb3[2].x, l(1000.000000)
@@ -289,55 +289,67 @@ loop
   mad r6.z, r6.y, l(-2.000000), l(3.000000)
   mul r6.y, r6.y, r6.y
   mul r6.y, r6.y, r6.z
-  add r6.z, -r6.x, l(1.000000)
+  add r6.z, r6.x, l(-0.550000)
+  mul_sat r6.z, r6.z, l(4.000000)
+  mad r6.w, r6.z, l(-2.000000), l(3.000000)
+  mul r6.z, r6.z, r6.z
+  mul r6.z, r6.z, r6.w
+  max r6.w, r6.x, l(0.780000)
+  mul r6.y, r6.z, r6.y
+  mul r6.y, r6.y, l(0.300000)
+  add r6.z, -r6.x, r6.w
   mad r6.x, r6.y, r6.z, r6.x
   add r6.y, -r5.z, r7.x
   add r6.y, r6.y, l(1.000000)
   add r5.z, -r5.z, l(2.000000)
   div_sat r5.z, r6.y, r5.z
-  add r6.yz, r6.xxxx, l(0.000000, -0.500000, -0.240000, 0.000000)
-  mul_sat r6.z, r6.z, l(1.666667)
+  add r6.y, r5.y, l(-0.300000)
+  mul_sat r6.y, r6.y, l(1.785714)
+  mad r6.z, r6.y, l(-2.000000), l(3.000000)
+  mul r6.y, r6.y, r6.y
+  mul r6.y, r6.y, r6.z
+  mad r5.z, -r6.y, l(0.160000), r5.z
+  mad r6.y, -r6.y, l(0.160000), l(1.000000)
+  div_sat r5.z, r5.z, r6.y
+  add r6.yz, r6.xxxx, l(0.000000, -0.500000, -0.340000, 0.000000)
+  mul_sat r6.z, r6.z, l(1.923077)
   mad r6.w, r6.z, l(-2.000000), l(3.000000)
   mul r6.z, r6.z, r6.z
   mul r6.z, r6.z, r6.w
-  mad r6.zw, r6.zzzz, l(0.000000, 0.000000, 0.540000, 0.140000), l(0.000000, 0.000000, 0.320000, 0.720000)
-  div r7.x, r5.y, r6.z
-  min r7.x, r7.x, l(1.000000)
-  add r6.x, r6.x, r6.x
-  min r6.x, r6.x, l(1.000000)
+  add_sat r6.x, r6.x, r6.x
   add r6.x, -r6.x, l(1.000000)
-  mad r7.y, -|r6.y|, l(2.000000), l(1.000000)
+  mad r6.w, -|r6.y|, l(2.000000), l(1.000000)
   mov_sat r6.y, r6.y
-  mul r8.xyzw, r7.yyyy, l(0.020000, 0.200000, 0.480000, 0.625000)
-  mad r8.xyzw, r6.xxxx, l(0.020000, 0.050000, 0.090000, 0.110000), r8.xyzw
-  mad r8.xyzw, r6.yyyy, l(0.020000, 0.125000, 1.560000, 2.000000), r8.xyzw
-  add r6.xy, -r8.xzxx, r8.ywyy
-  add r7.xy, r7.xxxx, -r8.xzxx
+  mul r7.xyzw, r6.wwww, l(0.020000, 0.200000, 0.480000, 0.625000)
+  mad r7.xyzw, r6.xxxx, l(0.020000, 0.050000, 0.090000, 0.110000), r7.xyzw
+  mad r7.xyzw, r6.yyyy, l(0.020000, 0.125000, 1.560000, 2.000000), r7.xyzw
+  add r6.xy, -r7.xzxx, r7.ywyy
+  add r7.xy, r5.yyyy, -r7.xzxx
   div r6.xy, l(1.000000, 1.000000, 1.000000, 1.000000), r6.xyxx
   mul_sat r6.xy, r6.xyxx, r7.xyxx
   mad r7.xy, r6.xyxx, l(-2.000000, -2.000000, 0.000000, 0.000000), l(3.000000, 3.000000, 0.000000, 0.000000)
   mul r6.xy, r6.xyxx, r6.xyxx
   mul r6.y, r6.y, r7.y
   mad r6.x, r7.x, r6.x, -r6.y
-  mad r6.y, -r6.z, r6.w, r6.z
-  mad r5.y, -r6.z, r6.w, r5.y
-  div r6.y, l(1.000000, 1.000000, 1.000000, 1.000000), r6.y
-  mul_sat r5.y, r5.y, r6.y
-  mad r6.y, r5.y, l(-2.000000), l(3.000000)
-  mul r5.y, r5.y, r5.y
-  mad r5.y, -r6.y, r5.y, l(1.000000)
-  mul r5.y, r5.y, r6.x
-  add r6.x, -r5.w, l(1.000000)
-  mad r5.y, r5.z, r5.y, -r6.x
-  add r5.z, -r6.x, l(1.000000)
-  div_sat r5.y, r5.y, r5.z
-  mul r5.z, r5.w, r5.y
-  mad r5.y, r5.y, r5.w, l(-0.003000)
-  mul_sat r5.y, r5.y, l(23.809523)
+  add r6.y, -r5.w, l(1.000000)
+  mad r5.z, r5.z, r6.x, -r6.y
+  add r6.x, -r6.y, l(1.000000)
+  div_sat r5.z, r5.z, r6.x
+  mul r5.z, r5.w, r5.z
+  mad r5.w, r6.z, l(-0.040000), l(0.120000)
+  div r5.w, l(1.000000, 1.000000, 1.000000, 1.000000), r5.w
+  mul_sat r5.y, r5.w, r5.y
   mad r5.w, r5.y, l(-2.000000), l(3.000000)
   mul r5.y, r5.y, r5.y
   mul r5.y, r5.y, r5.w
   mul r5.y, r5.y, r5.z
+  min r5.y, r5.y, l(1.000000)
+  add r5.z, r5.y, l(-0.003000)
+  mul_sat r5.z, r5.z, l(23.809523)
+  mad r5.w, r5.z, l(-2.000000), l(3.000000)
+  mul r5.z, r5.z, r5.z
+  mul r5.z, r5.z, r5.w
+  mul r5.y, r5.z, r5.y
   lt r5.z, l(0.000000), r5.y
   mad r5.y, r5.y, r1.w, r4.w
   movc r4.w, r5.z, r5.y, r4.w
@@ -351,4 +363,4 @@ mul r0.x, r0.x, l(2.885390)
 exp o0.x, r0.x
 mov o0.yzw, l(0,0,0,1.000000)
 ret 
-// Approximately 256 instruction slots used
+// Approximately 268 instruction slots used
