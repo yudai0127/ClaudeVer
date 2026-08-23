@@ -96,14 +96,11 @@ void main(uint3 id : SV_DispatchThreadID)
 
     float tRain = saturate((weatherT - PRECIP_START) / (1.0 - PRECIP_START));
 
-    float requestedCoverage = lerp(sunnyCoverage, rainyCoverage, tCov);
-    float rain = lerp(sunnyRain, rainyRain, tRain);
-    float ctype = lerp(sunnyType, rainyType, tType);
-    // The blue channel is a spatial cloud-type field, not one global height.
-    // Gentle variation mixes lower stratocumulus with taller cumulus groups.
-    float typeVariation = (macroNoise - 0.5) * 0.20
-                        + (detailNoise - 0.5) * 0.08;
-    ctype = saturate(ctype + typeVariation);
+float requestedCoverage = saturate(lerp(sunnyCoverage, rainyCoverage, tCov)
+                                 + lerp(0.05, 0.08, tCov));
+float rain = lerp(sunnyRain, rainyRain, tRain);
+float requestedType = saturate(lerp(sunnyType, rainyType, tType)
+                             + tType * 0.04);
 
     float threshold = lerp(COVERAGE_THRESHOLD_HIGH,
                            COVERAGE_THRESHOLD_LOW,
@@ -117,6 +114,17 @@ void main(uint3 id : SV_DispatchThreadID)
     // cells. noiseAmp remains part of the existing CPU/UI data contract.
     float boundaryDetail = (detailNoise - 0.5) * noiseAmp * 0.35;
     placement = saturate(placement + boundaryDetail * placement * (1.0 - placement));
+
+    // HZD uses the weather-map cloud type to select a vertical density
+    // profile. Make that type spatial: a cloud-cell core grows into cumulus,
+    // while its perimeter collapses toward lower stratocumulus. Keeping one
+    // nearly constant type across the whole cell produces a flat cloud slab
+    // when viewed at grazing angles.
+float cellCore = smoothstep(0.08, 0.84, placement);
+float ctype = lerp(0.26, requestedType, cellCore);
+float typeVariation = (macroNoise - 0.5) * 0.22
+                    + (detailNoise - 0.5) * 0.08;
+    ctype = saturate(ctype + typeVariation * lerp(0.25, 1.0, cellCore));
 
     // Store actual local coverage rather than a binary placement mask. The
     // volumetric shader uses this value to shift its density threshold.

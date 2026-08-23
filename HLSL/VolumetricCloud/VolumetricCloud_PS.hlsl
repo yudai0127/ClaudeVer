@@ -4,13 +4,35 @@ static const float NDC_SCALE = 2.0;
 static const float NDC_BIAS = 1.0;
 static const float RAYMARCH_DIRECTION_Y_THRESHOLD = 0.0;
 
-static const float AUTO_ZENITH_STEP_SCALE = 2.0 / 3.0;
-static const float AUTO_HORIZON_STEP_SCALE = 4.0 / 3.0;
-static const float MIN_RAY_MARCH_STEPS = 32.0;
-static const float MAX_RAY_MARCH_STEPS = 160.0;
+static const float AUTO_ZENITH_STEP_SCALE = 0.52;
+static const float AUTO_HORIZON_STEP_SCALE = 1.0;
+static const float MIN_RAY_MARCH_STEPS = 24.0;
+static const float MAX_RAY_MARCH_STEPS = 128.0;
+static const float TARGET_RAY_STEP_LENGTH = 850.0;
+
+// Keep the expensive cloud field local to the playable scene. A spherical
+// atmosphere intersects nearly horizontal rays hundreds of kilometres away;
+// marching the complete interval made the distant bank look flat and kept the
+// GPU busy even when useful cloud detail was only in the foreground.
+static const float MAX_CLOUD_VIEW_DISTANCE = 110000.0;
+static const float CLOUD_DISTANCE_FADE_START = 75000.0;
 
 static const float HORIZON_VISIBILITY_START_Y = 0.003;
 static const float HORIZON_VISIBILITY_END_Y = 0.055;
+
+// Interleaved gradient noise is deterministic for a screen pixel. It breaks
+// up ray-depth bands while avoiding temporal crawling in a renderer that does
+// not yet have cloud reprojection/TAA.
+float cloud_ray_jitter(float2 pixel_position)
+{
+    float2 pixel = floor(pixel_position);
+    float noise = frac(52.9829189
+                     * frac(dot(pixel,
+                                float2(0.06711056, 0.00583715))));
+    // Do not sample exactly at a segment boundary. The limited range keeps the
+    // spatial dither subtle enough for the current non-temporal composite.
+    return lerp(0.24, 0.76, noise);
+}
 
 float4 main(VS_OUT pin) : SV_TARGET
 {
@@ -38,12 +60,14 @@ float4 main(VS_OUT pin) : SV_TARGET
     float cloud_top_radius = cloud_planet_radius + cloud_altitudes_min_max.y;
     bool inside_cloud_layer = (eye_radius > cloud_bottom_radius) && (eye_radius < cloud_top_radius);
 
-    if (!inside_cloud_layer && eye_radius >= cloud_top_radius && ray_dir.y <= 0.0)
-    {
-        return float4(background, 1.0);
-    }
-    
-    if (ray_dir.y > RAYMARCH_DIRECTION_Y_THRESHOLD || inside_cloud_layer)
+    bool below_cloud_layer = eye_radius <= cloud_bottom_radius;
+    bool above_cloud_layer = eye_radius >= cloud_top_radius;
+    bool looking_toward_planet = dot(eye_pos, ray_dir) < 0.0;
+    bool can_hit_cloud_layer = inside_cloud_layer
+                            || (below_cloud_layer && ray_dir.y > RAYMARCH_DIRECTION_Y_THRESHOLD)
+                            || (above_cloud_layer && looking_toward_planet);
+
+    if (can_hit_cloud_layer)
     {
         float t_outer_near = 0.0;
         float t_outer_far = 0.0;
@@ -76,9 +100,9 @@ float4 main(VS_OUT pin) : SV_TARGET
         }
 
         start_t = max(start_t, 0.0);
-        end_t = max(end_t, 0.0);
+        end_t = min(max(end_t, 0.0), MAX_CLOUD_VIEW_DISTANCE);
 
-        if (end_t <= start_t)
+        if (start_t >= MAX_CLOUD_VIEW_DISTANCE || end_t <= start_t)
         {
             return float4(background, 1.0);
         }
@@ -97,13 +121,27 @@ float4 main(VS_OUT pin) : SV_TARGET
                          horizon_weight);
         }
 
+        // Short overhead and top-down segments do not need the same sample
+        // count as a long horizon ray. Preserve a bounded world-space step
+        // size while never increasing the user's quality setting.
+        float distance_limited_steps = max(MIN_RAY_MARCH_STEPS,
+                                           shell_dist / TARGET_RAY_STEP_LENGTH);
+        steps = min(steps, distance_limited_steps);
+
         // 距離からステップ数を強制すると、雲層の単位スケールではほぼ常に
         // 256ステップへ張り付き、UIの設定値が機能しない。品質設定をそのまま使う。
         steps = clamp(steps, MIN_RAY_MARCH_STEPS, MAX_RAY_MARCH_STEPS);
 
         float3 ray_step = ray_dir * shell_dist / steps;
+        float ray_jitter = cloud_ray_jitter(pin.position.xy);
 
-        float4 volume = ray_march(ray_origin, ray_step, int(steps));
+        float4 volume = ray_march(ray_origin,
+                                  ray_step,
+                                  int(steps),
+                                  start_t,
+                                  CLOUD_DISTANCE_FADE_START,
+                                  MAX_CLOUD_VIEW_DISTANCE,
+                                  ray_jitter);
 
         // Horizon renders its low clouds in a spherical shell; no screen-space
         // horizon cut is required. Apply only smooth atmospheric depth

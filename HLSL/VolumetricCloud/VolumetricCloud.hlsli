@@ -63,6 +63,7 @@ static const float WEATHER_SPEED_CAP = 0.10;
 static const float WEATHER_UV_TIME_SCALE = 0.0015;
 static const float MIN_ALTITUDE_FROM_GROUND = 1.0;
 static const float MIN_HORIZON_DISTANCE = 512.0;
+static const float MAX_WEATHER_MAP_RADIUS = 100000.0;
 // AtmosphereConstants stores planetary distances in kilometres, while the
 // scene camera, cloud altitudes and noise domains use metres.
 static const float METERS_PER_KILOMETRE = 1000.0;
@@ -78,6 +79,7 @@ static const float CURL_DISTORTION_TOP = 220.0;
 // Horizon Zero Dawn uses five nearby samples distributed in a cone and one
 // distant sample to catch shadows from remote clouds (SIGGRAPH 2015, pp.85-86).
 static const int LIGHT_CONE_NEAR_SAMPLES = 5;
+static const int LIGHT_CONE_CHEAP_SAMPLES = 2;
 static const float LIGHT_CONE_STEP_DIVISOR = 36.0;
 static const float LIGHT_CONE_RADIUS_SCALE = 0.35;
 static const float LIGHT_CONE_FAR_RADIUS_SCALE = 0.08;
@@ -85,7 +87,7 @@ static const float LIGHT_FULL_DETAIL_MIP = 2.0;
 static const float LIGHT_CHEAP_DETAIL_MIP = 4.5;
 static const float LIGHT_FAR_DETAIL_MIP = 5.0;
 static const float LIGHT_FAR_SAMPLE_WEIGHT = 0.75;
-static const float LIGHT_FULL_TO_CHEAP_ALPHA = 0.30;
+static const float LIGHT_FULL_TO_CHEAP_ALPHA = 0.12;
 
 static const float SUN_VISIBILITY_START_Y = -0.02;
 static const float SUN_VISIBILITY_END_Y = 0.06;
@@ -210,7 +212,9 @@ float3 sample_weather_data(float2 sample_point)
     float cloud_base_altitude = max(cloud_altitudes_min_max.x, MIN_ALTITUDE_FROM_GROUND);
     float cloud_planet_radius = get_cloud_planet_radius();
     float horizon_distance = sqrt(max(cloud_base_altitude * (cloud_base_altitude + 2.0 * cloud_planet_radius), MIN_ALTITUDE_FROM_GROUND)) * horizon_distance_scale;
-    horizon_distance = max(horizon_distance, MIN_HORIZON_DISTANCE);
+    horizon_distance = clamp(horizon_distance,
+                             MIN_HORIZON_DISTANCE,
+                             MAX_WEATHER_MAP_RADIUS);
 
     float2 mapped = float2(sample_point.x + horizon_distance, horizon_distance - sample_point.y) / (2.0 * horizon_distance);
 
@@ -299,10 +303,24 @@ float sample_cloud_density(float3 sample_point, float3 weather_data, float mip_l
                                1.0,
                                0.0,
                                1.0);
-    // The three blended height profiles are the only vertical shape control.
-    // Removing the old local-top/tower-taper path prevents hanging pillars.
-    float density_height_gradient = get_density_height_gradient(height_fraction,
-                                                                 cloud_type);
+    // Cloud type controls both the HZD height-density profile and the local
+    // top of each weather cell. Cumulus cores may use almost the full layer;
+    // lower-type cell edges terminate much earlier. This gives the footprint a
+    // rounded volume instead of extruding it through one uniform layer.
+    // A weather cell must not extrude through the entire shell. The previous
+    // 1.0 maximum became a 22 km vertical pillar when the layer was made tall.
+    // Keep a useful cumulus range, but reserve the top of the shell as empty
+    // space so the silhouette closes into rounded lobes.
+	float cumulusCore = smoothstep(0.24, 0.84, cloud_type);
+	float localTop = lerp(0.32, 0.86, cumulusCore);
+	float localHeightFraction = saturate(height_fraction / max(localTop, 0.05));
+	float density_height_gradient = get_density_height_gradient(localHeightFraction,
+														 cloud_type);
+	float taperStart = lerp(0.72, 0.86, cumulusCore);
+	float localTopTaper = 1.0 - smoothstep(localTop * taperStart,
+										localTop,
+										height_fraction);
+    density_height_gradient *= localTopTaper;
     float height_shaped_density = shape_signal * density_height_gradient;
 
     // Coverage shifts the density threshold instead of multiplying a binary
@@ -479,10 +497,9 @@ static const float3 noise_kernel[6] =
 };
 
 
-// Five local cone samples smooth the shadow ray, while the sixth distant tap
-// captures remote occluders. Nearby taps use full density detail until the
-// view ray has accumulated 0.3 alpha; afterwards the low-frequency sampler is
-// used, matching the optimization described in the Horizon presentation.
+// Boundary samples use five local cone taps plus one distant tap to preserve
+// the silver lining and catch remote occluders. Once accumulated view alpha is
+// high, two low-frequency taps are sufficient for hidden interior layers.
 float integrate_cloud_density_to_light(float3 ray_origin,
                                        float3 ray_direction,
                                        bool use_cheap_near_samples)
@@ -495,10 +512,18 @@ float integrate_cloud_density_to_light(float3 ray_origin,
                                 1.0);
     float light_step = layer_thickness / LIGHT_CONE_STEP_DIVISOR;
     float density_sum = 0.0;
+    int near_sample_count = use_cheap_near_samples
+                          ? LIGHT_CONE_CHEAP_SAMPLES
+                          : LIGHT_CONE_NEAR_SAMPLES;
 
     [unroll]
     for (int i = 0; i < LIGHT_CONE_NEAR_SAMPLES; ++i)
     {
+        if (i >= near_sample_count)
+        {
+            break;
+        }
+
         float t = (float(i) + 1.0) * light_step;
         float3 kernel_vector = noise_kernel[i];
         float3 lateral = kernel_vector - ray_direction * dot(kernel_vector, ray_direction);
@@ -524,28 +549,37 @@ float integrate_cloud_density_to_light(float3 ray_origin,
         }
     }
 
-    float far_distance = light_step * max(cloud_density_long_distance_scale,
-                                          float(LIGHT_CONE_NEAR_SAMPLES + 1));
-    float3 far_kernel = noise_kernel[5];
-    float3 far_lateral = far_kernel - ray_direction * dot(far_kernel, ray_direction);
-    far_lateral *= rsqrt(max(dot(far_lateral, far_lateral), 1e-6));
-    float3 far_point = ray_origin
-                     + ray_direction * far_distance
-                     + far_lateral * (far_distance * LIGHT_CONE_FAR_RADIUS_SCALE);
-    float far_radius = length(far_point);
-
-    if (far_radius >= bottom_radius && far_radius <= top_radius)
+    // The distant sixth tap matters at a newly-entered sunlit boundary. Once
+    // the view ray is already opaque its contribution is visually negligible,
+    // so omit it together with three local taps. This preserves the Horizon
+    // cone shadow on the silhouette while avoiding six density evaluations for
+    // every interior march step.
+    float far_sample_weight = 0.0;
+    if (!use_cheap_near_samples)
     {
-        float3 far_weather = sample_weather_data(far_point.xz);
-        density_sum += sample_cloud_density(far_point,
-                                            far_weather,
-                                            LIGHT_FAR_DETAIL_MIP,
-                                            true)
-                     * LIGHT_FAR_SAMPLE_WEIGHT;
+        float far_distance = light_step * max(cloud_density_long_distance_scale,
+                                              float(LIGHT_CONE_NEAR_SAMPLES + 1));
+        float3 far_kernel = noise_kernel[5];
+        float3 far_lateral = far_kernel - ray_direction * dot(far_kernel, ray_direction);
+        far_lateral *= rsqrt(max(dot(far_lateral, far_lateral), 1e-6));
+        float3 far_point = ray_origin
+                         + ray_direction * far_distance
+                         + far_lateral * (far_distance * LIGHT_CONE_FAR_RADIUS_SCALE);
+        float far_radius = length(far_point);
+
+        if (far_radius >= bottom_radius && far_radius <= top_radius)
+        {
+            float3 far_weather = sample_weather_data(far_point.xz);
+            density_sum += sample_cloud_density(far_point,
+                                                far_weather,
+                                                LIGHT_FAR_DETAIL_MIP,
+                                                true)
+                         * LIGHT_FAR_SAMPLE_WEIGHT;
+        }
+        far_sample_weight = LIGHT_FAR_SAMPLE_WEIGHT;
     }
 
-    return density_sum / (float(LIGHT_CONE_NEAR_SAMPLES)
-                        + LIGHT_FAR_SAMPLE_WEIGHT);
+    return density_sum / (float(near_sample_count) + far_sample_weight);
 }
 
 
@@ -599,7 +633,13 @@ float compute_density_mip(float t01, float segment_step_size)
 // - double-sized low-frequency steps in empty space,
 // - one coarse step backwards when the low-frequency isosurface is hit,
 // - return to coarse marching after consecutive empty detailed samples.
-float4 ray_march(float3 ray_origin, float3 ray_step, int steps)
+float4 ray_march(float3 ray_origin,
+                 float3 ray_step,
+                 int steps,
+                 float ray_start_distance,
+                 float distance_fade_start,
+                 float distance_fade_end,
+                 float ray_jitter)
 {
     float fine_step_size = max(length(ray_step), SEGMENT_STEP_EPSILON);
     float coarse_step_size = fine_step_size * CHEAP_MARCH_STEP_MULTIPLIER;
@@ -667,7 +707,12 @@ float4 ray_march(float3 ray_origin, float3 ray_step, int steps)
 
     float3 color = 0.0;
     float transmittance = 1.0;
-    float travel = RAY_MARCH_MIDPOINT * coarse_step_size;
+    // A fixed half-step places every pixel on the same depth planes. With a
+    // reduced step count those planes become visible as horizontal bands.
+    // Stable screen-space jitter supplied by the pixel shader decorrelates the
+    // planes without increasing the ray-march cost or making the cloud move.
+    float fine_jitter_floor = ray_jitter * fine_step_size;
+    float travel = ray_jitter * coarse_step_size;
     bool cheap_march = true;
     int consecutive_zero_samples = 0;
 
@@ -679,8 +724,15 @@ float4 ray_march(float3 ray_origin, float3 ray_step, int steps)
             break;
         }
 
-        float3 sample_point = ray_origin + view_direction * travel;
-        float t01 = saturate(travel / max(shell_length, SEGMENT_STEP_EPSILON));
+		// Decorrelate the fixed march lattice from the view ray without adding
+		// another density sample.  The golden-ratio phase turns coherent rainy
+		// bands into low-amplitude noise that the existing resolve can smooth.
+		float step_phase = frac(ray_jitter + float(iteration) * 0.61803398875f) - 0.5f;
+		float phase_step = cheap_march ? coarse_step_size : fine_step_size;
+		float sample_travel = clamp(travel + step_phase * phase_step * 0.18f,
+									0.0f, shell_length);
+		float3 sample_point = ray_origin + view_direction * sample_travel;
+		float t01 = saturate(sample_travel / max(shell_length, SEGMENT_STEP_EPSILON));
         float density_mip = compute_density_mip(t01, fine_step_size);
         float3 weather_data = sample_weather_data(sample_point.xz);
 
@@ -695,7 +747,11 @@ float4 ray_march(float3 ray_origin, float3 ray_step, int steps)
                 // The low-frequency isosurface surrounds the detailed cloud.
                 // Step back before switching to the expensive sampler so no
                 // edge sample is skipped.
-                travel = max(0.0, travel - coarse_step_size);
+                // Preserve the sub-step phase even when the first coarse
+                // sample enters a cloud; clamping to zero would recreate the
+                // same aligned boundary at the shell entrance.
+                travel = max(fine_jitter_floor,
+                             travel - coarse_step_size);
                 cheap_march = false;
                 consecutive_zero_samples = 0;
             }
@@ -710,6 +766,11 @@ float4 ray_march(float3 ray_origin, float3 ray_step, int steps)
                                                       weather_data,
                                                       density_mip,
                                                       false);
+			float camera_distance = ray_start_distance + sample_travel;
+        float distance_fade = 1.0 - smoothstep(distance_fade_start,
+                                               distance_fade_end,
+                                               camera_distance);
+        sampled_density *= distance_fade;
         if (sampled_density <= 0.0)
         {
             ++consecutive_zero_samples;

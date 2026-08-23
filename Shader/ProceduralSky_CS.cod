@@ -10,7 +10,7 @@
 //   float3 sunDirection;               // Offset:    0 Size:    12
 //   float sunIntensity;                // Offset:   12 Size:     4
 //   float3 cameraPosition;             // Offset:   16 Size:    12
-//   float nightIntensity;              // Offset:   28 Size:     4 [unused]
+//   float nightIntensity;              // Offset:   28 Size:     4
 //   float planetRadius;                // Offset:   32 Size:     4
 //   float atmosphereRadius;            // Offset:   36 Size:     4
 //   float rayleighScaleHeight;         // Offset:   40 Size:     4
@@ -18,7 +18,7 @@
 //   float3 rayleighScatteringCoefficient;// Offset:   48 Size:    12
 //   float mieScatteringCoefficient;    // Offset:   60 Size:     4
 //   float mieEccentricity;             // Offset:   64 Size:     4
-//   float3 _padding2;                  // Offset:   68 Size:    12 [unused]
+//   float3 _padding2;                  // Offset:   68 Size:    12
 //
 // }
 //
@@ -601,10 +601,100 @@ mul r1.xyz, r7.xyzx, cb3[3].wwww
 add r0.xyz, r0.xyzx, r1.xyzx
 mul r0.xyz, r0.xyzx, cb3[0].wwww  // r0.x <- finalColor.x; r0.y <- finalColor.y; r0.z <- finalColor.z
 
+#line 192
+mov r0.w, -cb3[0].y
+mov r1.x, l(-0.040000)
+add r1.y, r1.x, l(0.180000)
+add r0.w, r0.w, r1.x
+div r1.x, l(1.000000, 1.000000, 1.000000, 1.000000), r1.y
+mul r0.w, r0.w, r1.x
+max r0.w, r0.w, l(0.000000)
+min r0.w, r0.w, l(1.000000)
+mul r1.x, r0.w, l(-2.000000)
+add r1.x, r1.x, l(3.000000)
+mul r0.w, r0.w, r0.w
+mul r0.w, r0.w, r1.x  // r0.w <- nightAmount
+
 #line 193
+mul r1.x, r3.y, l(0.500000)
+add r1.x, r1.x, l(0.500000)
+max r1.x, r1.x, l(0.000000)
+min r1.x, r1.x, l(1.000000)  // r1.x <- skyUp
+
+#line 194
+mul r1.yzw, cb3[1].wwww, l(0.000000, 0.010000, 0.025000, 0.080000)
+mov r2.x, l(-0.450000)
+add r2.x, r2.x, l(1.000000)
+mul r1.x, r1.x, r2.x
+add r1.x, r1.x, l(0.450000)
+mul r1.xyz, r1.xxxx, r1.yzwy  // r1.x <- nightSkyColor.x; r1.y <- nightSkyColor.y; r1.z <- nightSkyColor.z
+
+#line 197
+mov r2.xyz, -cb3[0].xyzx  // r2.x <- moonDirection.x; r2.y <- moonDirection.y; r2.z <- moonDirection.z
+
+#line 198
+dp3 r1.w, r3.xyzx, r2.xyzx  // r1.w <- moonDot
+
+#line 200
+mov r2.x, l(0.999925)  // r2.x <- moonInner
+
+#line 201
+mov r2.y, l(0.999863)  // r2.y <- moonOuter
+
+#line 202
+mov r2.y, -r2.y
+add r2.x, r2.y, r2.x
+add r1.w, r1.w, r2.y
+div r2.x, l(1.000000, 1.000000, 1.000000, 1.000000), r2.x
+mul r1.w, r1.w, r2.x
+max r1.w, r1.w, l(0.000000)
+min r1.w, r1.w, l(1.000000)
+mul r2.x, r1.w, l(-2.000000)
+add r2.x, r2.x, l(3.000000)
+mul r1.w, r1.w, r1.w
+mul r1.w, r1.w, r2.x  // r1.w <- moonDisc
+
+#line 203
+mul r2.x, cb3[1].w, l(2.800000)
+mul r2.xyz, r2.xxxx, l(0.550000, 0.700000, 1.000000, 0.000000)
+mul r2.xyz, r1.wwww, r2.xyzx  // r2.x <- moonColor.x; r2.y <- moonColor.y; r2.z <- moonColor.z
+
+#line 206
+add r1.xyz, r1.xyzx, r2.xyzx
+mul r1.xyz, r0.wwww, r1.xyzx
+add r0.xyz, r0.xyzx, r1.xyzx
+
+#line 211
+max r1.x, cb3[4].y, l(0.000000)
+min r1.x, r1.x, l(1.000000)  // r1.x <- weatherOvercast
+
+#line 212
+mov r0.w, -r0.w
+add r0.w, r0.w, l(1.000000)
+mul r0.w, r0.w, r1.x  // r0.w <- dayWeather
+
+#line 213
+dp3 r1.x, r0.xyzx, l(0.212600, 0.715200, 0.072200, 0.000000)  // r1.x <- skyLuminance
+
+#line 214
+mov r1.yzw, -r0.xxyz
+add r1.xyz, r1.yzwy, r1.xxxx
+mul r1.xyz, r1.xyzx, l(0.580000, 0.580000, 0.580000, 0.000000)
+add r1.xyz, r0.xyzx, r1.xyzx
+mul r1.xyz, r1.xyzx, l(0.620000, 0.670000, 0.730000, 0.000000)
+add r1.xyz, r1.xyzx, l(0.006000, 0.009000, 0.014000, 0.000000)  // r1.x <- stormSky.x; r1.y <- stormSky.y; r1.z <- stormSky.z
+
+#line 217
+mul r0.w, r0.w, l(0.780000)
+mov r2.xyz, -r0.xyzx
+add r1.xyz, r1.xyzx, r2.xyzx
+mul r1.xyz, r0.wwww, r1.xyzx
+add r0.xyz, r0.xyzx, r1.xyzx
+
+#line 223
 mov r0.w, l(1.000000)
 store_uav_typed u0.xyzw, vThreadID.xyzz, r0.xyzw
 
-#line 194
+#line 224
 ret 
-// Approximately 294 instruction slots used
+// Approximately 354 instruction slots used

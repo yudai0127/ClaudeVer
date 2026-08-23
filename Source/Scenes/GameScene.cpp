@@ -346,7 +346,15 @@ void GameScene::update(float elapsedTime)
 		}
 	}
 
-	const bool rainActive = enableVolumetricCloud && volumetricCloud && volumetricCloud->getTargetWeather() > 0.55f;
+	const float cloudWeather = (enableVolumetricCloud && volumetricCloud)
+		? volumetricCloud->getTargetWeather()
+		: 0.0f;
+	const float weatherOvercast = std::clamp((cloudWeather - 0.22f) / 0.78f, 0.0f, 1.0f);
+	if (skyMap)
+	{
+		skyMap->atmosphere_constants_data._padding2.x = weatherOvercast;
+	}
+	const bool rainActive = enableVolumetricCloud && volumetricCloud && cloudWeather > 0.58f;
 	// 雨粒システムを更新（天候テクスチャを参照）
 	if (rainSystem && rainActive)
 	{
@@ -496,6 +504,12 @@ void GameScene::update(float elapsedTime)
 			1.0f };
 	}
 
+	const float directWeatherScale =
+		lerp(1.0f, 0.58f, weatherOvercast * dayVisibility);
+	LightColor.x *= directWeatherScale;
+	LightColor.y *= directWeatherScale;
+	LightColor.z *= directWeatherScale;
+
 	const DirectX::XMFLOAT3 nightAmbient{ 0.018f, 0.028f, 0.065f };
 	const DirectX::XMFLOAT3 dayAmbient{ 0.22f, 0.24f, 0.26f };
 	DirectX::XMFLOAT3 ambient{
@@ -505,6 +519,11 @@ void GameScene::update(float elapsedTime)
 	ambient.x = lerp(ambient.x, 0.16f, horizonGlow * 0.60f);
 	ambient.y = lerp(ambient.y, 0.060f, horizonGlow * 0.60f);
 	ambient.z = lerp(ambient.z, 0.032f, horizonGlow * 0.60f);
+	const DirectX::XMFLOAT3 overcastAmbient{ 0.10f, 0.12f, 0.15f };
+	const float weatherAmbientBlend = weatherOvercast * dayVisibility * 0.82f;
+	ambient.x = lerp(ambient.x, overcastAmbient.x, weatherAmbientBlend);
+	ambient.y = lerp(ambient.y, overcastAmbient.y, weatherAmbientBlend);
+	ambient.z = lerp(ambient.z, overcastAmbient.z, weatherAmbientBlend);
 	AmbientColor = { ambient.x, ambient.y, ambient.z, 0.0f };
 
 	// マウス入力で自由カメラ更新

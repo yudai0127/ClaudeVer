@@ -205,6 +205,17 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
 
     finalColor += (nightSkyColor + moonColor) * nightAmount;
 
+    // Keep the procedural sky, IBL, and water reflections in the same
+    // weather state as the volumetric clouds. The weather value is passed
+    // through spare atmosphere constant-buffer padding.
+    float weatherOvercast = saturate(_padding2.x);
+    float dayWeather = weatherOvercast * (1.0f - nightAmount);
+    float skyLuminance = dot(finalColor, float3(0.2126f, 0.7152f, 0.0722f));
+    float3 stormSky = lerp(finalColor, skyLuminance.xxx, 0.58f)
+                    * float3(0.62f, 0.67f, 0.73f)
+                    + float3(0.006f, 0.009f, 0.014f);
+    finalColor = lerp(finalColor, stormSky, dayWeather * 0.78f);
+ 
     
    
     

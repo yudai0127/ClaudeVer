@@ -123,22 +123,24 @@ void VolumetricCloud::initialize(ID3D11Device* device, const wchar_t* filename)
 
 	volumetric_cloud_constant_data = {};
 	volumetric_cloud_constant_data.wind_direction = { 1.0f, 0.0f };
-	// Scene/cloud distances are metres. Atmosphere radii stay in kilometres and
-	// are converted explicitly in the cloud shaders.
-	volumetric_cloud_constant_data.cloud_altitudes_min_max = { 3000.0f, 6500.0f };
+	// This scene uses large artistic world units (ships are scaled by 60).
+	// Keep the base above the harbour and tall terrain, but avoid stretching the
+	// normalized Horizon height profiles through a 22 km shell. A 10 km layer
+	// gives cumulus room to grow without turning weather cells into pillars.
+	volumetric_cloud_constant_data.cloud_altitudes_min_max = { 12000.0f, 22000.0f };
 	volumetric_cloud_constant_data.wind_speed = 0.02f;
-	volumetric_cloud_constant_data.density_scale = 1.25f;
+	volumetric_cloud_constant_data.density_scale = 1.05f;
 	volumetric_cloud_constant_data.cloud_coverage_scale = 0.82f;
 	volumetric_cloud_constant_data.rain_cloud_absorption_scale = 0.5f;
 	volumetric_cloud_constant_data.cloud_type_scale = 1.0f;
 	volumetric_cloud_constant_data.horizon_distance_scale = 1.0f;
-	volumetric_cloud_constant_data.low_frequency_perlin_worley_sampling_scale = 0.000120f;
-	volumetric_cloud_constant_data.high_frequency_worley_sampling_scale = 0.00078f;
+	volumetric_cloud_constant_data.low_frequency_perlin_worley_sampling_scale = 0.00020f;
+	volumetric_cloud_constant_data.high_frequency_worley_sampling_scale = 0.00125f;
 	volumetric_cloud_constant_data.cloud_density_long_distance_scale = 22.0f;
 	// Beer-Powder is now bounded and view dependent, so it can safely provide a
 	// subtle silver lining without turning every edge into a white outline.
 	volumetric_cloud_constant_data.enable_powdered_sugar_efffect = 1;
-	volumetric_cloud_constant_data.ray_marching_steps = 96;
+	volumetric_cloud_constant_data.ray_marching_steps = 72;
 	volumetric_cloud_constant_data.auto_ray_marching_steps = 1;
 	volumetric_cloud_constant_data.debug_disable_self_shadow = 0;
 	volumetric_cloud_constant_data.debug_disable_height_lighting = 0;
@@ -310,19 +312,24 @@ void VolumetricCloud::updateWeatherMap(ID3D11DeviceContext* dc, float weatherT)
 	cb.windDir = volumetric_cloud_constant_data.wind_direction;
 	cb.windSpeed = volumetric_cloud_constant_data.wind_speed;
 
-		// Keep clear gaps between cloud groups in the sunny preset.
-		cb.sunnyCoverage = 0.40f;
+	// Scattered cumulus: distinct cells with clear sky between them. Local
+	// coverage is converted to a density threshold by the volumetric shader.
+	cb.sunnyCoverage = 0.42f;
 	cb.rainyCoverage = 0.84f;
 	cb.sunnyRain = 0.0f;
 	cb.rainyRain = 1.0f;
 
-	cb.sunnyType = 0.55f;
-	cb.rainyType = 0.78f;
+	// Cell centres select the tall cumulus profile. WeatherMap_CS lowers this
+	// value continuously toward each perimeter to produce rounded cloud tops.
+	cb.sunnyType = 0.72f;
+	cb.rainyType = 0.82f;
 
-		// The weather map spans hundreds of kilometres. A larger scale prevents
-		// one giant weather cell from covering the entire visible sky.
-		cb.noiseScale = 18.0f;
-		cb.noiseAmp = 0.28f;
+	// At scale 18 a 256 px weather map gives one cloud cell only about 14
+	// texels, so filtering exposes block-like towers. Broader cells retain clear
+	// gaps but give the 3D Perlin-Worley field enough horizontal room to form
+	// rounded cumulus masses.
+	cb.noiseScale = 10.0f;
+	cb.noiseAmp = 0.22f;
 
 	weather_gen_cb->UploadData<WEATHER_GEN_CB>(dc, 0, cb, /*VS*/ false, /*HS*/ false, /*DS*/ false, /*GS*/ false, /*PS*/ false, /*CS*/ true);
 
@@ -354,7 +361,7 @@ void VolumetricCloud::debugGui()
 	auto& params = volumetric_cloud_constant_data;
 
 	ImGui::DragFloat2("Wind Direction", &params.wind_direction.x, 0.01f, -1.0f, 1.0f);
-	ImGui::DragFloatRange2("Cloud Altitudes (m)", &params.cloud_altitudes_min_max.x, &params.cloud_altitudes_min_max.y, 10.0f, 500.0f, 12000.0f);
+	ImGui::DragFloatRange2("Cloud Altitudes (world units)", &params.cloud_altitudes_min_max.x, &params.cloud_altitudes_min_max.y, 100.0f, 1000.0f, 80000.0f);
 	ImGui::DragFloat("Wind Speed", &params.wind_speed, 0.01f, 0.0f, 2.0f);
 	ImGui::DragFloat("Density Scale", &params.density_scale, 0.01f, 0.2f, 10.0f);
 	ImGui::DragFloat("Cloud Coverage Scale", &params.cloud_coverage_scale, 0.01f, 0.0f, 1.0f);
